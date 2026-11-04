@@ -42,6 +42,17 @@ var bridgeToken = os.Getenv("WHATSAPP_BRIDGE_TOKEN")
 // mediaDir is the only directory media may be sent from. Empty disables sending media.
 var mediaDir = os.Getenv("WHATSAPP_MEDIA_DIR")
 
+// logContent controls whether message text, captions and file names are written
+// to the logs. Off by default so chat content does not pile up in plain text;
+// set WHATSAPP_LOG_CONTENT=1 (or true/yes/on) to turn it on for debugging.
+var logContent = func() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("WHATSAPP_LOG_CONTENT"))) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
+}()
+
 // cleanForLog strips control characters so message text cannot inject terminal escape codes.
 func cleanForLog(s string) string {
 	return strings.Map(func(r rune) rune {
@@ -957,9 +968,17 @@ func handleMessage(client *whatsmeow.Client, messageStore *MessageStore, msg *ev
 
 		// Log based on message type
 		if mediaType != "" {
-			fmt.Printf("[%s] %s %s: [%s: %s] %s\n", timestamp, direction, cleanForLog(sender), mediaType, cleanForLog(filename), cleanForLog(content))
+			if logContent {
+				fmt.Printf("[%s] %s %s: [%s: %s] %s\n", timestamp, direction, cleanForLog(sender), mediaType, cleanForLog(filename), cleanForLog(content))
+			} else {
+				fmt.Printf("[%s] %s message stored [%s]\n", timestamp, direction, mediaType)
+			}
 		} else if content != "" {
-			fmt.Printf("[%s] %s %s: %s\n", timestamp, direction, cleanForLog(sender), cleanForLog(content))
+			if logContent {
+				fmt.Printf("[%s] %s %s: %s\n", timestamp, direction, cleanForLog(sender), cleanForLog(content))
+			} else {
+				fmt.Printf("[%s] %s message stored\n", timestamp, direction)
+			}
 		}
 	}
 }
@@ -1226,7 +1245,11 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port 
 			return
 		}
 
-		fmt.Println("Received request to send message", cleanForLog(req.Message), cleanForLog(req.MediaPath))
+		if logContent {
+			fmt.Println("Received request to send message", cleanForLog(req.Message), cleanForLog(req.MediaPath))
+		} else {
+			fmt.Println("Received request to send message")
+		}
 
 		// Send the message (with optional reply-to context per #121)
 		success, message := sendWhatsAppMessage(client, messageStore, req.Recipient, req.Message, req.MediaPath, req.ReplyToMessageID, req.ReplyToSenderJID, req.Mentions)
@@ -1621,7 +1644,9 @@ func handleHistorySync(client *whatsmeow.Client, messageStore *MessageStore, his
 				}
 
 				// Log the message content for debugging
-				logger.Infof("Message content: %v, Media Type: %v", cleanForLog(content), mediaType)
+				if logContent {
+					logger.Infof("Message content: %v, Media Type: %v", cleanForLog(content), mediaType)
+				}
 
 				// Skip messages with no content and no media
 				if content == "" && mediaType == "" {
@@ -1680,8 +1705,10 @@ func handleHistorySync(client *whatsmeow.Client, messageStore *MessageStore, his
 					logger.Warnf("Failed to store history message: %v", err)
 				} else {
 					syncedCount++
-					// Log successful message storage
-					if mediaType != "" {
+					// Log successful message storage (content only when WHATSAPP_LOG_CONTENT is on)
+					if !logContent {
+						// counted in syncedCount; summarised at the end of the sync
+					} else if mediaType != "" {
 						logger.Infof("Stored message: [%s] %s -> %s: [%s: %s] %s",
 							timestamp.Format("2006-01-02 15:04:05"), cleanForLog(sender), chatJID, mediaType, cleanForLog(filename), cleanForLog(content))
 					} else {
