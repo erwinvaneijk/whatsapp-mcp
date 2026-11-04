@@ -33,8 +33,8 @@ func TestMediaRetryMessageInfo(t *testing.T) {
 	group := "120363000000000000@g.us"
 	dm := "31612345678@s.whatsapp.net"
 	now := time.Now()
-	s.StoreChat(group, "Huis", now)
-	s.StoreChat(dm, "Sien", now)
+	s.StoreChat(group, "Book club", now)
+	s.StoreChat(dm, "Maria", now)
 	s.StoreMessage("G1", group, "123456789012345", "", now, false, "image", "a.jpg", "u", []byte{1}, nil, nil, 1, "")
 	s.StoreMessage("D1", dm, "31600000000", "", now, true, "image", "b.jpg", "u", []byte{1}, nil, nil, 1, "")
 	own := types.NewJID("31600000000", types.DefaultUserServer)
