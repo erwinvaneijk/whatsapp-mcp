@@ -1,6 +1,6 @@
 import sqlite3
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 from dataclasses import dataclass, replace
 from typing import Optional, List, Tuple
@@ -277,14 +277,51 @@ def mark_contact(contact: "Contact") -> "Contact":
     return replace(contact, name=one_line(contact.name))
 
 
+# Times (#146). The bridge stores each time with its UTC offset, in the zone of
+# the computer it runs on (+01:00, +02:00 in summer). As text those do not
+# compare or sort correctly across offsets, so every comparison and sort goes
+# through SQLite's julianday(), which turns any offset into one number. The
+# bridge indexes julianday(timestamp) so this stays fast.
+
+
+def _moment(value: str, name: str) -> str:
+    """An ISO-8601 date, or date and time, from the caller, as UTC text for julianday().
+
+    A time on its own is refused: it does not say which day. Without a zone it is
+    local time on the computer running this server; a date alone means midnight.
+    """
+    try:
+        moment = datetime.fromisoformat(value.strip())
+    except ValueError:
+        raise ValueError(
+            f"Invalid date format for '{name}': {value}. Use an ISO-8601 date, or date and time, "
+            "for example 2026-11-04 or 2026-11-04T21:00:00+01:00."
+        )
+    if moment.tzinfo is None:
+        moment = moment.astimezone()  # local time
+    return moment.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")
+
+
+def format_time(moment: datetime) -> str:
+    """A time for the text output, with its UTC offset: 2026-11-04 22:00:52 +01:00."""
+    text = f"{moment:%Y-%m-%d %H:%M:%S}"
+    offset = moment.utcoffset()
+    if offset is None:
+        return text
+    minutes = int(offset.total_seconds()) // 60
+    sign = "+" if minutes >= 0 else "-"
+    minutes = abs(minutes)
+    return f"{text} {sign}{minutes // 60:02d}:{minutes % 60:02d}"
+
+
 def format_message(message: Message, show_chat_info: bool = True) -> str:
     """Print a single message with consistent formatting."""
     output = ""
     
     if show_chat_info and message.chat_name:
-        output += f"[{message.timestamp:%Y-%m-%d %H:%M:%S}] Chat: {one_line(message.chat_name)} "
+        output += f"[{format_time(message.timestamp)}] Chat: {one_line(message.chat_name)} "
     else:
-        output += f"[{message.timestamp:%Y-%m-%d %H:%M:%S}] "
+        output += f"[{format_time(message.timestamp)}] "
         
     # The ID is shown for every message, so it can be used with
     # reply_to_message_id, react_to_message and get_message_context.
@@ -354,22 +391,12 @@ def list_messages(
         
         # Add filters
         if after:
-            try:
-                after = datetime.fromisoformat(after)
-            except ValueError:
-                raise ValueError(f"Invalid date format for 'after': {after}. Please use ISO-8601 format.")
-            
-            where_clauses.append("messages.timestamp > ?")
-            params.append(after)
+            where_clauses.append("julianday(messages.timestamp) > julianday(?)")
+            params.append(_moment(after, "after"))
 
         if before:
-            try:
-                before = datetime.fromisoformat(before)
-            except ValueError:
-                raise ValueError(f"Invalid date format for 'before': {before}. Please use ISO-8601 format.")
-            
-            where_clauses.append("messages.timestamp < ?")
-            params.append(before)
+            where_clauses.append("julianday(messages.timestamp) < julianday(?)")
+            params.append(_moment(before, "before"))
 
         if sender_phone_number:
             where_clauses.append("messages.sender = ?")
@@ -398,7 +425,7 @@ def list_messages(
             
         # Add pagination
         offset = page * limit
-        query_parts.append("ORDER BY messages.timestamp DESC")
+        query_parts.append("ORDER BY julianday(messages.timestamp) DESC")
         query_parts.append("LIMIT ? OFFSET ?")
         params.extend([limit, offset])
         
@@ -484,8 +511,8 @@ def get_message_context(
             SELECT messages.timestamp, messages.sender, display_name(chats.jid, chats.name), messages.content, messages.is_from_me, chats.jid, messages.id, messages.media_type, {quoted}
             FROM messages
             JOIN chats ON messages.chat_jid = chats.jid
-            WHERE messages.chat_jid = ? AND messages.timestamp < ?
-            ORDER BY messages.timestamp DESC
+            WHERE messages.chat_jid = ? AND julianday(messages.timestamp) < julianday(?)
+            ORDER BY julianday(messages.timestamp) DESC
             LIMIT ?
         """, (msg_data[7], msg_data[0], before))
         
@@ -508,8 +535,8 @@ def get_message_context(
             SELECT messages.timestamp, messages.sender, display_name(chats.jid, chats.name), messages.content, messages.is_from_me, chats.jid, messages.id, messages.media_type, {quoted}
             FROM messages
             JOIN chats ON messages.chat_jid = chats.jid
-            WHERE messages.chat_jid = ? AND messages.timestamp > ?
-            ORDER BY messages.timestamp ASC
+            WHERE messages.chat_jid = ? AND julianday(messages.timestamp) > julianday(?)
+            ORDER BY julianday(messages.timestamp) ASC
             LIMIT ?
         """, (msg_data[7], msg_data[0], after))
         
@@ -580,7 +607,7 @@ def list_chats(
                 LEFT JOIN messages ON messages.rowid = (
                     SELECT rowid FROM messages
                     WHERE chat_jid = chats.jid
-                    ORDER BY timestamp DESC
+                    ORDER BY julianday(timestamp) DESC
                     LIMIT 1
                 )
             """)
@@ -596,7 +623,7 @@ def list_chats(
             query_parts.append("WHERE " + " AND ".join(where_clauses))
             
         # Add sorting
-        order_by = "chats.last_message_time DESC" if sort_by == "last_active" else "display_name(chats.jid, chats.name)"
+        order_by = "julianday(chats.last_message_time) DESC" if sort_by == "last_active" else "display_name(chats.jid, chats.name)"
         query_parts.append(f"ORDER BY {order_by}")
         
         # Add pagination
@@ -700,12 +727,12 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Chat]:
             LEFT JOIN messages m ON m.rowid = (
                 SELECT rowid FROM messages
                 WHERE chat_jid = c.jid
-                ORDER BY timestamp DESC
+                ORDER BY julianday(timestamp) DESC
                 LIMIT 1
             )
             WHERE c.jid = ?
                 OR c.jid IN (SELECT chat_jid FROM messages WHERE sender = ?)
-            ORDER BY c.last_message_time DESC
+            ORDER BY julianday(c.last_message_time) DESC
             LIMIT ? OFFSET ?
         """, (jid, jid, limit, page * limit))
         
@@ -753,7 +780,7 @@ def get_last_interaction(jid: str) -> Optional[str]:
             FROM messages m
             JOIN chats c ON m.chat_jid = c.jid
             WHERE m.sender = ? OR c.jid = ?
-            ORDER BY m.timestamp DESC
+            ORDER BY julianday(m.timestamp) DESC
             LIMIT 1
         """, (jid, jid))
         
@@ -809,7 +836,7 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> Optional[Chat]
                 LEFT JOIN messages m ON m.rowid = (
                     SELECT rowid FROM messages
                     WHERE chat_jid = c.jid
-                    ORDER BY timestamp DESC
+                    ORDER BY julianday(timestamp) DESC
                     LIMIT 1
                 )
             """
@@ -858,7 +885,7 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Chat]:
             LEFT JOIN messages m ON m.rowid = (
                 SELECT rowid FROM messages
                 WHERE chat_jid = c.jid
-                ORDER BY timestamp DESC
+                ORDER BY julianday(timestamp) DESC
                 LIMIT 1
             )
             WHERE jid_matches(c.jid, ?) AND c.jid NOT LIKE '%@g.us'
