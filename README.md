@@ -80,6 +80,9 @@ Contacts and messages:
 - `feat/send-mentions` — upstream PR [#321](https://github.com/lharries/whatsapp-mcp/pull/321): `send_message` takes `mentions`, a list of phone numbers or JIDs to @mention. Also put `@<number>` in the text, or WhatsApp does not highlight it. Works together with replies.
 - `feat/send-reactions` — upstream PR [#148](https://github.com/lharries/whatsapp-mcp/pull/148): new `react_to_message` tool to react with an emoji, or remove your reaction with an empty one. The message must be in the bridge's database. Hidden in read-only mode.
 - `feat/quoted-message-id` — upstream PR [#325](https://github.com/lharries/whatsapp-mcp/pull/325): replies are stored with the ID of the message they quote and shown as `(reply to <id>)`. Every message now shows its ID, to use with replies and reactions. Applies to newly received or re-synced messages.
+- `feat/store-sent-messages` — upstream PR [#383](https://github.com/lharries/whatsapp-mcp/pull/383): messages and reactions sent through the bridge are stored, so they show up in `list_messages` and can be replied or reacted to. They go into the existing chat, whether that is stored under the phone number or the LID.
+- `feat/tool-annotations` — upstream PR [#142](https://github.com/lharries/whatsapp-mcp/pull/142): every tool tells MCP clients whether it only reads, or sends messages that cannot be undone (so the client can ask first).
+- `feat/media-retry-pair-code` — upstream PR [#273](https://github.com/lharries/whatsapp-mcp/pull/273): media that has expired on WhatsApp's servers is requested again from the sender's phone (which must be online), and the bridge can link with a code instead of a QR code (`WHATSAPP_PAIR_PHONE`).
 
 This is temporary. The plan is to merge `dev-main` into `main` at some point and announce that this fork is actively maintained. From then on, `main` will be the branch to use.
 
@@ -116,6 +119,8 @@ This is temporary. The plan is to merge `dev-main` into `main` at some point and
    The `sqlite_fts5` tag turns on fast full-text search for `list_messages(query=...)`. Plain `go run .` also works; search then falls back to a slower scan of all messages.
 
    The first time you run it, you will be prompted to scan a QR code. Scan the QR code with your WhatsApp mobile app to authenticate.
+
+   To link with a code instead of scanning, set your phone number (with country code) first: `export WHATSAPP_PAIR_PHONE=31612345678`. The bridge then prints an 8-character code; on your phone open WhatsApp > Linked devices > Link a device > Link with phone number instead, and enter it.
 
    After approximately 20 days, you will might need to re-authenticate.
 
