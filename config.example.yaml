@@ -1,0 +1,45 @@
+# Configuration for whatsapp-mcp: the WhatsApp bridge and the MCP server.
+#
+# Copy this file to ~/.config/whatsapp-mcp/config.yaml (or set WHATSAPP_CONFIG
+# to its path) and make it readable by you only, because it holds the token:
+#
+#   mkdir -p ~/.config/whatsapp-mcp
+#   cp config.example.yaml ~/.config/whatsapp-mcp/config.yaml
+#   chmod 600 ~/.config/whatsapp-mcp/config.yaml
+#
+# Every setting is optional except bridge_token. An environment variable that
+# is set (named above each setting) takes precedence over the file. Unknown
+# settings stop both programs, so a typo cannot go unnoticed.
+
+# Shared secret between the bridge and the MCP server, at least 32 characters.
+# Generate one with:  head -c 32 /dev/urandom | base64
+# WHATSAPP_BRIDGE_TOKEN
+# The bridge refuses to start while it is empty.
+bridge_token: ""
+
+# The only folder files can be sent from. Leave empty to disable sending files.
+# WHATSAPP_MEDIA_DIR
+media_dir: /Users/me/whatsapp-outbox
+
+# Chats the bridge may send messages and reactions to; anything else is
+# refused. Phone numbers with country code (+, spaces and dashes are fine) or
+# JIDs, including groups (list_chats shows them). Leave empty for no limit.
+# WHATSAPP_SEND_ALLOWLIST
+send_allowlist:
+  # - 31612345678              # a person
+  # - "+31 6 8765 4321"        # quotes are optional
+  # - 120363000000000000@g.us  # a group
+
+# Hide the tools that send messages from the model (MCP server). yes / no.
+# WHATSAPP_MCP_READ_ONLY
+read_only: no
+
+# Write message content (text, senders, file names) to the bridge's logs, for
+# debugging. yes / no.
+# WHATSAPP_LOG_CONTENT
+log_content: no
+
+# Link a new bridge with a pairing code for this phone number instead of a QR
+# code. Only used when the bridge is not linked yet.
+# WHATSAPP_PAIR_PHONE
+pair_phone:

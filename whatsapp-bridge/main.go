@@ -36,16 +36,19 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+// These settings are read in main, after the configuration file (config.go)
+// has been applied to the environment.
+
 // bridgeToken is the shared secret every REST request must present in X-Bridge-Token.
-var bridgeToken = os.Getenv("WHATSAPP_BRIDGE_TOKEN")
+var bridgeToken string
 
 // mediaDir is the only directory media may be sent from. Empty disables sending media.
-var mediaDir = os.Getenv("WHATSAPP_MEDIA_DIR")
+var mediaDir string
 
 // logContent controls whether message text, captions and file names are written
 // to the logs. Off by default so chat content does not pile up in plain text;
 // set WHATSAPP_LOG_CONTENT=1 (or true/yes/on) to turn it on for debugging.
-var logContent = envFlag(os.Getenv("WHATSAPP_LOG_CONTENT"))
+var logContent bool
 
 // logResult logs the outcome of a send. The status text can contain content
 // (a reaction's emoji, a file path in an error), so it is only logged with
@@ -1364,8 +1367,20 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port 
 func main() {
 	// Set up logger
 	logger := waLog.Stdout("Client", "INFO", true)
+	configFile, err := loadConfig()
+	if err != nil {
+		logger.Errorf("%v", err)
+		return
+	}
+	if configFile != "" {
+		logger.Infof("Read settings from %s (environment variables take precedence)", configFile)
+	}
+	bridgeToken = os.Getenv("WHATSAPP_BRIDGE_TOKEN")
+	mediaDir = os.Getenv("WHATSAPP_MEDIA_DIR")
+	logContent = envFlag(os.Getenv("WHATSAPP_LOG_CONTENT"))
+
 	if len(bridgeToken) < 32 {
-		logger.Errorf("WHATSAPP_BRIDGE_TOKEN must be set to a random secret of at least 32 characters")
+		logger.Errorf("WHATSAPP_BRIDGE_TOKEN (or bridge_token in the configuration file) must be set to a random secret of at least 32 characters")
 		return
 	}
 	allow, err := parseSendAllowlist(os.Getenv("WHATSAPP_SEND_ALLOWLIST"))
