@@ -96,11 +96,12 @@ def list_messages(
     Returns formatted text, one message per line, with each message's ID.
     
     Args:
-        after: Optional ISO-8601 date or time; only messages after this moment, e.g.
-               "2026-11-04T21:00:00+01:00" or "2026-11-04T20:00:00Z". Without a zone
-               it is local time on the computer running this server.
-        before: Optional ISO-8601 date or time; only messages before this moment
-               (same format as after).
+        after: Optional ISO-8601 date, or date and time; only messages after this moment,
+               e.g. "2026-11-04", "2026-11-04T21:00:00+01:00" or "2026-11-04T20:00:00Z".
+               A time always needs a date. Without a zone it is local time on the
+               computer running this server; a date alone means midnight.
+        before: Optional ISO-8601 date, or date and time; only messages before this
+               moment (same format as after).
         sender_phone_number: Optional phone number to filter messages by sender
         chat_jid: Optional chat JID to filter messages by chat
         query: Optional search term to filter messages by content

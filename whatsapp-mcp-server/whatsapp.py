@@ -285,15 +285,17 @@ def mark_contact(contact: "Contact") -> "Contact":
 
 
 def _moment(value: str, name: str) -> str:
-    """An ISO-8601 date or time from the caller, as UTC text for julianday().
+    """An ISO-8601 date, or date and time, from the caller, as UTC text for julianday().
 
-    A time without a zone is local time on the computer running this server.
+    A time on its own is refused: it does not say which day. Without a zone it is
+    local time on the computer running this server; a date alone means midnight.
     """
     try:
         moment = datetime.fromisoformat(value.strip())
     except ValueError:
         raise ValueError(
-            f"Invalid date format for '{name}': {value}. Use ISO-8601, for example 2026-11-04T21:00:00+01:00."
+            f"Invalid date format for '{name}': {value}. Use an ISO-8601 date, or date and time, "
+            "for example 2026-11-04 or 2026-11-04T21:00:00+01:00."
         )
     if moment.tzinfo is None:
         moment = moment.astimezone()  # local time

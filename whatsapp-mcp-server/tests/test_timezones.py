@@ -134,3 +134,11 @@ def test_queries_use_the_bridge_indexes(db, sql, index):
     plan = " ".join(row[-1] for row in conn.execute("EXPLAIN QUERY PLAN " + sql, params))
     conn.close()
     assert index in plan, plan
+
+
+def test_date_alone_is_midnight_and_time_alone_is_refused(db):
+    # A date alone means midnight (local time); the October 4 messages are all after it.
+    assert ids(after="2026-10-04", before="2026-10-05T00:00:00Z") == ["W4", "W3", "W2", "W1"]
+    # A time without a date does not say which day.
+    with pytest.raises(ValueError, match="date, or date and time"):
+        whatsapp.list_messages(after="21:00:00")

@@ -47,11 +47,16 @@ func TestTimeIndexesMigrate(t *testing.T) {
 	var names []string
 	for rows.Next() {
 		var name, sqlText string
-		rows.Scan(&name, &sqlText)
+		if err := rows.Scan(&name, &sqlText); err != nil {
+			t.Fatal(err)
+		}
 		names = append(names, name)
 		if !strings.Contains(sqlText, "julianday(") {
 			t.Errorf("index %s is not on julianday(...): %s", name, sqlText)
 		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
 	}
 	sort.Strings(names)
 	want := "idx_chats_last_message_moment idx_messages_chat_moment idx_messages_moment idx_messages_sender_moment"
