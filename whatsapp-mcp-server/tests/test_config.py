@@ -16,9 +16,9 @@ read_only: yes
 pair_phone: 0612345678        # kept as written, not read as a number
 log_content:                  # empty: not set
 send_allowlist:
-  - 31612345678               # Sien
-  - "+31 6 8765 4321"         # Luc
-  - 120363000000000000@g.us   # Huis
+  - 31612345678               # Maria
+  - "+31 6 8765 4321"         # Tom
+  - 120363000000000000@g.us   # Book club
 """
 
 

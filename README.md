@@ -279,8 +279,8 @@ Set `send_allowlist` in the [configuration file](#configuration), or `WHATSAPP_S
 ```yaml
 send_allowlist:
   - 31612345678              # Maria
-  - 31687654321              # Luc
-  - 120363000000000000@g.us  # Huis
+  - 31687654321              # Tom
+  - 120363000000000000@g.us  # Book club
 ```
 
 or, as an environment variable:

@@ -27,7 +27,7 @@ func TestParseSendAllowlist(t *testing.T) {
 	}
 
 	// A typo stops the bridge instead of silently allowing or blocking chats.
-	for _, bad := range []string{"Sien", "0612abc", "status@broadcast", "@s.whatsapp.net", "31612345678, oops"} {
+	for _, bad := range []string{"Maria", "0612abc", "status@broadcast", "@s.whatsapp.net", "31612345678, oops"} {
 		if _, err := parseSendAllowlist(bad); err == nil {
 			t.Errorf("%q: want an error", bad)
 		}
