@@ -1151,6 +1151,13 @@ func downloadMedia(client *whatsmeow.Client, messageStore *MessageStore, message
 
 	// Download the media using whatsmeow client
 	mediaData, err := client.Download(context.Background(), downloader)
+	if err != nil && isExpiredMediaError(err) {
+		// Expired on WhatsApp's servers (#273): ask the sender's phone for it.
+		fmt.Printf("Media download failed (%v); asking the sender's phone to upload it again...\n", err)
+		ctx, cancel := context.WithTimeout(context.Background(), mediaRetryTimeout+15*time.Second)
+		mediaData, err = downloadViaMediaRetry(ctx, client, messageStore, messageID, chatJID, downloader)
+		cancel()
+	}
 	if err != nil {
 		return false, "", "", "", fmt.Errorf("failed to download media: %v", err)
 	}
@@ -1363,6 +1370,9 @@ func main() {
 	// Setup event handling for messages and history sync
 	client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
+		case *events.MediaRetry:
+			handleMediaRetry(v)
+
 		case *events.Message:
 			// Process regular messages
 			handleMessage(client, messageStore, v, logger)
@@ -1392,9 +1402,25 @@ func main() {
 			return
 		}
 
+		// With WHATSAPP_PAIR_PHONE set (your number with country code), link
+		// with an 8-character code instead of a QR code (#273). whatsmeow wants
+		// the first QR event before the code is requested.
+		pairPhone := strings.Trim(strings.NewReplacer(" ", "", "-", "").Replace(os.Getenv("WHATSAPP_PAIR_PHONE")), "+")
+		codeRequested := false
+
 		// Print QR code for pairing with phone
 		for evt := range qrChan {
-			if evt.Event == "code" {
+			if evt.Event == "code" && pairPhone != "" {
+				if !codeRequested {
+					codeRequested = true
+					code, err := client.PairPhone(context.Background(), pairPhone, true, whatsmeow.PairClientChrome, "Chrome (macOS)")
+					if err != nil {
+						logger.Errorf("Failed to request pairing code: %v", err)
+						return
+					}
+					fmt.Printf("\nOn your phone open WhatsApp > Linked devices > Link a device > Link with phone number instead, and enter: %s\n", code)
+				}
+			} else if evt.Event == "code" {
 				fmt.Println("\nScan this QR code with your WhatsApp app:")
 				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
 			} else if evt.Event == "success" {
