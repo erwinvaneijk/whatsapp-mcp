@@ -9,10 +9,15 @@ import time
 import requests
 import json
 import audio
+import config
 
 MESSAGES_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'whatsapp-bridge', 'store', 'messages.db')
 WHATSAPP_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'whatsapp-bridge', 'store', 'whatsapp.db')
 WHATSAPP_API_BASE_URL = "http://127.0.0.1:8080/api"
+
+# Settings may come from the shared configuration file (config.py); it fills
+# in environment variables that are not set, so it must run before they are read.
+CONFIG_FILE = config.load_config_or_exit()
 
 # Shared secret the bridge requires on every request (WHATSAPP_BRIDGE_TOKEN must match on both sides)
 BRIDGE_TOKEN = os.environ.get("WHATSAPP_BRIDGE_TOKEN", "")

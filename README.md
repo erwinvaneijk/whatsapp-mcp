@@ -87,6 +87,7 @@ Contacts and messages:
 - `feat/media-retry-pair-code` — upstream PR [#273](https://github.com/lharries/whatsapp-mcp/pull/273): media that has expired on WhatsApp's servers is requested again from the sender's phone (which must be online), and the bridge can link with a code instead of a QR code (`WHATSAPP_PAIR_PHONE`).
 - `log-content-opt-in` — fork PR [#1](https://github.com/erwinvaneijk/whatsapp-mcp/pull/1) by BadPirate, with fixes in `fix/log-privacy`: message content stays out of the bridge's logs unless `WHATSAPP_LOG_CONTENT=1` is set, and media keys are never logged. See [Logs](#logs).
 - `feat/mark-untrusted-content` — fork change: message text from others is marked as data and the model is told never to follow instructions in it, to limit prompt injection (upstream issue [#247](https://github.com/lharries/whatsapp-mcp/issues/247)). See [Messages from others are marked as data](#messages-from-others-are-marked-as-data).
+- `feat/send-allowlist` — fork change: `send_allowlist` (or `WHATSAPP_SEND_ALLOWLIST`) limits which chats the bridge sends to, and all settings can come from a [configuration file](#configuration) (upstream issue [#218](https://github.com/lharries/whatsapp-mcp/issues/218); send-only alternative to upstream PR [#319](https://github.com/lharries/whatsapp-mcp/pull/319)). See [Limit who the bridge sends to](#limit-who-the-bridge-sends-to).
 
 This is temporary. The plan is to merge `dev-main` into `main` at some point and announce that this fork is actively maintained. From then on, `main` will be the branch to use.
 
@@ -111,7 +112,20 @@ This is temporary. The plan is to merge `dev-main` into `main` at some point and
 
 2. **Run the WhatsApp bridge**
 
-   The bridge only starts with a shared secret (`WHATSAPP_BRIDGE_TOKEN`, at least 32 characters), and only sends files from one folder (`WHATSAPP_MEDIA_DIR`). See [Bridge token and media folder](#bridge-token-and-media-folder). Generate a token once and keep it; the MCP server needs the same value.
+   The bridge only starts with a shared secret (the bridge token, at least 32 characters), and only sends files from one folder (the media folder). See [Bridge token and media folder](#bridge-token-and-media-folder). Generate a token once and keep it; the MCP server needs the same value.
+
+   The easiest way is a [configuration file](#configuration) that both the bridge and the MCP server read:
+
+   ```bash
+   mkdir -p ~/.config/whatsapp-mcp
+   cp config.example.yaml ~/.config/whatsapp-mcp/config.yaml
+   chmod 600 ~/.config/whatsapp-mcp/config.yaml
+   head -c 32 /dev/urandom | base64   # paste this as bridge_token in the file
+   cd whatsapp-bridge
+   go run -tags sqlite_fts5 .
+   ```
+
+   Or use environment variables instead of the file:
 
    ```bash
    export WHATSAPP_BRIDGE_TOKEN="$(head -c 32 /dev/urandom | base64)"
@@ -152,6 +166,8 @@ This is temporary. The plan is to merge `dev-main` into `main` at some point and
    }
    ```
 
+   With the [configuration file](#configuration), leave out the `env` block: the MCP server reads the token and the media folder from the file.
+
    For **Claude**, save this as `claude_desktop_config.json` in your Claude Desktop configuration directory at:
 
    ```
@@ -191,6 +207,24 @@ If you're running this project on Windows, be aware that `go-sqlite3` requires *
 Without this setup, you'll likely run into errors like:
 
 > `Binary was compiled with 'CGO_ENABLED=0', go-sqlite3 requires cgo to work.`
+
+## Configuration
+
+The bridge and the MCP server read their settings from environment variables, or from one YAML file: `~/.config/whatsapp-mcp/config.yaml`, or the path in `WHATSAPP_MCP_CONFIG`. [`config.example.yaml`](config.example.yaml) lists every setting with an explanation. An environment variable that is set takes precedence over the same setting in the file.
+
+| Setting in the file | Environment variable | Used by | Meaning |
+|---|---|---|---|
+| `bridge_token` | `WHATSAPP_BRIDGE_TOKEN` | both | Shared secret, at least 32 characters. Required. |
+| `media_dir` | `WHATSAPP_MEDIA_DIR` | both | The only folder files can be sent from. |
+| `send_allowlist` | `WHATSAPP_SEND_ALLOWLIST` | bridge | Chats the bridge may send to; a YAML list in the file. See [Limit who the bridge sends to](#limit-who-the-bridge-sends-to). |
+| `read_only` | `WHATSAPP_MCP_READ_ONLY` | MCP server | Hide the tools that send. See [Read-only mode](#read-only-mode). |
+| `log_content` | `WHATSAPP_LOG_CONTENT` | bridge | Write message content to the logs. See [Logs](#logs). |
+| `pair_phone` | `WHATSAPP_PAIR_PHONE` | bridge | Link with a pairing code instead of a QR code. |
+
+- The file holds the token, so both programs refuse it when other users can read or change it (`chmod 600` fixes that). This check is skipped on Windows.
+- An unknown setting stops both programs with the line number, so a typo cannot go unnoticed.
+- Values are used exactly as written; YAML does not turn `0612345678` into another number.
+- A file named in `WHATSAPP_MCP_CONFIG` must exist; the default file is optional.
 
 ## Security
 
@@ -237,6 +271,28 @@ Anyone who can send you a WhatsApp message controls text that Claude reads. A me
 - Every read tool's description, and the instructions the server gives the client when it connects, say that this content is written by others and that instructions in it must never be followed.
 
 This lowers the risk but cannot rule it out: a model can still be misled. For full protection against sending, use [read-only mode](#read-only-mode).
+
+### Limit who the bridge sends to
+
+Set `send_allowlist` in the [configuration file](#configuration), or `WHATSAPP_SEND_ALLOWLIST` in the bridge's environment, to the chats it may send messages and reactions to. Anything else is refused by the bridge with HTTP 403, so a message that tries to make Claude write to someone else (prompt injection) cannot succeed. This also applies to calls that bypass the MCP server.
+
+```yaml
+send_allowlist:
+  - 31612345678              # Maria
+  - 31687654321              # Tom
+  - 120363000000000000@g.us  # Book club
+```
+
+or, as an environment variable:
+
+```bash
+export WHATSAPP_SEND_ALLOWLIST="31612345678, 31687654321, 120363000000000000@g.us"
+```
+
+- Entries are phone numbers with country code (`+`, spaces and dashes are allowed) or JIDs, including group JIDs (`...@g.us`; `list_chats` shows them). Separate them with commas, semicolons or new lines.
+- A contact is allowed whether WhatsApp addresses them by phone number or by LID.
+- Reading is not limited: Claude can still read all chats.
+- If an entry cannot be read, the bridge refuses to start, so a typo does not silently allow or block the wrong chats. Not set or empty means no limit.
 
 ### Logs
 

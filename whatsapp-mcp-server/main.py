@@ -34,7 +34,8 @@ SERVER_INSTRUCTIONS = (
 # Initialize the MCP server
 mcp = MCPServer("whatsapp", instructions=SERVER_INSTRUCTIONS)
 
-# With WHATSAPP_MCP_READ_ONLY=1 the tools that send messages are not exposed to the model
+# With WHATSAPP_MCP_READ_ONLY=1 (or read_only in the configuration file, which
+# importing whatsapp has applied) the tools that send messages are not exposed to the model
 READ_ONLY = os.environ.get("WHATSAPP_MCP_READ_ONLY", "").strip().lower() in ("1", "true", "yes", "on")
 
 

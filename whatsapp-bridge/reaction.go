@@ -112,6 +112,14 @@ func registerReactHandler(mux *http.ServeMux, client *whatsmeow.Client, messageS
 		} else {
 			fmt.Println("Received request to react to message", cleanForLog(req.MessageID))
 		}
+		chat, err := types.ParseJID(req.ChatJID)
+		if err != nil {
+			http.Error(w, "Invalid chat_jid", http.StatusBadRequest)
+			return
+		}
+		if refuseIfNotAllowed(w, r, client, chat) {
+			return
+		}
 		success, message := sendReaction(r.Context(), client, messageStore, req.MessageID, req.ChatJID, req.Emoji)
 		logResult("Reaction sent", success, message)
 
