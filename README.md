@@ -85,6 +85,7 @@ Contacts and messages:
 - `feat/store-sent-messages` — upstream PR [#383](https://github.com/lharries/whatsapp-mcp/pull/383): messages and reactions sent through the bridge are stored, so they show up in `list_messages` and can be replied or reacted to. They go into the existing chat, whether that is stored under the phone number or the LID.
 - `feat/tool-annotations` — upstream PR [#142](https://github.com/lharries/whatsapp-mcp/pull/142): every tool tells MCP clients whether it only reads, or sends messages that cannot be undone (so the client can ask first).
 - `feat/media-retry-pair-code` — upstream PR [#273](https://github.com/lharries/whatsapp-mcp/pull/273): media that has expired on WhatsApp's servers is requested again from the sender's phone (which must be online), and the bridge can link with a code instead of a QR code (`WHATSAPP_PAIR_PHONE`).
+- `log-content-opt-in` — fork PR [#1](https://github.com/erwinvaneijk/whatsapp-mcp/pull/1) by BadPirate, with fixes in `fix/log-privacy`: message content stays out of the bridge's logs unless `WHATSAPP_LOG_CONTENT=1` is set, and media keys are never logged. See [Logs](#logs).
 
 This is temporary. The plan is to merge `dev-main` into `main` at some point and announce that this fork is actively maintained. From then on, `main` will be the branch to use.
 
@@ -213,7 +214,7 @@ curl -s -X POST http://127.0.0.1:8080/api/download \
 
 ### Read-only mode
 
-Set `WHATSAPP_MCP_READ_ONLY=1` in the MCP server's environment to remove the tools that send messages (`send_message`, `send_file`, `send_audio_message`). The model can then still search and read your messages, but cannot send anything, which removes the exfiltration path of a prompt injection hidden in a received message:
+Set `WHATSAPP_MCP_READ_ONLY=1` in the MCP server's environment to remove the tools that send messages (`send_message`, `send_file`, `send_audio_message`, `react_to_message`). The model can then still search and read your messages, but cannot send anything, which removes the exfiltration path of a prompt injection hidden in a received message:
 
 ```json
 {
@@ -226,6 +227,12 @@ Set `WHATSAPP_MCP_READ_ONLY=1` in the MCP server's environment to remove the too
   }
 }
 ```
+
+### Logs
+
+By default the bridge keeps message content out of its output: it logs that a message was stored, but not the sender, the text, captions, file names or the emoji of a reaction. This matters when the bridge runs in a container or as a service, where logs are kept. The decryption keys of media you send are never logged.
+
+To see message content in the logs while debugging, start the bridge with `WHATSAPP_LOG_CONTENT=1`.
 
 ## Architecture Overview
 

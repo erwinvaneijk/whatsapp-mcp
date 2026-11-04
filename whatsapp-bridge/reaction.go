@@ -107,9 +107,13 @@ func registerReactHandler(mux *http.ServeMux, client *whatsmeow.Client, messageS
 			return
 		}
 
-		fmt.Println("Received request to react to message", cleanForLog(req.MessageID), cleanForLog(req.Emoji))
+		if logContent {
+			fmt.Println("Received request to react to message", cleanForLog(req.MessageID), cleanForLog(req.Emoji))
+		} else {
+			fmt.Println("Received request to react to message", cleanForLog(req.MessageID))
+		}
 		success, message := sendReaction(r.Context(), client, messageStore, req.MessageID, req.ChatJID, req.Emoji)
-		fmt.Println("Reaction sent", success, message)
+		logResult("Reaction sent", success, message)
 
 		w.Header().Set("Content-Type", "application/json")
 		if !success {

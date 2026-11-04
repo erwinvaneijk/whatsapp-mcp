@@ -45,13 +45,33 @@ var mediaDir = os.Getenv("WHATSAPP_MEDIA_DIR")
 // logContent controls whether message text, captions and file names are written
 // to the logs. Off by default so chat content does not pile up in plain text;
 // set WHATSAPP_LOG_CONTENT=1 (or true/yes/on) to turn it on for debugging.
-var logContent = func() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("WHATSAPP_LOG_CONTENT"))) {
+var logContent = envFlag(os.Getenv("WHATSAPP_LOG_CONTENT"))
+
+// logResult logs the outcome of a send. The status text can contain content
+// (a reaction's emoji, a file path in an error), so it is only logged with
+// WHATSAPP_LOG_CONTENT; the caller always gets the full text in the response.
+func logResult(what string, success bool, status string) {
+	fmt.Println(resultLogLine(what, success, status, logContent))
+}
+
+func resultLogLine(what string, success bool, status string, withContent bool) string {
+	if withContent {
+		return fmt.Sprintf("%s %v %s", what, success, cleanForLog(status))
+	}
+	if success {
+		return what + " true"
+	}
+	return what + " false (set WHATSAPP_LOG_CONTENT=1 to log the error)"
+}
+
+// envFlag reports whether an environment value means "on" (1, true, yes, on).
+func envFlag(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "1", "true", "yes", "on":
 		return true
 	}
 	return false
-}()
+}
 
 // cleanForLog strips control characters so message text cannot inject terminal escape codes.
 func cleanForLog(s string) string {
@@ -713,7 +733,9 @@ func sendWhatsAppMessage(client *whatsmeow.Client, messageStore *MessageStore, r
 			return false, fmt.Sprintf("Error uploading media: %v", err)
 		}
 
-		fmt.Println("Media uploaded", resp)
+		// Never log resp itself: it holds the media URL and its decryption key,
+		// which together let anyone with the logs download and open the file.
+		fmt.Printf("Media uploaded (%d bytes)\n", resp.FileLength)
 
 		// Create the appropriate message type based on media type
 		switch mediaType {
@@ -1186,7 +1208,11 @@ func downloadMedia(client *whatsmeow.Client, messageStore *MessageStore, message
 		return false, "", "", "", fmt.Errorf("failed to save media file: %v", err)
 	}
 
-	fmt.Printf("Successfully downloaded %s media to %s (%d bytes)\n", mediaType, absPath, len(mediaData))
+	if logContent {
+		fmt.Printf("Successfully downloaded %s media to %s (%d bytes)\n", mediaType, absPath, len(mediaData))
+	} else {
+		fmt.Printf("Successfully downloaded %s media (%d bytes)\n", mediaType, len(mediaData))
+	}
 	return true, mediaType, localName, absPath, nil
 }
 
@@ -1253,7 +1279,7 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port 
 
 		// Send the message (with optional reply-to context per #121)
 		success, message := sendWhatsAppMessage(client, messageStore, req.Recipient, req.Message, req.MediaPath, req.ReplyToMessageID, req.ReplyToSenderJID, req.Mentions)
-		fmt.Println("Message sent", success, message)
+		logResult("Message sent", success, message)
 		// Set response headers
 		w.Header().Set("Content-Type", "application/json")
 
@@ -1705,15 +1731,16 @@ func handleHistorySync(client *whatsmeow.Client, messageStore *MessageStore, his
 					logger.Warnf("Failed to store history message: %v", err)
 				} else {
 					syncedCount++
-					// Log successful message storage (content only when WHATSAPP_LOG_CONTENT is on)
-					if !logContent {
-						// counted in syncedCount; summarised at the end of the sync
-					} else if mediaType != "" {
-						logger.Infof("Stored message: [%s] %s -> %s: [%s: %s] %s",
-							timestamp.Format("2006-01-02 15:04:05"), cleanForLog(sender), chatJID, mediaType, cleanForLog(filename), cleanForLog(content))
-					} else {
-						logger.Infof("Stored message: [%s] %s -> %s: %s",
-							timestamp.Format("2006-01-02 15:04:05"), cleanForLog(sender), chatJID, cleanForLog(content))
+					// Log each stored message only when WHATSAPP_LOG_CONTENT is on;
+					// otherwise the count is reported at the end of the sync.
+					if logContent {
+						if mediaType != "" {
+							logger.Infof("Stored message: [%s] %s -> %s: [%s: %s] %s",
+								timestamp.Format("2006-01-02 15:04:05"), cleanForLog(sender), chatJID, mediaType, cleanForLog(filename), cleanForLog(content))
+						} else {
+							logger.Infof("Stored message: [%s] %s -> %s: %s",
+								timestamp.Format("2006-01-02 15:04:05"), cleanForLog(sender), chatJID, cleanForLog(content))
+						}
 					}
 				}
 			}
