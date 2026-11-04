@@ -19,6 +19,8 @@ Here's an example of what you can do when it's connected to Claude.
 
 This is a fork of [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp). Upstream has had no commits since July 2025, and many fixes are waiting there as unmerged pull requests. This fork collects those fixes.
 
+For every open upstream issue, [Upstream issues and this fork](docs/upstream-issues.md) shows whether this fork fixes it.
+
 | Branch | Purpose |
 | --- | --- |
 | `main` | Mirrors upstream `main`. Only updated by pulling from upstream; no fork-specific changes. |
