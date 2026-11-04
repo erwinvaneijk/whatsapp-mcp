@@ -212,14 +212,24 @@ func NewMessageStore() (*MessageStore, error) {
 		-- index covers the last-active ORDER BY in list_chats. All are
 		-- IF NOT EXISTS so an existing store gets them for free on first
 		-- start after the upgrade.
-		CREATE INDEX IF NOT EXISTS idx_messages_chat_time
-			ON messages(chat_jid, timestamp DESC);
-		CREATE INDEX IF NOT EXISTS idx_messages_sender_time
-			ON messages(sender, timestamp DESC);
-		CREATE INDEX IF NOT EXISTS idx_messages_timestamp
-			ON messages(timestamp DESC);
-		CREATE INDEX IF NOT EXISTS idx_chats_last_message
-			ON chats(last_message_time DESC);
+		--
+		-- #146: times are stored with their UTC offset (+01:00, +02:00), which
+		-- do not compare or sort correctly as text, so the MCP server compares
+		-- and sorts on julianday(...). These indexes are on that expression;
+		-- they replace the earlier ones on the raw text, which nothing uses
+		-- any more.
+		CREATE INDEX IF NOT EXISTS idx_messages_chat_moment
+			ON messages(chat_jid, julianday(timestamp));
+		CREATE INDEX IF NOT EXISTS idx_messages_sender_moment
+			ON messages(sender, julianday(timestamp));
+		CREATE INDEX IF NOT EXISTS idx_messages_moment
+			ON messages(julianday(timestamp));
+		CREATE INDEX IF NOT EXISTS idx_chats_last_message_moment
+			ON chats(julianday(last_message_time));
+		DROP INDEX IF EXISTS idx_messages_chat_time;
+		DROP INDEX IF EXISTS idx_messages_sender_time;
+		DROP INDEX IF EXISTS idx_messages_timestamp;
+		DROP INDEX IF EXISTS idx_chats_last_message;
 	`)
 	if err != nil {
 		db.Close()
