@@ -115,3 +115,18 @@ def test_results_carry_the_data(server):
     assert "(reply to M1)" in call(server, "list_messages", {"limit": 5})
     assert "Huis" in call(server, "list_chats", {"limit": 5})
     assert "Sien" in call(server, "get_chat", {"chat_jid": DM})
+
+
+SEND = {"send_message", "send_file", "send_audio_message", "react_to_message"}
+
+
+def test_every_tool_has_annotations(server):
+    for tool in asyncio.run(server.list_tools()):
+        a = tool.annotations
+        assert a is not None and a.title, f"{tool.name} has no annotations"
+        if tool.name in SEND:
+            assert a.read_only_hint is False and a.destructive_hint is True, tool.name
+        elif tool.name == "download_media":
+            assert a.read_only_hint is False and a.destructive_hint is False, tool.name
+        else:
+            assert a.read_only_hint is True, tool.name

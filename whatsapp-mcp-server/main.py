@@ -1,6 +1,7 @@
 import os
 from typing import List, Dict, Any, Optional
 from mcp.server.mcpserver import MCPServer
+from mcp.types import ToolAnnotations
 from whatsapp import Chat, Contact, MessageContext
 from whatsapp import (
     search_contacts as whatsapp_search_contacts,
@@ -25,13 +26,26 @@ mcp = MCPServer("whatsapp")
 READ_ONLY = os.environ.get("WHATSAPP_MCP_READ_ONLY", "").strip().lower() in ("1", "true", "yes", "on")
 
 
-def send_tool():
+# Tool annotations tell MCP clients what a tool does (#142). Read tools only
+# read the local message database. Send tools reach other people and cannot
+# be undone, so they are marked destructive, which makes clients ask first.
+def read_annotations(title: str) -> ToolAnnotations:
+    return ToolAnnotations(title=title, read_only_hint=True, open_world_hint=False)
+
+
+def send_annotations(title: str) -> ToolAnnotations:
+    return ToolAnnotations(
+        title=title, read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=True,
+    )
+
+
+def send_tool(annotations: ToolAnnotations):
     """Register a tool that sends messages, unless read-only mode is enabled."""
     if READ_ONLY:
         return lambda func: func
-    return mcp.tool()
+    return mcp.tool(annotations=annotations)
 
-@mcp.tool()
+@mcp.tool(annotations=read_annotations("Search Contacts"))
 def search_contacts(query: str) -> List[Contact]:
     """Search WhatsApp contacts by name or phone number.
     
@@ -41,7 +55,7 @@ def search_contacts(query: str) -> List[Contact]:
     contacts = whatsapp_search_contacts(query)
     return contacts
 
-@mcp.tool()
+@mcp.tool(annotations=read_annotations("List Messages"))
 def list_messages(
     after: Optional[str] = None,
     before: Optional[str] = None,
@@ -84,7 +98,7 @@ def list_messages(
     )
     return messages
 
-@mcp.tool()
+@mcp.tool(annotations=read_annotations("List Chats"))
 def list_chats(
     query: Optional[str] = None,
     limit: int = 20,
@@ -110,7 +124,7 @@ def list_chats(
     )
     return chats
 
-@mcp.tool()
+@mcp.tool(annotations=read_annotations("Get Chat"))
 def get_chat(chat_jid: str, include_last_message: bool = True) -> Optional[Chat]:
     """Get WhatsApp chat metadata by JID.
     
@@ -121,7 +135,7 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> Optional[Chat]
     chat = whatsapp_get_chat(chat_jid, include_last_message)
     return chat
 
-@mcp.tool()
+@mcp.tool(annotations=read_annotations("Get Direct Chat by Contact"))
 def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Chat]:
     """Get WhatsApp chat metadata by sender phone number.
     
@@ -131,7 +145,7 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Chat]:
     chat = whatsapp_get_direct_chat_by_contact(sender_phone_number)
     return chat
 
-@mcp.tool()
+@mcp.tool(annotations=read_annotations("Get Contact Chats"))
 def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Chat]:
     """Get all WhatsApp chats involving the contact.
     
@@ -143,7 +157,7 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Chat]:
     chats = whatsapp_get_contact_chats(jid, limit, page)
     return chats
 
-@mcp.tool()
+@mcp.tool(annotations=read_annotations("Get Last Interaction"))
 def get_last_interaction(jid: str) -> Optional[str]:
     """Get most recent WhatsApp message involving the contact.
     
@@ -153,7 +167,7 @@ def get_last_interaction(jid: str) -> Optional[str]:
     message = whatsapp_get_last_interaction(jid)
     return message
 
-@mcp.tool()
+@mcp.tool(annotations=read_annotations("Get Message Context"))
 def get_message_context(
     message_id: str,
     before: int = 5,
@@ -169,7 +183,7 @@ def get_message_context(
     context = whatsapp_get_message_context(message_id, before, after)
     return context
 
-@send_tool()
+@send_tool(send_annotations("Send Message"))
 def send_message(
     recipient: str,
     message: str,
@@ -215,7 +229,7 @@ def send_message(
         "message": status_message
     }
 
-@send_tool()
+@send_tool(send_annotations("Send File"))
 def send_file(recipient: str, media_path: str, caption: str = "") -> Dict[str, Any]:
     """Send a file such as a picture, raw audio, video or document via WhatsApp to the specified recipient. For group messages use the JID. Optionally include a caption that appears attached to the media in WhatsApp.
     
@@ -236,7 +250,7 @@ def send_file(recipient: str, media_path: str, caption: str = "") -> Dict[str, A
         "message": status_message
     }
 
-@send_tool()
+@send_tool(send_annotations("Send Audio Message"))
 def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
     """Send any audio file as a WhatsApp audio message to the specified recipient. For group messages use the JID. If it errors due to ffmpeg not being installed, use send_file instead.
     
@@ -254,7 +268,9 @@ def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
         "message": status_message
     }
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(
+    title="Download Media", read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=True,
+))
 def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
     """Download media from a WhatsApp message and get the local file path.
     
@@ -279,7 +295,7 @@ def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
             "message": "Failed to download media"
         }
 
-@send_tool()
+@send_tool(send_annotations("React to Message"))
 def react_to_message(message_id: str, chat_jid: str, emoji: str) -> Dict[str, Any]:
     """React to a WhatsApp message with an emoji.
 
