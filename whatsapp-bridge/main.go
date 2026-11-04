@@ -47,6 +47,23 @@ var mediaDir = os.Getenv("WHATSAPP_MEDIA_DIR")
 // set WHATSAPP_LOG_CONTENT=1 (or true/yes/on) to turn it on for debugging.
 var logContent = envFlag(os.Getenv("WHATSAPP_LOG_CONTENT"))
 
+// logResult logs the outcome of a send. The status text can contain content
+// (a reaction's emoji, a file path in an error), so it is only logged with
+// WHATSAPP_LOG_CONTENT; the caller always gets the full text in the response.
+func logResult(what string, success bool, status string) {
+	fmt.Println(resultLogLine(what, success, status, logContent))
+}
+
+func resultLogLine(what string, success bool, status string, withContent bool) string {
+	if withContent {
+		return fmt.Sprintf("%s %v %s", what, success, cleanForLog(status))
+	}
+	if success {
+		return what + " true"
+	}
+	return what + " false (set WHATSAPP_LOG_CONTENT=1 to log the error)"
+}
+
 // envFlag reports whether an environment value means "on" (1, true, yes, on).
 func envFlag(value string) bool {
 	switch strings.ToLower(strings.TrimSpace(value)) {
@@ -1262,7 +1279,7 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port 
 
 		// Send the message (with optional reply-to context per #121)
 		success, message := sendWhatsAppMessage(client, messageStore, req.Recipient, req.Message, req.MediaPath, req.ReplyToMessageID, req.ReplyToSenderJID, req.Mentions)
-		fmt.Println("Message sent", success, message)
+		logResult("Message sent", success, message)
 		// Set response headers
 		w.Header().Set("Content-Type", "application/json")
 
