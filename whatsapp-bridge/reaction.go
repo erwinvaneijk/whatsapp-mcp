@@ -76,9 +76,13 @@ func sendReaction(ctx context.Context, client *whatsmeow.Client, messageStore *M
 		}
 	}
 
-	if _, err := client.SendMessage(ctx, chat, client.BuildReaction(chat, senderJID, messageID, emoji)); err != nil {
+	reaction := client.BuildReaction(chat, senderJID, messageID, emoji)
+	sent, err := client.SendMessage(ctx, chat, reaction)
+	if err != nil {
 		return false, fmt.Sprintf("Error sending reaction: %v", err)
 	}
+	// Stored like a received reaction, as "[reaction: 👍]".
+	storeOutgoingMessage(ctx, client, messageStore, chat, reaction, sent)
 	if emoji == "" {
 		return true, "Reaction removed"
 	}
