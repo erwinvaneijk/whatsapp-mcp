@@ -107,10 +107,10 @@ func TestLoadConfigMissingFile(t *testing.T) {
 	if used, err := loadConfig(); used != "" || err != nil {
 		t.Errorf("no default file: %q, %v", used, err)
 	}
-	// A file named in WHATSAPP_CONFIG must exist.
+	// A file named in WHATSAPP_MCP_CONFIG must exist.
 	t.Setenv(configPathEnv, filepath.Join(t.TempDir(), "missing.yaml"))
 	if _, err := loadConfig(); err == nil {
-		t.Error("missing WHATSAPP_CONFIG file: want an error")
+		t.Error("missing WHATSAPP_MCP_CONFIG file: want an error")
 	}
 }
 

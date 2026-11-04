@@ -210,7 +210,7 @@ Without this setup, you'll likely run into errors like:
 
 ## Configuration
 
-The bridge and the MCP server read their settings from environment variables, or from one YAML file: `~/.config/whatsapp-mcp/config.yaml`, or the path in `WHATSAPP_CONFIG`. [`config.example.yaml`](config.example.yaml) lists every setting with an explanation. An environment variable that is set takes precedence over the same setting in the file.
+The bridge and the MCP server read their settings from environment variables, or from one YAML file: `~/.config/whatsapp-mcp/config.yaml`, or the path in `WHATSAPP_MCP_CONFIG`. [`config.example.yaml`](config.example.yaml) lists every setting with an explanation. An environment variable that is set takes precedence over the same setting in the file.
 
 | Setting in the file | Environment variable | Used by | Meaning |
 |---|---|---|---|
@@ -224,7 +224,7 @@ The bridge and the MCP server read their settings from environment variables, or
 - The file holds the token, so both programs refuse it when other users can read or change it (`chmod 600` fixes that). This check is skipped on Windows.
 - An unknown setting stops both programs with the line number, so a typo cannot go unnoticed.
 - Values are used exactly as written; YAML does not turn `0612345678` into another number.
-- A file named in `WHATSAPP_CONFIG` must exist; the default file is optional.
+- A file named in `WHATSAPP_MCP_CONFIG` must exist; the default file is optional.
 
 ## Security
 
@@ -278,7 +278,7 @@ Set `send_allowlist` in the [configuration file](#configuration), or `WHATSAPP_S
 
 ```yaml
 send_allowlist:
-  - 31612345678              # Sien
+  - 31612345678              # Maria
   - 31687654321              # Luc
   - 120363000000000000@g.us  # Huis
 ```

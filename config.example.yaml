@@ -1,6 +1,6 @@
 # Configuration for whatsapp-mcp: the WhatsApp bridge and the MCP server.
 #
-# Copy this file to ~/.config/whatsapp-mcp/config.yaml (or set WHATSAPP_CONFIG
+# Copy this file to ~/.config/whatsapp-mcp/config.yaml (or set WHATSAPP_MCP_CONFIG
 # to its path) and make it readable by you only, because it holds the token:
 #
 #   mkdir -p ~/.config/whatsapp-mcp

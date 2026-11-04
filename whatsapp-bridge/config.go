@@ -15,12 +15,12 @@ import (
 // The bridge and the MCP server can read their settings from one YAML file
 // instead of environment variables, which is easier for long lists such as
 // the send allowlist. The file is ~/.config/whatsapp-mcp/config.yaml, or the
-// path in WHATSAPP_CONFIG. An environment variable that is set takes
+// path in WHATSAPP_MCP_CONFIG. An environment variable that is set takes
 // precedence over the same setting in the file.
 //
 // whatsapp-mcp-server/config.py reads the same file; keep both in sync.
 
-const configPathEnv = "WHATSAPP_CONFIG"
+const configPathEnv = "WHATSAPP_MCP_CONFIG"
 
 // configSettings maps each setting in the file to its environment variable.
 var configSettings = map[string]string{
@@ -36,7 +36,7 @@ var configSettings = map[string]string{
 var listSettings = map[string]bool{"send_allowlist": true}
 
 // configPath returns the file to read and whether it must exist (only when
-// WHATSAPP_CONFIG names it explicitly).
+// WHATSAPP_MCP_CONFIG names it explicitly).
 func configPath() (string, bool) {
 	if p := strings.TrimSpace(os.Getenv(configPathEnv)); p != "" {
 		return p, true

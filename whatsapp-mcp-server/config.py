@@ -3,7 +3,7 @@
 The bridge and the MCP server can read their settings from one file instead
 of environment variables, which is easier for long lists such as the send
 allowlist. The file is ~/.config/whatsapp-mcp/config.yaml, or the path in
-WHATSAPP_CONFIG. An environment variable that is set takes precedence over
+WHATSAPP_MCP_CONFIG. An environment variable that is set takes precedence over
 the same setting in the file.
 
 whatsapp-bridge/config.go reads the same file; keep both in sync.
@@ -17,7 +17,7 @@ from typing import Dict, Optional
 
 import yaml
 
-CONFIG_PATH_ENV = "WHATSAPP_CONFIG"
+CONFIG_PATH_ENV = "WHATSAPP_MCP_CONFIG"
 
 # Each setting in the file and its environment variable.
 SETTINGS = {
@@ -39,7 +39,7 @@ class ConfigError(Exception):
 
 
 def config_path() -> "tuple[Optional[Path], bool]":
-    """The file to read, and whether it must exist (only when WHATSAPP_CONFIG names it)."""
+    """The file to read, and whether it must exist (only when WHATSAPP_MCP_CONFIG names it)."""
     explicit = os.environ.get(CONFIG_PATH_ENV, "").strip()
     if explicit:
         return Path(explicit).expanduser(), True

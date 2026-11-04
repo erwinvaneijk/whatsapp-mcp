@@ -60,7 +60,7 @@ def write(tmp_path, text, mode=0o600):
 
 def test_load_config_environment_wins(tmp_path, monkeypatch):
     path = write(tmp_path, "media_dir: /from/file\nread_only: yes\n")
-    monkeypatch.setenv("WHATSAPP_CONFIG", str(path))
+    monkeypatch.setenv("WHATSAPP_MCP_CONFIG", str(path))
     monkeypatch.setenv("WHATSAPP_MEDIA_DIR", "/from/env")
     monkeypatch.setenv("WHATSAPP_MCP_READ_ONLY", "")
     assert config.load_config() == path
@@ -69,24 +69,24 @@ def test_load_config_environment_wins(tmp_path, monkeypatch):
 
 
 def test_missing_files(tmp_path, monkeypatch):
-    monkeypatch.delenv("WHATSAPP_CONFIG")
+    monkeypatch.delenv("WHATSAPP_MCP_CONFIG")
     monkeypatch.setenv("HOME", str(tmp_path))  # no default file: fine
     assert config.load_config() is None
-    monkeypatch.setenv("WHATSAPP_CONFIG", str(tmp_path / "missing.yaml"))
+    monkeypatch.setenv("WHATSAPP_MCP_CONFIG", str(tmp_path / "missing.yaml"))
     with pytest.raises(config.ConfigError, match="does not exist"):
         config.load_config()
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Windows permissions work differently")
 def test_refuses_file_others_can_read(tmp_path, monkeypatch):
-    monkeypatch.setenv("WHATSAPP_CONFIG", str(write(tmp_path, "bridge_token: secret\n", 0o644)))
+    monkeypatch.setenv("WHATSAPP_MCP_CONFIG", str(write(tmp_path, "bridge_token: secret\n", 0o644)))
     with pytest.raises(config.ConfigError, match="chmod 600"):
         config.load_config()
 
 
 def test_read_only_from_file_hides_send_tools(tmp_path, monkeypatch):
     """read_only in the file reaches main.py, which reads it after the file is applied."""
-    monkeypatch.setenv("WHATSAPP_CONFIG", str(write(tmp_path, "read_only: true\n")))
+    monkeypatch.setenv("WHATSAPP_MCP_CONFIG", str(write(tmp_path, "read_only: true\n")))
     monkeypatch.setenv("WHATSAPP_MCP_READ_ONLY", "")  # restored after the test
     config.load_config()
     sys.modules.pop("main", None)
