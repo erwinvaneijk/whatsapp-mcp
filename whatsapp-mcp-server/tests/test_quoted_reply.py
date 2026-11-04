@@ -41,8 +41,8 @@ class QuotedReplyTests(unittest.TestCase):
 
     def test_list_messages_shows_reply_and_ids(self):
         out = self.run_with_db(True, lambda: str(whatsapp.list_messages(include_context=False)))
-        self.assertIn("From: Me (reply to ORIG1): [Message ID: R1] yes please", out)
-        self.assertIn("[Message ID: ORIG1] shall we eat?", out)
+        self.assertIn("From: Me (reply to ORIG1): [Message ID: R1] <message_content>yes please</message_content>", out)
+        self.assertIn("[Message ID: ORIG1] <message_content>shall we eat?</message_content>", out)
 
     def test_context_and_last_interaction_show_reply(self):
         ctx = self.run_with_db(True, lambda: whatsapp.get_message_context("ORIG1", 1, 1))
