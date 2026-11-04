@@ -643,25 +643,10 @@ func sendWhatsAppMessage(client *whatsmeow.Client, messageStore *MessageStore, r
 		return false, "Not connected to WhatsApp"
 	}
 
-	// Create JID for recipient
-	var recipientJID types.JID
-	var err error
-
-	// Check if recipient is a JID
-	isJID := strings.Contains(recipient, "@")
-
-	if isJID {
-		// Parse the JID string
-		recipientJID, err = types.ParseJID(recipient)
-		if err != nil {
-			return false, fmt.Sprintf("Error parsing JID: %v", err)
-		}
-	} else {
-		// Create JID from phone number
-		recipientJID = types.JID{
-			User:   recipient,
-			Server: "s.whatsapp.net", // For personal chats
-		}
+	// A phone number or a JID (person or group)
+	recipientJID, err := parseRecipient(recipient)
+	if err != nil {
+		return false, fmt.Sprintf("Error parsing JID: %v", err)
 	}
 
 	msg := &waProto.Message{}
@@ -1242,7 +1227,8 @@ func extractDirectPathFromURL(rawURL string) string {
 }
 
 // Start a REST API server to expose the WhatsApp client functionality
-func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port int) {
+// newAPIHandler returns the bridge's REST API, behind the token check.
+func newAPIHandler(client *whatsmeow.Client, messageStore *MessageStore) http.Handler {
 	mux := http.NewServeMux()
 
 	// Handler for sending messages
@@ -1275,6 +1261,15 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port 
 			fmt.Println("Received request to send message", cleanForLog(req.Message), cleanForLog(req.MediaPath))
 		} else {
 			fmt.Println("Received request to send message")
+		}
+
+		recipientJID, err := parseRecipient(req.Recipient)
+		if err != nil {
+			http.Error(w, "Invalid recipient", http.StatusBadRequest)
+			return
+		}
+		if refuseIfNotAllowed(w, r, client, recipientJID) {
+			return
 		}
 
 		// Send the message (with optional reply-to context per #121)
@@ -1348,13 +1343,19 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port 
 		})
 	})
 
+	return requireToken(mux)
+}
+
+func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port int) {
+	handler := newAPIHandler(client, messageStore)
+
 	// Start the server
 	serverAddr := fmt.Sprintf("127.0.0.1:%d", port)
 	fmt.Printf("Starting REST API server on %s...\n", serverAddr)
 
 	// Run server in a goroutine so it doesn't block
 	go func() {
-		if err := http.ListenAndServe(serverAddr, requireToken(mux)); err != nil {
+		if err := http.ListenAndServe(serverAddr, handler); err != nil {
 			fmt.Printf("REST API server error: %v\n", err)
 		}
 	}()
@@ -1366,6 +1367,16 @@ func main() {
 	if len(bridgeToken) < 32 {
 		logger.Errorf("WHATSAPP_BRIDGE_TOKEN must be set to a random secret of at least 32 characters")
 		return
+	}
+	allow, err := parseSendAllowlist(os.Getenv("WHATSAPP_SEND_ALLOWLIST"))
+	if err != nil {
+		// Refuse to start rather than guess which chats are meant.
+		logger.Errorf("%v", err)
+		return
+	}
+	sendAllow = allow
+	if sendAllow != nil {
+		logger.Infof("Sending is limited to %d chat(s) in WHATSAPP_SEND_ALLOWLIST", len(sendAllow.jids))
 	}
 	logger.Infof("Starting WhatsApp client...")
 

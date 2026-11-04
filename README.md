@@ -87,6 +87,7 @@ Contacts and messages:
 - `feat/media-retry-pair-code` — upstream PR [#273](https://github.com/lharries/whatsapp-mcp/pull/273): media that has expired on WhatsApp's servers is requested again from the sender's phone (which must be online), and the bridge can link with a code instead of a QR code (`WHATSAPP_PAIR_PHONE`).
 - `log-content-opt-in` — fork PR [#1](https://github.com/erwinvaneijk/whatsapp-mcp/pull/1) by BadPirate, with fixes in `fix/log-privacy`: message content stays out of the bridge's logs unless `WHATSAPP_LOG_CONTENT=1` is set, and media keys are never logged. See [Logs](#logs).
 - `feat/mark-untrusted-content` — fork change: message text from others is marked as data and the model is told never to follow instructions in it, to limit prompt injection (upstream issue [#247](https://github.com/lharries/whatsapp-mcp/issues/247)). See [Messages from others are marked as data](#messages-from-others-are-marked-as-data).
+- `feat/send-allowlist` — fork change: `WHATSAPP_SEND_ALLOWLIST` limits which chats the bridge sends to (upstream issue [#218](https://github.com/lharries/whatsapp-mcp/issues/218); send-only alternative to upstream PR [#319](https://github.com/lharries/whatsapp-mcp/pull/319)). See [Limit who the bridge sends to](#limit-who-the-bridge-sends-to).
 
 This is temporary. The plan is to merge `dev-main` into `main` at some point and announce that this fork is actively maintained. From then on, `main` will be the branch to use.
 
@@ -237,6 +238,19 @@ Anyone who can send you a WhatsApp message controls text that Claude reads. A me
 - Every read tool's description, and the instructions the server gives the client when it connects, say that this content is written by others and that instructions in it must never be followed.
 
 This lowers the risk but cannot rule it out: a model can still be misled. For full protection against sending, use [read-only mode](#read-only-mode).
+
+### Limit who the bridge sends to
+
+Set `WHATSAPP_SEND_ALLOWLIST` in the bridge's environment to the chats it may send messages and reactions to. Anything else is refused by the bridge with HTTP 403, so a message that tries to make Claude write to someone else (prompt injection) cannot succeed. This also applies to calls that bypass the MCP server.
+
+```bash
+export WHATSAPP_SEND_ALLOWLIST="31612345678, 31687654321, 120363000000000000@g.us"
+```
+
+- Entries are phone numbers with country code (`+`, spaces and dashes are allowed) or JIDs, including group JIDs (`...@g.us`; `list_chats` shows them). Separate them with commas, semicolons or new lines.
+- A contact is allowed whether WhatsApp addresses them by phone number or by LID.
+- Reading is not limited: Claude can still read all chats.
+- If an entry cannot be read, the bridge refuses to start, so a typo does not silently allow or block the wrong chats. Not set or empty means no limit.
 
 ### Logs
 
