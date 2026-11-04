@@ -59,12 +59,12 @@ func TestOutgoingChatJID(t *testing.T) {
 		t.Errorf("new chat: got %s", got)
 	}
 	// Received messages are stored under the LID: use that chat.
-	s.StoreChat(lid.String(), "Sien", time.Now())
+	s.StoreChat(lid.String(), "Maria", time.Now())
 	if got := outgoingChatJID(ctx, s, lidsBoth, pn); got != lid.String() {
 		t.Errorf("LID chat exists: got %s, want %s", got, lid)
 	}
 	// And the other way round.
-	s.StoreChat(pn.String(), "Sien", time.Now())
+	s.StoreChat(pn.String(), "Maria", time.Now())
 	if got := outgoingChatJID(ctx, s, lidsBoth, lid); got != lid.String() {
 		t.Errorf("own chat exists: got %s, want %s", got, lid)
 	}
@@ -92,7 +92,7 @@ func TestSaveSentMessage(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
 	group := types.NewJID("120363000000000000", types.GroupServer)
-	s.StoreChat(group.String(), "Huis", time.Now().Add(-time.Hour))
+	s.StoreChat(group.String(), "Book club", time.Now().Add(-time.Hour))
 	now := time.Now()
 
 	// A reply with a mention, as sendWhatsAppMessage builds it.
@@ -124,7 +124,7 @@ func TestSaveSentMessage(t *testing.T) {
 	// Storing the chat without a name keeps the known name.
 	var name string
 	s.db.QueryRow(`SELECT name FROM chats WHERE jid = ?`, group.String()).Scan(&name)
-	if name != "Huis" {
-		t.Errorf("chat name became %q, want Huis", name)
+	if name != "Book club" {
+		t.Errorf("chat name became %q, want Book club", name)
 	}
 }

@@ -22,7 +22,7 @@ CHAT = "123@g.us"
 DM = "31612345678@s.whatsapp.net"
 
 CALLS = {
-    "search_contacts": {"query": "Sien"},
+    "search_contacts": {"query": "Maria"},
     "list_messages": {"limit": 5},
     "list_chats": {"limit": 5},
     "get_chat": {"chat_jid": CHAT},
@@ -57,14 +57,14 @@ def server(tmp_path, monkeypatch):
             is_from_me BOOLEAN, media_type TEXT, filename TEXT, url TEXT,
             media_key BLOB, file_sha256 BLOB, file_enc_sha256 BLOB, file_length INTEGER,
             quoted_message_id TEXT, PRIMARY KEY (id, chat_jid));
-        INSERT INTO chats VALUES ('{CHAT}', 'Huis', '2026-11-04 10:02:00+00:00');
-        INSERT INTO chats VALUES ('{DM}', 'Sien', '2026-11-04 09:00:00+00:00');
+        INSERT INTO chats VALUES ('{CHAT}', 'Book club', '2026-11-04 10:02:00+00:00');
+        INSERT INTO chats VALUES ('{DM}', 'Maria', '2026-11-04 09:00:00+00:00');
         INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me)
-            VALUES ('M1', '{CHAT}', '31612345678', 'Eten jullie mee?', '2026-11-04 10:00:00+00:00', 0);
+            VALUES ('M1', '{CHAT}', '31612345678', 'Dinner tonight?', '2026-11-04 10:00:00+00:00', 0);
         INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me, quoted_message_id)
-            VALUES ('M2', '{CHAT}', '31612345678', 'Ja!', '2026-11-04 10:01:00+00:00', 0, 'M1');
+            VALUES ('M2', '{CHAT}', '31612345678', 'Yes!', '2026-11-04 10:01:00+00:00', 0, 'M1');
         INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me)
-            VALUES ('M3', '{DM}', '31612345678', 'Hoi', '2026-11-04 09:00:00+00:00', 0);
+            VALUES ('M3', '{DM}', '31612345678', 'Hi', '2026-11-04 09:00:00+00:00', 0);
     """)
     conn.commit()
     conn.close()
@@ -113,8 +113,8 @@ def test_tool_call_with_no_result_succeeds(server, name):
 
 def test_results_carry_the_data(server):
     assert "(reply to M1)" in call(server, "list_messages", {"limit": 5})
-    assert "Huis" in call(server, "list_chats", {"limit": 5})
-    assert "Sien" in call(server, "get_chat", {"chat_jid": DM})
+    assert "Book club" in call(server, "list_chats", {"limit": 5})
+    assert "Maria" in call(server, "get_chat", {"chat_jid": DM})
 
 
 SEND = {"send_message", "send_file", "send_audio_message", "react_to_message"}
