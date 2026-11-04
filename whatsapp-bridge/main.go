@@ -269,7 +269,9 @@ func (store *MessageStore) Close() error {
 func (store *MessageStore) StoreChat(jid, name string, lastMessageTime time.Time) error {
 	_, err := store.db.Exec(
 		`INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)
-		 ON CONFLICT(jid) DO UPDATE SET name = excluded.name, last_message_time = excluded.last_message_time`,
+		 ON CONFLICT(jid) DO UPDATE SET
+		   name = COALESCE(NULLIF(excluded.name, ''), chats.name),
+		   last_message_time = excluded.last_message_time`,
 		jid, name, lastMessageTime,
 	)
 	return err
@@ -605,7 +607,7 @@ func attachContextInfo(msg *waProto.Message, text string, ctxInfo *waProto.Conte
 }
 
 // Function to send a WhatsApp message
-func sendWhatsAppMessage(client *whatsmeow.Client, recipient string, message string, mediaPath string, replyToMessageID string, replyToSenderJID string, mentions []string) (bool, string) {
+func sendWhatsAppMessage(client *whatsmeow.Client, messageStore *MessageStore, recipient string, message string, mediaPath string, replyToMessageID string, replyToSenderJID string, mentions []string) (bool, string) {
 	if !client.IsConnected() {
 		return false, "Not connected to WhatsApp"
 	}
@@ -777,11 +779,12 @@ func sendWhatsAppMessage(client *whatsmeow.Client, recipient string, message str
 	attachContextInfo(msg, message, buildContextInfo(replyToMessageID, replyToSenderJID, mentions))
 
 	// Send message
-	_, err = client.SendMessage(context.Background(), recipientJID, msg)
+	sent, err := client.SendMessage(context.Background(), recipientJID, msg)
 
 	if err != nil {
 		return false, fmt.Sprintf("Error sending message: %v", err)
 	}
+	storeOutgoingMessage(context.Background(), client, messageStore, recipientJID, msg, sent)
 
 	return true, fmt.Sprintf("Message sent to %s", recipient)
 }
@@ -1219,7 +1222,7 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port 
 		fmt.Println("Received request to send message", cleanForLog(req.Message), cleanForLog(req.MediaPath))
 
 		// Send the message (with optional reply-to context per #121)
-		success, message := sendWhatsAppMessage(client, req.Recipient, req.Message, req.MediaPath, req.ReplyToMessageID, req.ReplyToSenderJID, req.Mentions)
+		success, message := sendWhatsAppMessage(client, messageStore, req.Recipient, req.Message, req.MediaPath, req.ReplyToMessageID, req.ReplyToSenderJID, req.Mentions)
 		fmt.Println("Message sent", success, message)
 		// Set response headers
 		w.Header().Set("Content-Type", "application/json")
