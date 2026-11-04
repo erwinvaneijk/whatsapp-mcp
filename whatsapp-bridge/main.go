@@ -1229,7 +1229,6 @@ func extractDirectPathFromURL(rawURL string) string {
 	return directPath
 }
 
-// Start a REST API server to expose the WhatsApp client functionality
 // newAPIHandler returns the bridge's REST API, behind the token check.
 func newAPIHandler(client *whatsmeow.Client, messageStore *MessageStore) http.Handler {
 	mux := http.NewServeMux()
@@ -1349,6 +1348,7 @@ func newAPIHandler(client *whatsmeow.Client, messageStore *MessageStore) http.Ha
 	return requireToken(mux)
 }
 
+// startRESTServer serves the REST API on 127.0.0.1:port in the background.
 func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port int) {
 	handler := newAPIHandler(client, messageStore)
 

@@ -98,3 +98,28 @@ func TestAPIRefusesUnlistedChats(t *testing.T) {
 		}
 	}
 }
+
+func TestParseRecipient(t *testing.T) {
+	for in, want := range map[string]string{
+		"31612345678":               "31612345678@s.whatsapp.net",
+		" 120363000000000000@g.us ": "120363000000000000@g.us",
+		"123456789012345@lid":       "123456789012345@lid",
+	} {
+		if got, err := parseRecipient(in); err != nil || got.String() != want {
+			t.Errorf("parseRecipient(%q) = %v, %v; want %s", in, got, err, want)
+		}
+	}
+	for _, blank := range []string{"", "   ", "\t"} {
+		if _, err := parseRecipient(blank); err == nil {
+			t.Errorf("parseRecipient(%q): want an error", blank)
+		}
+	}
+}
+
+// A list written with Windows line endings must work.
+func TestParseSendAllowlistCRLF(t *testing.T) {
+	a, err := parseSendAllowlist("31612345678\r\n31687654321\r\n")
+	if err != nil || len(a.jids) != 2 {
+		t.Errorf("CRLF list: %v, %v", a, err)
+	}
+}

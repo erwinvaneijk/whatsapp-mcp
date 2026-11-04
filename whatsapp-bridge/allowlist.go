@@ -14,9 +14,10 @@ import (
 )
 
 // WHATSAPP_SEND_ALLOWLIST limits which chats the bridge sends messages and
-// reactions to: phone numbers (country code, no +) or JIDs, including groups
-// (...@g.us), separated by commas, semicolons or spaces. Not set or empty
-// means no limit. A message that tries to make the model send elsewhere
+// reactions to: phone numbers with country code (a leading +, spaces, dashes,
+// dots and brackets are allowed inside a number) or JIDs, including groups
+// (...@g.us). Entries are separated by commas, semicolons or line breaks.
+// Not set or empty means no limit. A message that tries to make the model send elsewhere
 // (prompt injection) is then refused by the bridge itself, also for calls
 // that bypass the MCP server.
 var sendAllow *sendAllowlist
@@ -28,6 +29,9 @@ type sendAllowlist struct {
 // parseRecipient turns a phone number or JID into the JID to send to.
 func parseRecipient(recipient string) (types.JID, error) {
 	recipient = strings.TrimSpace(recipient)
+	if recipient == "" {
+		return types.EmptyJID, fmt.Errorf("empty recipient")
+	}
 	if strings.Contains(recipient, "@") {
 		return types.ParseJID(recipient)
 	}
@@ -69,7 +73,9 @@ func parseAllowEntry(entry string) (types.JID, error) {
 // for an empty value, and an error for any entry it cannot read, so a typo
 // does not silently allow or block the wrong chats.
 func parseSendAllowlist(value string) (*sendAllowlist, error) {
-	fields := strings.FieldsFunc(value, func(r rune) bool { return r == ',' || r == ';' || r == '\n' || r == '\t' })
+	fields := strings.FieldsFunc(value, func(r rune) bool {
+		return r == ',' || r == ';' || r == '\n' || r == '\r' || r == '\t'
+	})
 	list := &sendAllowlist{jids: map[string]bool{}}
 	for _, field := range fields {
 		field = strings.TrimSpace(field)
