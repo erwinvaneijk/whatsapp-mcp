@@ -358,11 +358,43 @@ fn parse_jid(text: &str) -> Result<Jid> {
     }
 }
 
+/// Find the `@number`s in a text: returns the text with `@+316…` written as
+/// `@316…` (how WhatsApp shows a mention) and the JIDs to mention.
+fn mentions(text: &str) -> Result<(String, Vec<String>)> {
+    let mut jids = Vec::new();
+    let words: Vec<String> = text
+        .split(' ')
+        .map(|word| {
+            let Some(rest) = word.strip_prefix('@') else {
+                return Ok(word.to_string());
+            };
+            let digits: String = rest
+                .trim_start_matches('+')
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .collect();
+            if digits.is_empty() {
+                return Ok(word.to_string());
+            }
+            let jid = parse_jid(&digits)?.to_string();
+            if !jids.contains(&jid) {
+                jids.push(jid);
+            }
+            let tail = &rest.trim_start_matches('+')[digits.len()..];
+            Ok(format!("@{digits}{tail}"))
+        })
+        .collect::<Result<_>>()?;
+    if jids.is_empty() {
+        bail!("no @number in the text; write it as @316...");
+    }
+    Ok((words.join(" "), jids))
+}
+
 const HELP: &str = "\
 commands:
   send <to> <text>             text message (to = phone number or JID)
   reply <id> <text>            reply quoting a message seen earlier
-  mention <to> <number> <text> text that @mentions <number> (put @<number> in the text)
+  mention <to> <text>          text that mentions each @number in it (e.g. @316...)
   image <to> <file> [caption]  image with optional caption
   video <to> <file> [caption]  video with optional caption
   doc <to> <file> [caption]    document, with file name and type
@@ -405,13 +437,13 @@ async fn command(state: &Arc<State>, client: &Arc<Client>, line: &str) -> Result
             state.remember_sent(sent.message_id.as_str(), &sent.to, msg);
         }
         "mention" => {
-            let mut it = rest.splitn(3, ' ');
-            let (Some(to), Some(number), Some(text)) = (it.next(), it.next(), it.next()) else {
-                bail!("usage: mention <to> <number> <text>");
-            };
+            let (to, text) = rest
+                .split_once(' ')
+                .context("usage: mention <to> <text with @number>")?;
+            let (text, mentioned) = mentions(text.trim())?;
             let mut ctx = wa::ContextInfo::default();
-            ctx.mentioned_jid = vec![parse_jid(number)?.to_string()];
-            let msg = wa::Message::text_with_context(text, ctx);
+            ctx.mentioned_jid = mentioned;
+            let msg = wa::Message::text_with_context(&text, ctx);
             let sent = client.send_message(parse_jid(to)?, msg.clone()).await?;
             out!("SENT mention id={} to={}", sent.message_id, sent.to);
             state.remember_sent(sent.message_id.as_str(), &sent.to, msg);
@@ -928,4 +960,28 @@ async fn main() -> Result<()> {
     let report = handle.shutdown().await;
     log::info!("shutdown: {report:?}");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mentions_are_taken_from_the_text() {
+        let (text, jids) = mentions("hi @+31600000001, and @31600000002 @31600000001").unwrap();
+        assert_eq!(text, "hi @31600000001, and @31600000002 @31600000001");
+        assert_eq!(
+            jids,
+            vec![
+                "31600000001@s.whatsapp.net".to_string(),
+                "31600000002@s.whatsapp.net".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn mention_without_a_number_is_refused() {
+        assert!(mentions("hi @maria").is_err());
+        assert!(mentions("no mention").is_err());
+    }
 }

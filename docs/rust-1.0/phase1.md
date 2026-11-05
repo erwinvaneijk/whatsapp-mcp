@@ -29,7 +29,7 @@ cargo run --release -- --net-log            # also log keepalive pings and recon
 |---|---|
 | `send <to> <text>` | Text message; `to` is a phone number or a JID |
 | `reply <id> <text>` | Reply quoting a message seen earlier |
-| `mention <to> <number> <text>` | Text that @mentions a number; put `@<number>` in the text too |
+| `mention <to> <text>` | Text that mentions each `@number` in it, such as `@316…` |
 | `image`, `video`, `doc <to> <file> [caption]` | Media with an optional caption |
 | `voice <to> <file.ogg>` | Voice note (Opus in Ogg) |
 | `react <id> <emoji>`, `unreact <id>` | Add or remove a reaction |
@@ -50,25 +50,25 @@ Fill in one result per platform:
 
 | # | Score sheet | Test | How | macOS | Linux | Windows | Notes |
 |---|---|---|---|---|---|---|---|
-| 1 | W02 | Link with a QR code | Start without `--pair-phone`, scan the QR code | ✅ | | | Linked and connected within seconds. |
-| 2 | W03 | Link with a pairing code | Delete `store/`, start with `--pair-phone`, enter the code on the phone | ✅ | | | Code entered on the phone: `PAIRED` within a minute, then history sync. Needs the country code; a leading `+` is fine. The first try used 06… and was refused without a reason; the program now refuses that format, hides the QR code when pairing by code, and sends the real OS name. |
-| 3 | W04 | Session kept after a restart | `quit`, start again: no QR code, `CONNECTED` | ✅ | | | No QR code after `quit`; `CONNECTED` within a second. |
-| 4 | W01 | Reconnect after network loss | Start with `--net-log`. Turn Wi-Fi off for 2 minutes (no cable or other network), send a message to the test account meanwhile, then turn Wi-Fi on: keepalive warning, reconnect attempts, then `CONNECTED` and the message | ✅ | | | Ping unanswered, 20 s later the library reconnects. While offline it retries with growing waits (1 s up to 20 s); back within 1 minute of Wi-Fi returning. The message sent during the outage arrived through offline sync. No `DISCONNECTED` event, as expected for a forced reconnect. Shorter outages (1–2 minutes) went unnoticed: the connection survived them. |
-| 5 | W06 | History sync on first link | After linking: `HISTORY` lines; `stats` shows conversations and messages | ✅ | | | First link on a new account: 1 conversation, 2 messages. Second link, after the tests above: 2 conversations, 24 messages, 9 with media. History messages in a direct chat have no sender; phase 5 must take it from the chat or from `from_me`. |
-| 6 | W05 | Receive text, direct and group | Send from the other phone: `MSG` line with the right chat and sender | ✅ | | | Direct and in a group. Messages sent from the test account's own phone also arrive, with `from_me=true`. |
-| 7 | W07 | Captions | Send a photo with a caption: `image caption=` is not empty | ✅ | | | |
-| 8 | W08 | Non-text messages | Send a reaction, poll, location, contact card, sticker; edit and delete a message: each gives a `MSG` line of the right kind | ✅ |  |  | Reaction, poll, poll vote, location, sticker, voice note and contact card; in a group, an edit shows as `protocol MESSAGE_EDIT on <id>` with the new text and a delete as `protocol REVOKE on <id>`. |
-| 9 | W09 | Quoted message ID | Reply to a message on the phone: `quotes=<id>` | ✅ | | | |
-| 10 | W10 | LID-to-phone map | For a LID sender: `lid=… pn=…` on the `MSG` line, or `lid <jid>` | ✅ | | | Every `MSG` line had the LID and the phone number, for both accounts. |
-| 11 | W10 | Contact and push names | `push_name` on `MSG` lines (with `--show-content`); `CONTACT` lines; `stats` | ✅ | | | Push names on live messages; `CONTACT` lines with a name and LID. |
-| 12 | W11 | Group names | `group <jid>` shows the subject (with `--show-content`) and member count; `groups` lists them | ✅ | | | `group <jid>` shows subject, 2 members and LID addressing. `groups` only printed a count; it now lists the JIDs. |
-| 13 | W13 | Send text | `send <your number> hello` arrives on the phone | ✅ | | | Sent to a number and to `+316…`. A mistyped number (one digit short) was also "sent" without an error: the library does not check that the number is on WhatsApp. Text is sent as typed, quotes included. |
-| 14 | W13 | Reply | `reply <id> text` shows as a reply on the phone, also in the group | ✅ | | | Direct and in the group. |
-| 15 | W13 | Mention | `mention <group> <number> @<number> hi` highlights the mention | ✅ | | | Highlighted on the phone. |
-| 16 | W14 | Send image, video, document, voice note | Each arrives and opens; the document keeps its name and type | | | | Image (PNG), video (MP4) and document (PDF) sent. Voice note not done yet. |
-| 17 | W15 | React and remove a reaction | `react <id> 👍`, then `unreact <id>`, direct and in the group | ✅ | | | React (👍 shown on the phone) and unreact, direct and in the group. The library also accepts a plain letter as a reaction. |
-| 18 | W16 | Download media | `download <id>` for a photo, video, voice note and document from the phone | | | | Photo and video work. Voice note and document not done yet. |
-| 19 | W17 | Re-request expired media | `download` on an old photo from history fails; `retry <id>` with the phone online succeeds | | | | `retry` worked on a new photo (re-upload and download in 1 second). Still to do on media that has expired. Messages the program sent itself were not known to `retry`; they are now. |
+| 1 | W02 | Link with a QR code | Start without `--pair-phone`, scan the QR code | ✅ | ✅ |  | **macOS:** Linked and connected within seconds. **Linux:** Linked and connected within seconds. |
+| 2 | W03 | Link with a pairing code | Delete `store/`, start with `--pair-phone`, enter the code on the phone | ✅ |  |  | **macOS:** Code entered on the phone: `PAIRED` within a minute, then history sync. Needs the country code; a leading `+` is fine. The first try used 06… and was refused without a reason; the program now refuses that format, hides the QR code when pairing by code, and sends the real OS name. **Linux:** Not done yet. |
+| 3 | W04 | Session kept after a restart | `quit`, start again: no QR code, `CONNECTED` | ✅ | ✅ | | No QR code after `quit`; `CONNECTED` within a second. |
+| 4 | W01 | Reconnect after network loss | Start with `--net-log`. Turn Wi-Fi off for 2 minutes (no cable or other network), send a message to the test account meanwhile, then turn Wi-Fi on: keepalive warning, reconnect attempts, then `CONNECTED` and the message | ✅ |  |  | **macOS:** Ping unanswered, 20 s later the library reconnects. While offline it retries with growing waits (1 s up to 20 s); back within 1 minute of Wi-Fi returning. The message sent during the outage arrived through offline sync. No `DISCONNECTED` event, as expected for a forced reconnect. Shorter outages (1–2 minutes) went unnoticed: the connection survived them. **Linux:** Not done yet. |
+| 5 | W06 | History sync on first link | After linking: `HISTORY` lines; `stats` shows conversations and messages | ✅ | ✅ |  | **macOS:** First link on a new account: 1 conversation, 2 messages. Second link, after the tests above: 2 conversations, 24 messages, 9 with media. History messages in a direct chat have no sender; phase 5 must take it from the chat or from `from_me`. **Linux:** 3 conversations, 48 messages, 12 with media; includes the messages sent from macOS. |
+| 6 | W05 | Receive text, direct and group | Send from the other phone: `MSG` line with the right chat and sender | ✅ | ✅ |  | **macOS:** Direct and in a group. Messages sent from the test account's own phone also arrive, with `from_me=true`. **Linux:** Direct and in the group. |
+| 7 | W07 | Captions | Send a photo with a caption: `image caption=` is not empty | ✅ | ✅ | | |
+| 8 | W08 | Non-text messages | Send a reaction, poll, location, contact card, sticker; edit and delete a message: each gives a `MSG` line of the right kind | ✅ |  |  | **macOS:** Reaction, poll, poll vote, location, sticker, voice note and contact card; in a group, an edit shows as `protocol MESSAGE_EDIT on <id>` with the new text and a delete as `protocol REVOKE on <id>`. **Linux:** Location, contact card, poll, poll vote, sticker, edit (`MESSAGE_EDIT` with new text) and delete (`REVOKE`) work. Incoming reaction and voice note not done yet. |
+| 9 | W09 | Quoted message ID | Reply to a message on the phone: `quotes=<id>` | ✅ |  |  | **Linux:** Not done yet: needs a reply sent from the phone. |
+| 10 | W10 | LID-to-phone map | For a LID sender: `lid=… pn=…` on the `MSG` line, or `lid <jid>` | ✅ | ✅ | | Every `MSG` line had the LID and the phone number, for both accounts. |
+| 11 | W10 | Contact and push names | `push_name` on `MSG` lines (with `--show-content`); `CONTACT` lines; `stats` | ✅ | ✅ | | Push names on live messages; `CONTACT` lines with a name and LID. |
+| 12 | W11 | Group names | `group <jid>` shows the subject (with `--show-content`) and member count; `groups` lists them | ✅ | ✅ |  | **macOS:** `group <jid>` shows subject, 2 members and LID addressing. `groups` only printed a count; it now lists the JIDs. **Linux:** `group <jid>`: subject, 2 members, LID addressing. `groups` not run. |
+| 13 | W13 | Send text | `send <your number> hello` arrives on the phone | ✅ | ✅ | | Sent to a number and to `+316…`. A mistyped number (one digit short) was also "sent" without an error: the library does not check that the number is on WhatsApp. Text is sent as typed, quotes included. |
+| 14 | W13 | Reply | `reply <id> text` shows as a reply on the phone, also in the group | ✅ |  |  | **macOS:** Direct and in the group. **Linux:** Direct reply works. Group reply not done yet. |
+| 15 | W13 | Mention | `mention <group> hi @316…` highlights the mention | ✅ |  |  | **macOS:** Highlighted on the phone. **Linux:** Sent to the group; highlight on the phone not confirmed. Two tries failed on the old argument order; `mention` now takes the numbers from the `@316…` in the text. |
+| 16 | W14 | Send image, video, document, voice note | Each arrives and opens; the document keeps its name and type |  |  |  | **macOS:** Image (PNG), video (MP4) and document (PDF) sent. Voice note not done yet. **Linux:** Image (WebP) and document sent. Video and voice note not done yet. |
+| 17 | W15 | React and remove a reaction | `react <id> 👍`, then `unreact <id>`, direct and in the group | ✅ |  |  | **macOS:** React (👍 shown on the phone) and unreact, direct and in the group. The library also accepts a plain letter as a reaction. **Linux:** React and unreact work in the group. Direct chat not done yet. |
+| 18 | W16 | Download media | `download <id>` for a photo, video, voice note and document from the phone |  |  |  | **macOS:** Photo and video work. Voice note and document not done yet. **Linux:** Photo works. Video, voice note and document not done yet. |
+| 19 | W17 | Re-request expired media | `download` on an old photo from history fails; `retry <id>` with the phone online succeeds |  |  |  | **macOS:** `retry` worked on a new photo (re-upload and download in 1 second). Still to do on media that has expired. Messages the program sent itself were not known to `retry`; they are now. **Linux:** `retry` worked on a new photo (2 seconds). Expired media still to do. |
 | 20 | — | Builds without warnings | `cargo build --release` | ✅ | | | Also passes `cargo clippy -- -D warnings`. |
 
 ## Test run, step by step
@@ -100,7 +100,7 @@ All 20 items, in an order that works in one session of about 30 minutes. Each pl
 
 - **13. Text:** `send 316… hello`.
 - **14. Reply:** `reply <id> text`, directly and in the group.
-- **15. Mention:** `mention <group-jid> 316… @316… hi`. On the phone, the mention should be highlighted.
+- **15. Mention:** `mention <group-jid> hi @316…`. On the phone, the mention should be highlighted.
 - **16. Media:** `image`, `video`, `doc` and `voice` with a file. A voice note must be Opus in Ogg; `ffmpeg -i in.m4a -c:a libopus out.ogg` makes one.
 - **17. Reactions:** `react <id> 👍`, then `unreact <id>`, directly and in the group.
 
@@ -127,7 +127,13 @@ Linking, restarting, history sync, receiving and downloading work. Nothing has f
 - **App state warning:** after linking by code, the library warned "Initial App State Sync incomplete" and skipped the `regular_low` collection, which holds chat settings such as pinned, muted and archived. Contact names come from another collection and did arrive. The bridge doesn't use those settings; check that the warning goes away after a restart.
 - **Sent to the phone number, stored chat is the LID:** messages sent to `316…` go to the phone-number JID, while the chat with that person is under its LID. W12 needs the bridge's rule: store a sent message in the chat that already exists.
 - **No `DISCONNECTED` on a forced reconnect:** when the keepalive gives up (pings every 15 to 30 seconds, 20 seconds to answer), the library reconnects and treats that as expected, so it sends no `Disconnected` event. The bridge can't rely on that event to notice an outage. `RUST_LOG` can't select the keepalive log on its own (env_logger reads the `/` in `Client/Keepalive` as a text filter); use `--net-log`.
-- **Protocol messages:** right after linking, the phone sends a few protocol messages (app state and history notices). They show as `protocol`; phase 5 must not store them as chat messages.
+- **Protocol messages:** right after linking, the phone sends protocol messages of these kinds: `HISTORY_SYNC_NOTIFICATION`, `APP_STATE_SYNC_KEY_SHARE`, `INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC` and `PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE`. Phase 5 must store only `MESSAGE_EDIT` and `REVOKE`, and skip the rest.
+- **Sent messages in history:** when a new device links, history sync includes the messages the program sent from another device.
+- **`Unhandled ib child: <sonar>`:** the library logs this warning now and then on Linux. It is harmless: an unknown server notice the library ignores.
+
+### Linux, first run (2026-11-05)
+
+Linking with a QR code, restarting, history sync, receiving, the LID map, names, group info, sending text, images and documents, group reactions and downloading a photo all work. Nothing has failed so far. Still to do: pairing code, network loss, incoming quoted reply, incoming reaction and voice note, group reply, video and voice note, direct reactions, more downloads, and the build check.
 
 ## Open items
 
