@@ -60,6 +60,71 @@ jobs:
           PYTHONPATH: .
         run: uv run --locked --with pytest pytest -v tests
 
+  # Rust workspace (docs/rust-1.0/plan.md, phase 2). Every release platform
+  # builds, lints and tests here; the toolchain comes from rust-toolchain.toml.
+  rust:
+    name: Rust (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux x86_64, os: ubuntu-latest }
+          - { name: Linux arm64, os: ubuntu-24.04-arm }
+          # Pinned images: macos-latest (macOS 26) often waits for a runner
+          # long enough for the job to be cancelled.
+          - { name: macOS arm64, os: macos-15 }
+          - { name: macOS x86_64, os: macos-15-intel }
+          - { name: Windows x86_64, os: windows-latest }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo fmt --all --check
+
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Run the binary
+        run: target/release/whatsapp-mcp --version
+
+  rust-deny:
+    name: Rust dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # Runs on the runner, not in the cargo-deny container, so it uses the
+      # toolchain pinned in rust-toolchain.toml.
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      # Vulnerabilities (RustSec), licenses, duplicate crates and sources;
+      # see deny.toml.
+      - name: Check dependencies
+        run: cargo deny --locked check
+
   parity:
     name: Parity harness
     runs-on: ubuntu-latest

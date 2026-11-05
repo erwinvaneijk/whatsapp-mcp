@@ -1,6 +1,6 @@
 # 1.0: rewrite in Rust
 
-Status: phase 0 done; phase 1 done, decision **go** ([checklist and results](phase1.md)); phase 2 next. Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
+Status: phase 0 done; phase 1 done, decision **go** ([checklist and results](phase1.md)); phase 2 done (workspace and CI, see [crates/README.md](../../crates/README.md)); phase 3 next. Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
 
 ## Goal
 
@@ -15,7 +15,7 @@ Replace the Go bridge and the Python MCP server with one Rust program, as a drop
 To set expectations:
 
 - **Fewer moving parts:** one binary instead of Go + Python + uv + a virtual environment. The install is simpler, and there is less to keep patched.
-- **Smaller supply chain:** dependencies are pinned in `Cargo.lock` and checked in CI (`cargo audit`, `cargo deny`). Our own code forbids `unsafe`.
+- **Smaller supply chain:** dependencies are pinned in `Cargo.lock` and checked in CI with `cargo deny`, which also checks the RustSec vulnerability database that `cargo audit` uses. Our own code forbids `unsafe`.
 - **One code base:** one config parser, one set of types for the tools, one test suite. Today the config rules exist twice, in Go and in Python, and must be kept in sync by hand.
 - **Not memory safety:** Go and Python are already memory-safe, so that is not where the gain is.
 - **Main risk:** the WhatsApp protocol library. whatsmeow (Go) is mature and widely used. The Rust option, [whatsapp-rust](https://github.com/jlucaso1/whatsapp-rust), is younger:
@@ -42,10 +42,10 @@ Cargo workspace:
 
 | Crate | Contents |
 |---|---|
-| `config` | `config.yaml` and environment variables, with the same rules as today. |
-| `store` | `messages.db`: schema, migrations, FTS5, queries. Uses rusqlite with bundled SQLite, so FTS5 is always available and the `-tags sqlite_fts5` build option disappears. |
-| `bridge` | WhatsApp connection (whatsapp-rust), event handling, sending, media, retry, allowlist, local API. |
-| `mcp` | The tools, on [rmcp](https://github.com/modelcontextprotocol/rust-sdk), the official Rust MCP SDK (crate version 3.8 as of 2026-11-05; pinned in `Cargo.lock`). |
+| `config` (`whatsapp-mcp-config`) | `config.yaml` and environment variables, with the same rules as today. |
+| `store` (`whatsapp-mcp-store`) | `messages.db`: schema, migrations, FTS5, queries. Uses rusqlite with bundled SQLite, so FTS5 is always available and the `-tags sqlite_fts5` build option disappears. |
+| `bridge` (`whatsapp-mcp-bridge`) | WhatsApp connection (whatsapp-rust), event handling, sending, media, retry, allowlist, local API. |
+| `mcp` (`whatsapp-mcp-server`) | The tools, on [rmcp](https://github.com/modelcontextprotocol/rust-sdk), the official Rust MCP SDK (crate version 3.8 as of 2026-11-05; pinned in `Cargo.lock`). |
 | `whatsapp-mcp` | The binary and its commands. |
 
 ## How we know it is a drop-in
@@ -67,7 +67,7 @@ Each phase ends in something that works, and nothing is removed until the replac
 |---|---|---|
 | 0. Freeze the interface | Write the parity harness and fixture against the current code. Write down the interface: tools, config, the bridge API, the `messages.db` schema. | Harness passes against today's code in CI. |
 | 1. Library test (go/no-go) — **done: go** (Windows deferred) | Small Rust program on whatsapp-rust, on macOS, Linux and Windows, with a separate WhatsApp test account (a spare number is available): QR and code pairing, receiving, history sync, sending text, media and reactions, replies and mentions, LID to phone mapping, contact names, expired-media retry. | Every item works, or has a workaround. **If not:** keep the Go bridge for 1.0 and only replace the Python server (phases 2–4). |
-| 2. Workspace and CI | Cargo workspace, `rustfmt`, `clippy -D warnings`, tests, `cargo audit`/`deny`, `#![forbid(unsafe_code)]`, builds for macOS (arm64, x86_64), Linux and Windows. | CI green on all targets. |
+| 2. Workspace and CI — **done** | Cargo workspace, `rustfmt`, `clippy -D warnings`, tests, `cargo deny` (vulnerabilities, licenses, sources), `#![forbid(unsafe_code)]`, builds for macOS (arm64, x86_64), Linux and Windows. | CI green on all targets. |
 | 3. Config | `config` crate, with the Go and Python config tests ported. | Config parity tests pass. |
 | 4. Rust MCP server | `serve`: all read tools on `messages.db`; send tools through the existing Go bridge's API. Contact names read from whatsmeow's `whatsapp.db`, as the Python server does today. | Parity harness passes. The Python server can be switched off. **Release 0.9**: Rust server + Go bridge. |
 | 5. Rust bridge | `bridge`: connection, pairing, storing (same schema and migrations), history sync, outgoing messages, media, retry, allowlist, API, file permissions, log privacy. | Bridge tests ported and passing; runs for a week alongside daily use without problems. |

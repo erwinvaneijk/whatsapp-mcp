@@ -14,3 +14,6 @@ whatsapp-bridge/store/
 # Local backups
 *.bak-*
 *.orig
+
+# Rust build output
+/target/

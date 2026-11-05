@@ -1,0 +1,16 @@
+[package]
+name = "whatsapp-mcp-bridge"
+description = "The WhatsApp connection, message storage and the local bridge API."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+whatsapp-mcp-config.workspace = true
+whatsapp-mcp-store.workspace = true
+
+[lints]
+workspace = true
