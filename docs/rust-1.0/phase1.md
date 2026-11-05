@@ -53,22 +53,22 @@ Fill in one result per platform:
 | 1 | W02 | Link with a QR code | Start without `--pair-phone`, scan the QR code | ✅ | ✅ |  | **macOS:** Linked and connected within seconds. **Linux:** Linked and connected within seconds. |
 | 2 | W03 | Link with a pairing code | Delete `store/`, start with `--pair-phone`, enter the code on the phone | ✅ | ✅ | | **macOS:** Code entered on the phone: `PAIRED` within a minute, then history sync. Needs the country code; a leading `+` is fine. The first try used 06… and was refused without a reason; the program now refuses that format, hides the QR code when pairing by code, and sends the real OS name. **Linux:** Code entered on the phone: `PAIRED` within 40 seconds, then history sync. |
 | 3 | W04 | Session kept after a restart | `quit`, start again: no QR code, `CONNECTED` | ✅ | ✅ | | No QR code after `quit`; `CONNECTED` within a second. |
-| 4 | W01 | Reconnect after network loss | Start with `--net-log`. Turn Wi-Fi off for 2 minutes (no cable or other network), send a message to the test account meanwhile, then turn Wi-Fi on: keepalive warning, reconnect attempts, then `CONNECTED` and the message | ✅ |  |  | **macOS:** Ping unanswered, 20 s later the library reconnects. While offline it retries with growing waits (1 s up to 20 s); back within 1 minute of Wi-Fi returning. The message sent during the outage arrived through offline sync. No `DISCONNECTED` event, as expected for a forced reconnect. Shorter outages (1–2 minutes) went unnoticed: the connection survived them. **Linux:** Not done yet. |
+| 4 | W01 | Reconnect after network loss | Start with `--net-log`. Turn Wi-Fi off for 2 minutes (no cable or other network), send a message to the test account meanwhile, then turn Wi-Fi on: keepalive warning, reconnect attempts, then `CONNECTED` and the message | ✅ | | | **macOS:** Ping unanswered, 20 s later the library reconnects. While offline it retries with growing waits (1 s up to 20 s); back within 1 minute of Wi-Fi returning. The message sent during the outage arrived through offline sync. No `DISCONNECTED` event, as expected for a forced reconnect. Shorter outages (1–2 minutes) went unnoticed: the connection survived them. **Linux:** Not tested: no way to cut the network on the test machine. |
 | 5 | W06 | History sync on first link | After linking: `HISTORY` lines; `stats` shows conversations and messages | ✅ | ✅ |  | **macOS:** First link on a new account: 1 conversation, 2 messages. Second link, after the tests above: 2 conversations, 24 messages, 9 with media. History messages in a direct chat have no sender; phase 5 must take it from the chat or from `from_me`. **Linux:** 3 conversations, 48 messages, 12 with media; includes the messages sent from macOS. |
 | 6 | W05 | Receive text, direct and group | Send from the other phone: `MSG` line with the right chat and sender | ✅ | ✅ |  | **macOS:** Direct and in a group. Messages sent from the test account's own phone also arrive, with `from_me=true`. **Linux:** Direct and in the group. |
 | 7 | W07 | Captions | Send a photo with a caption: `image caption=` is not empty | ✅ | ✅ | | |
-| 8 | W08 | Non-text messages | Send a reaction, poll, location, contact card, sticker; edit and delete a message: each gives a `MSG` line of the right kind | ✅ | | | **macOS:** Reaction, poll, poll vote, location, sticker, voice note and contact card; in a group, an edit shows as `protocol MESSAGE_EDIT on <id>` with the new text and a delete as `protocol REVOKE on <id>`. **Linux:** Location, contact card, poll, poll vote, sticker, reaction, edit (`MESSAGE_EDIT` with new text) and delete (`REVOKE`) work. Incoming voice note not done yet. |
+| 8 | W08 | Non-text messages | Send a reaction, poll, location, contact card, sticker; edit and delete a message: each gives a `MSG` line of the right kind | ✅ | | | **macOS:** Reaction, poll, poll vote, location, sticker, voice note and contact card; in a group, an edit shows as `protocol MESSAGE_EDIT on <id>` with the new text and a delete as `protocol REVOKE on <id>`. **Linux:** Location, contact card, poll, poll vote, sticker, reaction, edit (`MESSAGE_EDIT` with new text) and delete (`REVOKE`) work. Incoming voice note not tested. |
 | 9 | W09 | Quoted message ID | Reply to a message on the phone: `quotes=<id>` | ✅ | ✅ | | **Linux:** Reply from the phone in the group: `quotes=<id>`. |
 | 10 | W10 | LID-to-phone map | For a LID sender: `lid=… pn=…` on the `MSG` line, or `lid <jid>` | ✅ | ✅ | | Every `MSG` line had the LID and the phone number, for both accounts. |
 | 11 | W10 | Contact and push names | `push_name` on `MSG` lines (with `--show-content`); `CONTACT` lines; `stats` | ✅ | ✅ | | Push names on live messages; `CONTACT` lines with a name and LID. |
 | 12 | W11 | Group names | `group <jid>` shows the subject (with `--show-content`) and member count; `groups` lists them | ✅ | ✅ |  | **macOS:** `group <jid>` shows subject, 2 members and LID addressing. `groups` only printed a count; it now lists the JIDs. **Linux:** `group <jid>`: subject, 2 members, LID addressing. `groups` not run. |
 | 13 | W13 | Send text | `send <your number> hello` arrives on the phone | ✅ | ✅ | | Sent to a number and to `+316…`. A mistyped number (one digit short) was also "sent" without an error: the library does not check that the number is on WhatsApp. Text is sent as typed, quotes included. |
 | 14 | W13 | Reply | `reply <id> text` shows as a reply on the phone, also in the group | ✅ | ✅ | | **macOS:** Direct and in the group. **Linux:** Direct and in the group. |
-| 15 | W13 | Mention | `mention <group> hi @316…` highlights the mention | ✅ | | | **macOS:** Highlighted on the phone. **Linux:** Sent to the group, with the old program (a LID JID as the number). Highlight on the phone not confirmed. Redo with the new `mention <group> hi @316…`. |
-| 16 | W14 | Send image, video, document, voice note | Each arrives and opens; the document keeps its name and type |  |  |  | **macOS:** Image (PNG), video (MP4) and document (PDF) sent. Voice note not done yet. **Linux:** Image (WebP) and document sent. Video and voice note not done yet. |
-| 17 | W15 | React and remove a reaction | `react <id> 👍`, then `unreact <id>`, direct and in the group | ✅ | | | **macOS:** React (👍 shown on the phone) and unreact, direct and in the group. The library also accepts a plain letter as a reaction. **Linux:** React and unreact work in the group. Direct chat not done yet. |
-| 18 | W16 | Download media | `download <id>` for a photo, video, voice note and document from the phone |  |  |  | **macOS:** Photo and video work. Voice note and document not done yet. **Linux:** Photo works. Video, voice note and document not done yet. |
-| 19 | W17 | Re-request expired media | `download` on an old photo from history fails; `retry <id>` with the phone online succeeds |  |  |  | **macOS:** `retry` worked on a new photo (re-upload and download in 1 second). Still to do on media that has expired. Messages the program sent itself were not known to `retry`; they are now. **Linux:** `retry` worked on a new photo (2 seconds). Expired media still to do. |
+| 15 | W13 | Mention | `mention <group> hi @316…` highlights the mention | ✅ | | | **macOS:** Highlighted on the phone. **Linux:** Sent to the group twice; whether the mention was highlighted was not checked. |
+| 16 | W14 | Send image, video, document, voice note | Each arrives and opens; the document keeps its name and type | | | | **macOS:** Image (PNG), video (MP4) and document (PDF) sent. Voice note not done yet. **Linux:** Image (WebP) and document sent. Video and voice note not tested. |
+| 17 | W15 | React and remove a reaction | `react <id> 👍`, then `unreact <id>`, direct and in the group | ✅ | ✅ | | **macOS:** React (👍 shown on the phone) and unreact, direct and in the group. The library also accepts a plain letter as a reaction. **Linux:** Direct and in the group. |
+| 18 | W16 | Download media | `download <id>` for a photo, video, voice note and document from the phone | | | | **macOS:** Photo and video work. Voice note and document not done yet. **Linux:** Photo and document (PDF, 57 KB) work. The document was saved as `.bin`; the program now uses the document's own extension. Video and voice note not tested. |
+| 19 | W17 | Re-request expired media | `download` on an old photo from history fails; `retry <id>` with the phone online succeeds | | | | **macOS:** `retry` worked on a new photo (re-upload and download in 1 second). Still to do on media that has expired. Messages the program sent itself were not known to `retry`; they are now. **Linux:** Not tested: needs media that has expired. `retry` itself worked on a new photo (2 seconds). |
 | 20 | — | Builds without warnings | `cargo build --release` | ✅ | ✅ | | **macOS:** Also passes `cargo clippy -- -D warnings`. **Linux:** No warnings. |
 
 ## Test run, step by step
@@ -131,9 +131,26 @@ Linking, restarting, history sync, receiving and downloading work. Nothing has f
 - **Sent messages in history:** when a new device links, history sync includes the messages the program sent from another device.
 - **`Unhandled ib child: <sonar>`:** the library logs this warning now and then on Linux. It is harmless: an unknown server notice the library ignores.
 
-### Linux, first run (2026-11-05)
+### Linux (2026-11-05)
 
-13 of 20 pass, nothing has failed. Linking (QR code and pairing code), restarting, history sync, receiving (including quoted replies, reactions, edits and deletes), the LID map, names, group info, sending text, images and documents, replies, group reactions, downloading a photo and the build all work. Still to do: network loss, incoming voice note, mention highlight, video and voice note, direct reactions, more downloads, and expired media.
+14 of 20 pass, nothing has failed. Linking (QR code and pairing code), restarting, history sync, receiving (including quoted replies, reactions, edits and deletes), the LID map, names, group info, sending text, images and documents, replies, reactions, downloading a photo and a document, and the build all work.
+
+### Not tested yet
+
+Nothing has failed on macOS or Linux. These parts have not been tested:
+
+| Part | macOS | Linux |
+|---|---|---|
+| Voice note: send (16), download (18) | not tested | not tested |
+| Voice note: receive (8) | ✅ | not tested |
+| Video: send (16), download (18) | ✅ | not tested |
+| Document download (18) | not tested | ✅ |
+| Mention highlighted on the phone (15) | ✅ | not checked |
+| Reconnect after network loss (4) | ✅ | not tested |
+| Expired media, `retry` (19) | not tested | not tested |
+| Windows, all items | | |
+
+The library code is the same on every platform, so the platform risk in these gaps is small. The two parts no platform has covered yet are voice notes (sending and downloading) and media that has expired. Phase 5 tests the bridge end to end and can cover both there.
 
 ## Open items
 

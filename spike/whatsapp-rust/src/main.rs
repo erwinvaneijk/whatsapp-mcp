@@ -780,16 +780,32 @@ async fn retry(state: &State, client: &Client, id: &str, seen: &Seen) -> Result<
 
 async fn save(state: &State, id: &str, msg: &wa::Message, bytes: &[u8]) -> Result<PathBuf> {
     let b = msg.get_base_message();
-    let ext = if b.image_message.is_set() {
-        "jpg"
+    let ext = if let Some(doc) = b.document_message.as_option() {
+        // A document keeps its own type: take the extension from its file
+        // name, else from its MIME type. Only short alphanumeric extensions,
+        // so a crafted file name can't leave the download folder.
+        doc.file_name
+            .as_deref()
+            .and_then(|name| Path::new(name).extension()?.to_str())
+            .filter(|e| e.len() <= 10 && e.chars().all(|c| c.is_ascii_alphanumeric()))
+            .map(str::to_ascii_lowercase)
+            .or_else(|| {
+                doc.mimetype
+                    .as_deref()
+                    .and_then(|m| mime_guess::get_mime_extensions_str(m)?.first())
+                    .map(|e| (*e).to_string())
+            })
+            .unwrap_or_else(|| "bin".to_string())
+    } else if b.image_message.is_set() {
+        "jpg".to_string()
     } else if b.video_message.is_set() {
-        "mp4"
+        "mp4".to_string()
     } else if b.audio_message.is_set() {
-        "ogg"
+        "ogg".to_string()
     } else if b.sticker_message.is_set() {
-        "webp"
+        "webp".to_string()
     } else {
-        "bin"
+        "bin".to_string()
     };
     let dir = state.store.join("downloads");
     tokio::fs::create_dir_all(&dir).await?;
