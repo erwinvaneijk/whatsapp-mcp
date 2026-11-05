@@ -59,7 +59,7 @@ What Claude and other MCP clients see. Today: `whatsapp-mcp-server/main.py` and 
 | M17 | Structured output: same JSON fields and types as today | harness | todo | The Python MCP SDK (`mcp` 2.x) validates return types against the declared output schema; the Rust server must declare and return the same schemas. |
 | M18 | Messages from others marked as data (`<message_content>`, tag neutralising, names on one line, read-tool notice) | harness, tests | todo | |
 | M19 | Times shown with UTC offset; `after`/`before` accept ISO-8601, naive times are local | harness, tests | todo | |
-| M20 | Error texts for bad input and an unreachable bridge | harness | todo | Today's quirks are listed in [interface.md, section 5](interface.md#5-current-behaviour-to-review); decide per quirk: match or `changed`. |
+| M20 | Error texts for bad input and an unreachable bridge | harness | todo | Decided: today's quirks get better behaviour in Rust, so this row becomes `changed` when done; see [interface.md, section 5](interface.md#5-behaviour-that-improves-in-10). |
 
 ## Configuration
 
