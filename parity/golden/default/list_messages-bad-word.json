@@ -1,0 +1,17 @@
+{
+  "args": {
+    "before": "yesterday"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "Error executing tool list_messages",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "list_messages"
+}

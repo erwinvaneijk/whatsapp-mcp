@@ -1,0 +1,22 @@
+{
+  "args": {
+    "media_path": "",
+    "recipient": "31600000001"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"success\": false,\n  \"message\": \"Media path must be provided\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "message": "Media path must be provided",
+      "success": false
+    }
+  },
+  "tool": "send_file"
+}

@@ -1,0 +1,35 @@
+{
+  "args": {
+    "chat_jid": "31600000001@s.whatsapp.net",
+    "emoji": "❤️",
+    "message_id": "3EB0A0000000000000000004"
+  },
+  "bridge_requests": [
+    {
+      "content_type": "application/json",
+      "json": {
+        "chat_jid": "31600000001@s.whatsapp.net",
+        "emoji": "❤️",
+        "message_id": "3EB0A0000000000000000004"
+      },
+      "method": "POST",
+      "path": "/api/react",
+      "token": "ok"
+    }
+  ],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"success\": true,\n  \"message\": \"Reaction sent\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "message": "Reaction sent",
+      "success": true
+    }
+  },
+  "tool": "react_to_message"
+}

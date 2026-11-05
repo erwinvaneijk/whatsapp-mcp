@@ -1,0 +1,41 @@
+{
+  "args": {
+    "jid": "200000000000002@lid"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"jid\": \"120363000000000001@g.us\",\n  \"name\": \"Book club\",\n  \"last_message_time\": \"2026-11-02T19:11:00+01:00\",\n  \"last_message\": \"<message_content>[reaction: 👍]</message_content>\",\n  \"last_sender\": \"31600000001\",\n  \"last_is_from_me\": false\n}",
+        "type": "text"
+      },
+      {
+        "text": "{\n  \"jid\": \"200000000000002@lid\",\n  \"name\": \"Tom B.\",\n  \"last_message_time\": \"2026-11-02T08:00:00+01:00\",\n  \"last_message\": \"<message_content>[reaction: ❤️]</message_content>\",\n  \"last_sender\": \"200000000000002\",\n  \"last_is_from_me\": false\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": [
+        {
+          "jid": "120363000000000001@g.us",
+          "last_is_from_me": false,
+          "last_message": "<message_content>[reaction: 👍]</message_content>",
+          "last_message_time": "2026-11-02T19:11:00+01:00",
+          "last_sender": "31600000001",
+          "name": "Book club"
+        },
+        {
+          "jid": "200000000000002@lid",
+          "last_is_from_me": false,
+          "last_message": "<message_content>[reaction: ❤️]</message_content>",
+          "last_message_time": "2026-11-02T08:00:00+01:00",
+          "last_sender": "200000000000002",
+          "name": "Tom B."
+        }
+      ]
+    }
+  },
+  "tool": "get_contact_chats"
+}

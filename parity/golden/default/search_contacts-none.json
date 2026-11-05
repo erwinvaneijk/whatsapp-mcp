@@ -1,0 +1,15 @@
+{
+  "args": {
+    "query": "zzz-no-such-contact"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": []
+    }
+  },
+  "tool": "search_contacts"
+}

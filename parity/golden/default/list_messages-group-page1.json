@@ -1,0 +1,23 @@
+{
+  "args": {
+    "chat_jid": "120363000000000001@g.us",
+    "include_context": false,
+    "limit": 4,
+    "page": 1
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "[2026-11-02 19:07:00 +01:00] Chat: Book club From: Tom B.: [Message ID: 3EB0D0000000000000000008] <message_content>Chapter 4 is better</message_content>\n[2026-11-02 19:06:00 +01:00] Chat: Book club From: Maria Jansen: [Message ID: 3EB0D0000000000000000007] <message_content>Chapter 3 is long</message_content>\n[2026-11-02 19:05:00 +01:00] Chat: Book club From: Noor de Vries: [Message ID: 3EB0D0000000000000000006] <message_content>[poll: Which evening? (Friday, Saturday)]</message_content>\n[2026-11-02 19:04:00 +01:00] Chat: Book club From: Maria Jansen: [audio - Message ID: 3EB0D0000000000000000005 - Chat JID: 120363000000000001@g.us] <message_content></message_content>\n",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": "[2026-11-02 19:07:00 +01:00] Chat: Book club From: Tom B.: [Message ID: 3EB0D0000000000000000008] <message_content>Chapter 4 is better</message_content>\n[2026-11-02 19:06:00 +01:00] Chat: Book club From: Maria Jansen: [Message ID: 3EB0D0000000000000000007] <message_content>Chapter 3 is long</message_content>\n[2026-11-02 19:05:00 +01:00] Chat: Book club From: Noor de Vries: [Message ID: 3EB0D0000000000000000006] <message_content>[poll: Which evening? (Friday, Saturday)]</message_content>\n[2026-11-02 19:04:00 +01:00] Chat: Book club From: Maria Jansen: [audio - Message ID: 3EB0D0000000000000000005 - Chat JID: 120363000000000001@g.us] <message_content></message_content>\n"
+    }
+  },
+  "tool": "list_messages"
+}

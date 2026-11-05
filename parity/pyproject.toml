@@ -1,0 +1,20 @@
+[project]
+name = "whatsapp-mcp-parity"
+version = "0.1.0"
+description = "Parity harness: the MCP interface the Rust rewrite must keep (see README.md)"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=2.3.0",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.3",
+]

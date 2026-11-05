@@ -1,0 +1,26 @@
+{
+  "args": {
+    "query": "maria"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"phone_number\": \"31600000001\",\n  \"name\": \"Maria Jansen\",\n  \"jid\": \"31600000001@s.whatsapp.net\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": [
+        {
+          "jid": "31600000001@s.whatsapp.net",
+          "name": "Maria Jansen",
+          "phone_number": "31600000001"
+        }
+      ]
+    }
+  },
+  "tool": "search_contacts"
+}

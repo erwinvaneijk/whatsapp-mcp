@@ -1,0 +1,43 @@
+{
+  "args": {
+    "mentions": [
+      "31600000001"
+    ],
+    "message": "@31600000001 agreed",
+    "recipient": "120363000000000001@g.us",
+    "reply_to_message_id": "3EB0D0000000000000000001",
+    "reply_to_sender_jid": "31600000001@s.whatsapp.net"
+  },
+  "bridge_requests": [
+    {
+      "content_type": "application/json",
+      "json": {
+        "mentions": [
+          "31600000001"
+        ],
+        "message": "@31600000001 agreed",
+        "recipient": "120363000000000001@g.us",
+        "reply_to_message_id": "3EB0D0000000000000000001",
+        "reply_to_sender_jid": "31600000001@s.whatsapp.net"
+      },
+      "method": "POST",
+      "path": "/api/send",
+      "token": "ok"
+    }
+  ],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"success\": true,\n  \"message\": \"Message sent\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "message": "Message sent",
+      "success": true
+    }
+  },
+  "tool": "send_message"
+}

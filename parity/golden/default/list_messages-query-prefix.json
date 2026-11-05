@@ -1,0 +1,21 @@
+{
+  "args": {
+    "include_context": false,
+    "query": "meet"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "[2026-11-02 19:00:00 +01:00] Chat: Book club From: Maria Jansen: [Message ID: 3EB0D0000000000000000001] <message_content>Next meeting: chapters 3 to 5</message_content>\n[2026-11-01 10:00:00 +01:00] Chat: Tom B. From: Tom B.: [document - Message ID: 3EB0B0000000000000000001 - Chat JID: 200000000000002@lid] <message_content>Meeting notes attached</message_content>\n[2026-10-24 09:20:00 +02:00] Chat: Maria Jansen From: Me: [Message ID: 3EB0A0000000000000000002] <message_content>Yes, the meeting is at 14:00 in the café.</message_content>\n[2026-10-24 09:15:00 +02:00] Chat: Maria Jansen From: Maria Jansen: [Message ID: 3EB0A0000000000000000001] <message_content>Good morning! Are we still on for the meeting?</message_content>\n",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": "[2026-11-02 19:00:00 +01:00] Chat: Book club From: Maria Jansen: [Message ID: 3EB0D0000000000000000001] <message_content>Next meeting: chapters 3 to 5</message_content>\n[2026-11-01 10:00:00 +01:00] Chat: Tom B. From: Tom B.: [document - Message ID: 3EB0B0000000000000000001 - Chat JID: 200000000000002@lid] <message_content>Meeting notes attached</message_content>\n[2026-10-24 09:20:00 +02:00] Chat: Maria Jansen From: Me: [Message ID: 3EB0A0000000000000000002] <message_content>Yes, the meeting is at 14:00 in the café.</message_content>\n[2026-10-24 09:15:00 +02:00] Chat: Maria Jansen From: Maria Jansen: [Message ID: 3EB0A0000000000000000001] <message_content>Good morning! Are we still on for the meeting?</message_content>\n"
+    }
+  },
+  "tool": "list_messages"
+}

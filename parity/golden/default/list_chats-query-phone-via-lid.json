@@ -1,0 +1,15 @@
+{
+  "args": {
+    "query": "31600000002"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": []
+    }
+  },
+  "tool": "list_chats"
+}

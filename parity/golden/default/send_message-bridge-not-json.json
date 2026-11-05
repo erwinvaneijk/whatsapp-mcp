@@ -1,0 +1,33 @@
+{
+  "args": {
+    "message": "garbled",
+    "recipient": "31600000001"
+  },
+  "bridge_requests": [
+    {
+      "content_type": "application/json",
+      "json": {
+        "message": "garbled",
+        "recipient": "31600000001"
+      },
+      "method": "POST",
+      "path": "/api/send",
+      "token": "ok"
+    }
+  ],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"success\": false,\n  \"message\": \"Request error: Expecting value: line 1 column 1 (char 0)\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "message": "Request error: Expecting value: line 1 column 1 (char 0)",
+      "success": false
+    }
+  },
+  "tool": "send_message"
+}
