@@ -23,7 +23,8 @@ class AudioCleanupTests(unittest.TestCase):
                 source.write_bytes(b"original")
                 converted.write_bytes(b"converted")
 
-                def post(*args, **kwargs):
+                # Defaults bind this iteration's values (ruff B023).
+                def post(*args, converted=converted, response=response, **kwargs):
                     self.assertTrue(converted.exists())
                     self.assertEqual(kwargs["json"]["media_path"], str(converted))
                     if isinstance(response, Exception):

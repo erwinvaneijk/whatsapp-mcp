@@ -52,7 +52,7 @@ class TestReactToMessage:
         mock_response.json.return_value = {"success": True, "message": "Reaction removed"}
         mock_post.return_value = mock_response
 
-        success, message = react_to_message(
+        success, _ = react_to_message(
             message_id="ABC123", chat_jid="14699991654@s.whatsapp.net", emoji=""
         )
 

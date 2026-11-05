@@ -57,13 +57,12 @@ def convert_to_opus_ogg(input_file, output_file=None, bitrate="32k", sample_rate
     ]
 
     try:
-        # Run the ffmpeg command and capture output
-        process = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True
-        )
+        subprocess.run(cmd, capture_output=True, text=True, check=True)
         return output_file
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to convert audio. You likely need to install ffmpeg {e.stderr}")
+        raise RuntimeError(
+            f"Failed to convert audio. You likely need to install ffmpeg {e.stderr}"
+        ) from e
 
 
 def convert_to_opus_ogg_temp(input_file, bitrate="32k", sample_rate=24000, directory=None):
@@ -83,18 +82,17 @@ def convert_to_opus_ogg_temp(input_file, bitrate="32k", sample_rate=24000, direc
         RuntimeError: If the ffmpeg conversion fails
     """
     # Create a temporary file with .ogg extension
-    temp_file = tempfile.NamedTemporaryFile(suffix=".ogg", delete=False, dir=directory)
-    temp_file.close()
+    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False, dir=directory) as temp_file:
+        temp_path = temp_file.name
 
     try:
-        # Convert the audio
-        convert_to_opus_ogg(input_file, temp_file.name, bitrate, sample_rate)
-        return temp_file.name
-    except Exception as e:
+        convert_to_opus_ogg(input_file, temp_path, bitrate, sample_rate)
+        return temp_path
+    except Exception:
         # Clean up the temporary file if conversion fails
-        if os.path.exists(temp_file.name):
-            os.unlink(temp_file.name)
-        raise e
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        raise
 
 
 if __name__ == "__main__":

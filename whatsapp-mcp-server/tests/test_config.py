@@ -110,6 +110,7 @@ def test_example_file_is_valid():
     example = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", "..", "config.example.yaml"
     )
-    values = config.parse_config(open(example).read())
+    with open(example, encoding="utf-8") as f:
+        values = config.parse_config(f.read())
     assert values.get("WHATSAPP_BRIDGE_TOKEN", "") == ""
     assert set(values) <= set(config.SETTINGS.values())

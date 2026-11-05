@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os.path
 import re
@@ -215,11 +216,8 @@ def get_sender_name(sender_jid: str) -> str:
 
         # If no result, try looking for the number within JIDs
         if not result:
-            # Extract the phone number part if it's a JID
-            if "@" in sender_jid:
-                phone_part = sender_jid.split("@")[0]
-            else:
-                phone_part = sender_jid
+            # The phone number part if it's a JID
+            phone_part = sender_jid.split("@")[0]
 
             cursor.execute(
                 """
@@ -233,10 +231,7 @@ def get_sender_name(sender_jid: str) -> str:
 
             result = cursor.fetchone()
 
-        if result and result[0]:
-            stored = result[0]
-        else:
-            stored = None
+        stored = result[0] if result and result[0] else None
         display_name, _, _ = _make_resolvers()
         return display_name(sender_jid, stored) or sender_jid
 
@@ -331,7 +326,7 @@ def _moment(value: str, name: str) -> str:
         raise ValueError(
             f"Invalid date format for '{name}': {value}. Use an ISO-8601 date, or date and time, "
             "for example 2026-11-04 or 2026-11-04T21:00:00+01:00."
-        )
+        ) from None
     if moment.tzinfo is None:
         moment = moment.astimezone()  # local time
     return moment.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -634,7 +629,7 @@ def list_chats(
         # Build base query
         query_parts = [
             """
-            SELECT 
+            SELECT
                 chats.jid,
                 display_name(chats.jid, chats.name),
                 chats.last_message_time,
@@ -727,11 +722,11 @@ def search_contacts(query: str) -> list[Contact]:
 
         cursor.execute(
             """
-            SELECT DISTINCT 
+            SELECT DISTINCT
                 jid,
                 display_name(jid, name) AS resolved_name
             FROM chats
-            WHERE 
+            WHERE
                 (LOWER(display_name(jid, name)) LIKE LOWER(?) OR LOWER(jid) LIKE LOWER(?) OR jid_matches(jid, ?))
                 AND jid NOT LIKE '%@g.us'
             ORDER BY resolved_name, jid
@@ -834,7 +829,7 @@ def get_last_interaction(jid: str) -> str | None:
 
         cursor.execute(
             f"""
-            SELECT 
+            SELECT
                 m.timestamp,
                 m.sender,
                 display_name(c.jid, c.name),
@@ -887,7 +882,7 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> Chat | None:
         cursor = conn.cursor()
 
         query = """
-            SELECT 
+            SELECT
                 c.jid,
                 display_name(c.jid, c.name),
                 c.last_message_time,
@@ -1133,11 +1128,9 @@ def send_audio_message(recipient: str, media_path: str) -> tuple[bool, str]:
         return False, f"Unexpected error: {e!s}"
     finally:
         if converted_path is not None:
-            try:
+            # Cleanup must not replace the bridge's send result.
+            with contextlib.suppress(OSError):
                 os.unlink(converted_path)
-            except OSError:
-                # Cleanup must not replace the bridge's send result.
-                pass
 
 
 def react_to_message(message_id: str, chat_jid: str, emoji: str) -> tuple[bool, str]:

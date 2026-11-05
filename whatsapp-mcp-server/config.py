@@ -94,7 +94,7 @@ def load_config() -> Path | None:
         info = path.stat()
     except FileNotFoundError:
         if required:
-            raise ConfigError(f"configuration file {path} does not exist")
+            raise ConfigError(f"configuration file {path} does not exist") from None
         return None
     # The file holds the bridge token: refuse it when others can read or
     # change it. Windows permissions work differently; skip there.
