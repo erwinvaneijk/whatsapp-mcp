@@ -82,7 +82,7 @@ Same file, same environment variables, same rules. Today: `whatsapp-bridge/confi
 
 ## Bridge: WhatsApp
 
-Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tested first in the phase 1 go/no-go test.
+Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tested first in the phase 1 go/no-go test; its results are in [phase1.md](phase1.md).
 
 | ID | Feature | Check | Status | Notes |
 |---|---|---|---|---|

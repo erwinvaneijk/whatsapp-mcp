@@ -1,6 +1,6 @@
 # 1.0: rewrite in Rust
 
-Status: phase 0 done. Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
+Status: phase 0 done; phase 1 in progress ([checklist and results](phase1.md)). Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
 
 ## Goal
 
