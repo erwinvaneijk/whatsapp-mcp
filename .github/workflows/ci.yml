@@ -37,7 +37,7 @@ jobs:
         run: go test -tags sqlite_fts5 -timeout 300s ./...
 
   python:
-    name: Python tests
+    name: Python lint and tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,7 +48,13 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
 
-      # Uses the versions pinned in uv.lock (Python 3.11+, mcp 2.x).
+      # Uses the versions pinned in uv.lock (Python 3.11+, mcp 2.x, ruff).
+      - name: Check formatting
+        run: uv run --locked ruff format --check --diff
+
+      - name: Lint
+        run: uv run --locked ruff check --output-format=github
+
       - name: Run tests
         env:
           PYTHONPATH: .

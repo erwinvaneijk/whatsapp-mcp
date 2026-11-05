@@ -10,3 +10,30 @@ dependencies = [
     "pyyaml>=6.0",
     "requests>=2.32.3",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.3",
+]
+
+# Format with `uv run ruff format`, lint with `uv run ruff check --fix`.
+# CI fails when either would change something.
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E", "W", # pycodestyle
+    "F",      # pyflakes
+    "I",      # import order
+    "B",      # likely bugs (bugbear)
+    "UP",     # modern syntax for the supported Python versions
+    "SIM",    # simplifications
+    "RUF",    # ruff's own checks
+]
+# The formatter wraps code; long strings and docstrings may stay long.
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+# Keep `from x import (a as b, c as d)` together instead of one block per name.
+combine-as-imports = true

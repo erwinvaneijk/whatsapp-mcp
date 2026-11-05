@@ -46,22 +46,26 @@ class FTSSearchTests(unittest.TestCase):
             setup(conn)
             conn.commit()
             conn.close()
-            with patch.object(whatsapp, "MESSAGES_DB_PATH", db), \
-                 patch.object(whatsapp, "WHATSAPP_DB_PATH", str(Path(d) / "missing.db")):
+            with (
+                patch.object(whatsapp, "MESSAGES_DB_PATH", db),
+                patch.object(whatsapp, "WHATSAPP_DB_PATH", str(Path(d) / "missing.db")),
+            ):
                 return str(whatsapp.list_messages(query=query, include_context=False))
 
     def test_fts_prefix_match(self):
         def setup(conn):
             conn.executescript(FTS + TRIGGER)
             insert(conn, "m1", "team meeting at noon")
+
         self.assertIn("team meeting", self.search(setup, "meet"))
 
     def test_fts_query_syntax_is_literal(self):
         def setup(conn):
             conn.executescript(FTS + TRIGGER)
             insert(conn, "m1", "cats AND dogs")
+
         # Unquoted, AND/NEAR or a stray " would be FTS5 syntax or an error.
-        self.assertIn("cats AND dogs", self.search(setup, 'cats AND dogs'))
+        self.assertIn("cats AND dogs", self.search(setup, "cats AND dogs"))
         self.search(setup, 'say "hi')  # must not raise
 
     def test_stale_index_is_not_used(self):
@@ -70,11 +74,13 @@ class FTSSearchTests(unittest.TestCase):
         def setup(conn):
             conn.executescript(FTS)
             insert(conn, "m1", "added after the triggers were dropped")
+
         self.assertIn("triggers were dropped", self.search(setup, "dropped"))
 
     def test_no_fts_table_uses_like(self):
         def setup(conn):
             insert(conn, "m1", "plain substring search")
+
         self.assertIn("plain substring", self.search(setup, "substr"))
 
 

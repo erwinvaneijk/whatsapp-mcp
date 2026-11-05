@@ -16,7 +16,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-import whatsapp  # noqa: E402
+import whatsapp
 
 CHAT = "123@g.us"
 DM = "31612345678@s.whatsapp.net"
@@ -80,12 +80,15 @@ def server(tmp_path, monkeypatch):
     monkeypatch.setattr(whatsapp, "WHATSAPP_DB_PATH", str(tmp_path / "missing.db"))
     monkeypatch.setattr(whatsapp, "MEDIA_DIR", str(media))
     monkeypatch.setattr(whatsapp, "BRIDGE_TOKEN", "t" * 32)
-    bridge = Mock(status_code=200, json=lambda: {"success": True, "message": "ok", "path": "/tmp/x.jpg"})
+    bridge = Mock(
+        status_code=200, json=lambda: {"success": True, "message": "ok", "path": "/tmp/x.jpg"}
+    )
     monkeypatch.setattr(whatsapp.requests, "post", Mock(return_value=bridge))
 
     monkeypatch.delenv("WHATSAPP_MCP_READ_ONLY", raising=False)
     sys.modules.pop("main", None)
     import main
+
     return main.mcp
 
 
