@@ -49,7 +49,7 @@ Fill in one result per platform:
 | # | Score sheet | Test | How | macOS | Linux | Windows | Notes |
 |---|---|---|---|---|---|---|---|
 | 1 | W02 | Link with a QR code | Start without `--pair-phone`, scan the QR code | ✅ | | | Linked and connected within seconds. |
-| 2 | W03 | Link with a pairing code | Delete `store/`, start with `--pair-phone`, enter the code on the phone | | | | Not done yet. The first try used the national format (06…); WhatsApp refused it without a reason and the program fell back to a QR code. The program now refuses a number that starts with 0. Redo with the country code (316…). |
+| 2 | W03 | Link with a pairing code | Delete `store/`, start with `--pair-phone`, enter the code on the phone | | | | With the country code, WhatsApp gives a code. Still to confirm: entering it on the phone gives `PAIRED`. The first try used 06… and was refused without a reason; the program now refuses that format. It also hides the QR code when pairing by code, and sends the real OS name (the library's default name made it warn and fall back to "Linux"). |
 | 3 | W04 | Session kept after a restart | `quit`, start again: no QR code, `CONNECTED` | ✅ | | | No QR code after `quit`; `CONNECTED` within a second. |
 | 4 | W01 | Reconnect after network loss | Turn Wi-Fi off for a minute, then on: `DISCONNECTED`, then `CONNECTED` | | | | Not done yet. |
 | 5 | W06 | History sync on first link | After linking: `HISTORY` lines; `stats` shows conversations and messages | ✅ | | | First link on a new account: 1 conversation, 2 messages. Second link, after the tests above: 2 conversations, 24 messages, 9 with media. History messages in a direct chat have no sender; phase 5 must take it from the chat or from `from_me`. |
@@ -75,7 +75,7 @@ Fill in one result per platform:
 
 Linking, restarting, history sync, receiving and downloading work. Nothing has failed so far. The send commands, the network test, group names and media retry still need a run.
 
-- **Pairing code:** WhatsApp refuses a number without its country code and gives no reason. The program now checks the format before it asks.
+- **Pairing code:** WhatsApp refuses a number without its country code and gives no reason; with it, a code arrives. The program now checks the format before it asks. Phase 4 should check `pair_phone` the same way.
 - **Sender in history:** history messages in a direct chat leave the sender empty. The bridge stores one, so phase 5 has to fill it in from the chat or `from_me`.
 - **Own messages:** messages the test account sends from its own phone arrive as live messages with `from_me=true`. The bridge needs that to store sent messages (W12).
 - **Protocol messages:** right after linking, the phone sends a few protocol messages (app state and history notices). They show as `protocol`; phase 5 must not store them as chat messages.

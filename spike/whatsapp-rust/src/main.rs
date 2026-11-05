@@ -763,6 +763,15 @@ fn pair_phone(raw: &str) -> Result<String> {
     Ok(digits)
 }
 
+/// The OS name for the pairing request, in a form the server accepts.
+fn display_os() -> &'static str {
+    match std::env::consts::OS {
+        "macos" => "Mac OS",
+        "windows" => "Windows",
+        _ => "Linux",
+    }
+}
+
 /// Refuse arguments the program does not know, so a typo is not silently ignored.
 fn check_args(args: &[String]) -> Result<()> {
     let mut rest = args.iter().skip(1);
@@ -809,12 +818,20 @@ async fn main() -> Result<()> {
         stats: Stats::default(),
     });
 
+    let pairing = pair.is_some();
     let db = store.join("whatsapp.db");
     let backend = SqliteStore::open(db.to_str().context("store path is not UTF-8")?).await?;
     let handler_state = Arc::clone(&state);
     let mut builder = Bot::builder()
         .with_backend(backend)
-        .on_qr_code(|code, _timeout| async move { print_qr(&code) })
+        .on_qr_code(move |code, _timeout| async move {
+            // With a pairing code the QR code is noise; the code follows.
+            if pairing {
+                out!("waiting for the pairing code (QR code not shown)");
+            } else {
+                print_qr(&code);
+            }
+        })
         .on_pair_code(|code, timeout| async move {
             out!(
                 "PAIR CODE {code} (valid {}s): WhatsApp > Linked devices > Link with phone number",
@@ -828,6 +845,9 @@ async fn main() -> Result<()> {
     if let Some(phone) = pair {
         builder = builder.with_pair_code(PairCodeOptions {
             phone_number: phone,
+            // The phone shows this OS. Left unset, the library sends its
+            // default name, warns, and falls back to "Linux".
+            display_os: Some(display_os().to_string()),
             ..Default::default()
         });
     }
