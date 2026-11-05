@@ -1,0 +1,33 @@
+{
+  "args": {
+    "message": "not allowed",
+    "recipient": "31699999999"
+  },
+  "bridge_requests": [
+    {
+      "content_type": "application/json",
+      "json": {
+        "message": "not allowed",
+        "recipient": "31699999999"
+      },
+      "method": "POST",
+      "path": "/api/send",
+      "token": "ok"
+    }
+  ],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"success\": false,\n  \"message\": \"Error: HTTP 403 - {\\\"success\\\":false,\\\"message\\\":\\\"This chat is not in WHATSAPP_SEND_ALLOWLIST, so the bridge will not send to it.\\\"}\\n\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "message": "Error: HTTP 403 - {\"success\":false,\"message\":\"This chat is not in WHATSAPP_SEND_ALLOWLIST, so the bridge will not send to it.\"}\n",
+      "success": false
+    }
+  },
+  "tool": "send_message"
+}

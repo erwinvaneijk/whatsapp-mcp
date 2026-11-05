@@ -1,0 +1,33 @@
+{
+  "args": {
+    "message": "Hello from the parity test",
+    "recipient": "31600000001"
+  },
+  "bridge_requests": [
+    {
+      "content_type": "application/json",
+      "json": {
+        "message": "Hello from the parity test",
+        "recipient": "31600000001"
+      },
+      "method": "POST",
+      "path": "/api/send",
+      "token": "ok"
+    }
+  ],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"success\": true,\n  \"message\": \"Message sent\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "message": "Message sent",
+      "success": true
+    }
+  },
+  "tool": "send_message"
+}

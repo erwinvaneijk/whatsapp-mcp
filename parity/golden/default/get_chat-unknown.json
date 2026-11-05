@@ -1,0 +1,15 @@
+{
+  "args": {
+    "chat_jid": "31699999999@s.whatsapp.net"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": null
+    }
+  },
+  "tool": "get_chat"
+}

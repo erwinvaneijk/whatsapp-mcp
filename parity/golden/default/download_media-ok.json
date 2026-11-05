@@ -1,0 +1,34 @@
+{
+  "args": {
+    "chat_jid": "31600000001@s.whatsapp.net",
+    "message_id": "3EB0A0000000000000000004"
+  },
+  "bridge_requests": [
+    {
+      "content_type": "application/json",
+      "json": {
+        "chat_jid": "31600000001@s.whatsapp.net",
+        "message_id": "3EB0A0000000000000000004"
+      },
+      "method": "POST",
+      "path": "/api/download",
+      "token": "ok"
+    }
+  ],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"success\": true,\n  \"message\": \"Media downloaded successfully\",\n  \"file_path\": \"<STORE>/31600000001@s.whatsapp.net/IMG-20261104-0001.jpg\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "file_path": "<STORE>/31600000001@s.whatsapp.net/IMG-20261104-0001.jpg",
+      "message": "Media downloaded successfully",
+      "success": true
+    }
+  },
+  "tool": "download_media"
+}

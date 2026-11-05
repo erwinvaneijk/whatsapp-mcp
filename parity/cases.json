@@ -1,0 +1,145 @@
+{
+  "_comment": "Parity cases: see README.md. Each profile starts one MCP server; its cases run in order against it. The tool list and server instructions are recorded for every profile.",
+  "profiles": {
+    "default": {
+      "description": "Normal setup: token, media folder, full-text search, Amsterdam time.",
+      "cases": {
+        "search_contacts-name": {"tool": "search_contacts", "args": {"query": "maria"}},
+        "search_contacts-number": {"tool": "search_contacts", "args": {"query": "3160000000"}},
+        "search_contacts-lid-number": {"tool": "search_contacts", "args": {"query": "31600000002"}},
+        "search_contacts-business": {"tool": "search_contacts", "args": {"query": "bakery"}},
+        "search_contacts-none": {"tool": "search_contacts", "args": {"query": "zzz-no-such-contact"}},
+
+        "list_messages-defaults": {"tool": "list_messages", "args": {}},
+        "list_messages-no-context": {"tool": "list_messages", "args": {"include_context": false, "limit": 5}},
+        "list_messages-chat": {"tool": "list_messages", "args": {"chat_jid": "31600000001@s.whatsapp.net", "include_context": false}},
+        "list_messages-group-page0": {"tool": "list_messages", "args": {"chat_jid": "120363000000000001@g.us", "limit": 4, "page": 0, "include_context": false}},
+        "list_messages-group-page1": {"tool": "list_messages", "args": {"chat_jid": "120363000000000001@g.us", "limit": 4, "page": 1, "include_context": false}},
+        "list_messages-sender": {"tool": "list_messages", "args": {"sender_phone_number": "31600000001", "include_context": false}},
+        "list_messages-sender-lid": {"tool": "list_messages", "args": {"sender_phone_number": "31600000002", "include_context": false}},
+        "list_messages-query-word": {"tool": "list_messages", "args": {"query": "meeting", "include_context": false}},
+        "list_messages-query-prefix": {"tool": "list_messages", "args": {"query": "meet", "include_context": false}},
+        "list_messages-query-no-accent": {"tool": "list_messages", "args": {"query": "cafe", "include_context": false}},
+        "list_messages-query-accent": {"tool": "list_messages", "args": {"query": "café", "include_context": false}},
+        "list_messages-query-two-words": {"tool": "list_messages", "args": {"query": "chapter 3", "include_context": false}},
+        "list_messages-query-quote": {"tool": "list_messages", "args": {"query": "a\"b OR", "include_context": false}},
+        "list_messages-query-injection": {"tool": "list_messages", "args": {"query": "instructions", "include_context": false}},
+        "list_messages-query-context": {"tool": "list_messages", "args": {"query": "host", "context_before": 2, "context_after": 2}},
+        "list_messages-after-date": {"tool": "list_messages", "args": {"after": "2026-11-04", "before": "2026-11-05", "include_context": false}},
+        "list_messages-after-offset": {"tool": "list_messages", "args": {"after": "2026-11-04T21:00:00+01:00", "include_context": false}},
+        "list_messages-after-utc": {"tool": "list_messages", "args": {"after": "2026-11-04T20:00:00Z", "include_context": false}},
+        "list_messages-after-naive": {"tool": "list_messages", "args": {"after": "2026-11-04T21:00:00", "include_context": false}},
+        "list_messages-dst-night": {"tool": "list_messages", "args": {"after": "2026-10-25T01:00:00Z", "before": "2026-10-25T02:00:00Z", "include_context": false}},
+        "list_messages-bad-time-only": {"tool": "list_messages", "args": {"after": "21:00"}},
+        "list_messages-bad-word": {"tool": "list_messages", "args": {"before": "yesterday"}},
+        "list_messages-negative-limit": {"tool": "list_messages", "args": {"limit": -1}},
+        "list_messages-empty-page": {"tool": "list_messages", "args": {"chat_jid": "31600000010@s.whatsapp.net"}},
+
+        "list_chats-defaults": {"tool": "list_chats", "args": {}},
+        "list_chats-query-name": {"tool": "list_chats", "args": {"query": "noor"}},
+        "list_chats-query-phone-via-lid": {"tool": "list_chats", "args": {"query": "31600000002"}},
+        "list_chats-sort-name": {"tool": "list_chats", "args": {"sort_by": "name"}},
+        "list_chats-no-last-message": {"tool": "list_chats", "args": {"include_last_message": false}},
+        "list_chats-paging": {"tool": "list_chats", "args": {"limit": 2, "page": 1}},
+        "list_chats-negative-page": {"tool": "list_chats", "args": {"page": -1}},
+
+        "get_chat-contact": {"tool": "get_chat", "args": {"chat_jid": "31600000001@s.whatsapp.net"}},
+        "get_chat-lid": {"tool": "get_chat", "args": {"chat_jid": "200000000000002@lid"}},
+        "get_chat-group-no-last": {"tool": "get_chat", "args": {"chat_jid": "120363000000000002@g.us", "include_last_message": false}},
+        "get_chat-no-messages": {"tool": "get_chat", "args": {"chat_jid": "31600000010@s.whatsapp.net"}},
+        "get_chat-unknown": {"tool": "get_chat", "args": {"chat_jid": "31699999999@s.whatsapp.net"}},
+
+        "get_direct_chat_by_contact-phone": {"tool": "get_direct_chat_by_contact", "args": {"sender_phone_number": "31600000001"}},
+        "get_direct_chat_by_contact-lid": {"tool": "get_direct_chat_by_contact", "args": {"sender_phone_number": "31600000002"}},
+        "get_direct_chat_by_contact-unknown": {"tool": "get_direct_chat_by_contact", "args": {"sender_phone_number": "31699999999"}},
+
+        "get_contact_chats-phone": {"tool": "get_contact_chats", "args": {"jid": "31600000001@s.whatsapp.net"}},
+        "get_contact_chats-lid": {"tool": "get_contact_chats", "args": {"jid": "200000000000002@lid"}},
+        "get_contact_chats-paging": {"tool": "get_contact_chats", "args": {"jid": "31600000001@s.whatsapp.net", "limit": 1, "page": 1}},
+
+        "get_last_interaction-contact": {"tool": "get_last_interaction", "args": {"jid": "31600000001@s.whatsapp.net"}},
+        "get_last_interaction-unknown": {"tool": "get_last_interaction", "args": {"jid": "31699999999@s.whatsapp.net"}},
+
+        "get_message_context-reply": {"tool": "get_message_context", "args": {"message_id": "3EB0A0000000000000000005", "before": 2, "after": 2}},
+        "get_message_context-group": {"tool": "get_message_context", "args": {"message_id": "3EB0D0000000000000000004"}},
+        "get_message_context-unknown": {"tool": "get_message_context", "args": {"message_id": "NO-SUCH-ID"}},
+
+        "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "Hello from the parity test"}},
+        "send_message-reply-mentions": {"tool": "send_message", "args": {"recipient": "120363000000000001@g.us", "message": "@31600000001 agreed", "reply_to_message_id": "3EB0D0000000000000000001", "reply_to_sender_jid": "31600000001@s.whatsapp.net", "mentions": ["31600000001"]}},
+        "send_message-no-recipient": {"tool": "send_message", "args": {"recipient": "", "message": "nobody"}},
+        "send_message-refused": {"tool": "send_message", "args": {"recipient": "31699999999", "message": "not allowed"}, "bridge": {"status": 403, "json": {"success": false, "message": "This chat is not in WHATSAPP_SEND_ALLOWLIST, so the bridge will not send to it."}}},
+        "send_message-bridge-failure": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "fails"}, "bridge": {"status": 500, "json": {"success": false, "message": "Error sending message: not connected"}}},
+        "send_message-bridge-not-json": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "garbled"}, "bridge": {"status": 200, "body": "not json"}},
+
+        "send_file-photo-caption": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "<MEDIA>/photo.jpg", "caption": "Our holiday"}},
+        "send_file-outside-media-dir": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "<WORKSPACE>/outside.txt"}},
+        "send_file-escape-media-dir": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "<MEDIA>/../outside.txt"}},
+        "send_file-relative-path": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "photo.jpg"}},
+        "send_file-missing-file": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "<MEDIA>/missing.jpg"}},
+        "send_file-no-path": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": ""}},
+
+        "send_audio_message-ogg": {"tool": "send_audio_message", "args": {"recipient": "31600000001", "media_path": "<MEDIA>/voice.ogg"}},
+        "send_audio_message-outside-media-dir": {"tool": "send_audio_message", "args": {"recipient": "31600000001", "media_path": "<WORKSPACE>/outside.txt"}},
+
+        "download_media-ok": {"tool": "download_media", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net"}, "bridge": {"status": 200, "json": {"success": true, "message": "Successfully downloaded image media", "filename": "IMG-20261104-0001.jpg", "path": "<STORE>/31600000001@s.whatsapp.net/IMG-20261104-0001.jpg"}}},
+        "download_media-failed": {"tool": "download_media", "args": {"message_id": "3EB0A0000000000000000001", "chat_jid": "31600000001@s.whatsapp.net"}, "bridge": {"status": 500, "json": {"success": false, "message": "Failed to download media: message has no media"}}},
+        "download_media-no-id": {"tool": "download_media", "args": {"message_id": "", "chat_jid": "31600000001@s.whatsapp.net"}, "bridge": {"status": 400, "body": "Message ID and Chat JID are required\n"}},
+
+        "react_to_message-add": {"tool": "react_to_message", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net", "emoji": "❤️"}},
+        "react_to_message-remove": {"tool": "react_to_message", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net", "emoji": ""}},
+        "react_to_message-no-id": {"tool": "react_to_message", "args": {"message_id": "", "chat_jid": "31600000001@s.whatsapp.net", "emoji": "👍"}}
+      }
+    },
+    "read_only_env": {
+      "description": "WHATSAPP_MCP_READ_ONLY=1: the send tools are hidden.",
+      "env": {"WHATSAPP_MCP_READ_ONLY": "1"},
+      "cases": {
+        "list_chats-still-works": {"tool": "list_chats", "args": {"limit": 1}}
+      }
+    },
+    "read_only_config": {
+      "description": "read_only in the configuration file instead of the environment.",
+      "config": "read_only: yes\n",
+      "cases": {}
+    },
+    "new_york": {
+      "description": "Server in another time zone: naive times are local to the server.",
+      "tz": "America/New_York",
+      "cases": {
+        "list_messages-after-naive": {"tool": "list_messages", "args": {"after": "2026-11-04T16:00:00", "include_context": false}},
+        "list_messages-after-offset": {"tool": "list_messages", "args": {"after": "2026-11-04T21:00:00+01:00", "include_context": false}},
+        "list_messages-after-date": {"tool": "list_messages", "args": {"after": "2026-11-04", "include_context": false}},
+        "get_last_interaction-contact": {"tool": "get_last_interaction", "args": {"jid": "31600000001@s.whatsapp.net"}}
+      }
+    },
+    "no_fts": {
+      "description": "Database without the full-text index (bridge built without FTS5): search falls back to a scan.",
+      "fts": false,
+      "cases": {
+        "list_messages-query-word": {"tool": "list_messages", "args": {"query": "meeting", "include_context": false}},
+        "list_messages-query-prefix": {"tool": "list_messages", "args": {"query": "meet", "include_context": false}},
+        "list_messages-query-no-accent": {"tool": "list_messages", "args": {"query": "cafe", "include_context": false}},
+        "list_messages-query-inside-word": {"tool": "list_messages", "args": {"query": "eeti", "include_context": false}}
+      }
+    },
+    "bridge_down": {
+      "description": "Nothing listens on the bridge address.",
+      "bridge": "down",
+      "normalize": [{"pattern": "Request error: [^\"]*", "replace": "Request error: <connection refused>"}],
+      "cases": {
+        "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "lost"}},
+        "react_to_message-add": {"tool": "react_to_message", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net", "emoji": "👍"}},
+        "download_media-ok": {"tool": "download_media", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net"}}
+      }
+    },
+    "unconfigured": {
+      "description": "No bridge token and no media folder.",
+      "token": false,
+      "media_dir": false,
+      "cases": {
+        "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "no token"}},
+        "send_file-photo": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "<MEDIA>/photo.jpg"}}
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "args": {
+    "sender_phone_number": "31699999999"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": null
+    }
+  },
+  "tool": "get_direct_chat_by_contact"
+}

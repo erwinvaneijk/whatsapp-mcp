@@ -1,0 +1,21 @@
+{
+  "args": {
+    "chat_jid": "31600000001@s.whatsapp.net",
+    "include_context": false
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "[2026-11-04 22:00:52 +01:00] Chat: Maria Jansen From: Me (reply to 3EB0A0000000000000000004): [Message ID: 3EB0A0000000000000000005] <message_content>Looks great!</message_content>\n[2026-11-04 21:59:00 +01:00] Chat: Maria Jansen From: Maria Jansen: [image - Message ID: 3EB0A0000000000000000004 - Chat JID: 31600000001@s.whatsapp.net] <message_content>Holiday photo, café terrace</message_content>\n[2026-11-04 20:45:00 +00:00] Chat: Maria Jansen From: Maria Jansen: [Message ID: 3EB0A0000000000000000006] <message_content>Sending the holiday photos now</message_content>\n[2026-10-25 02:30:00 +01:00] Chat: Maria Jansen From: Maria Jansen: [Message ID: 3EB0A0000000000000000003] <message_content>Did you get the slides?</message_content>\n[2026-10-24 09:20:00 +02:00] Chat: Maria Jansen From: Me: [Message ID: 3EB0A0000000000000000002] <message_content>Yes, the meeting is at 14:00 in the café.</message_content>\n[2026-10-24 09:15:00 +02:00] Chat: Maria Jansen From: Maria Jansen: [Message ID: 3EB0A0000000000000000001] <message_content>Good morning! Are we still on for the meeting?</message_content>\n",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": "[2026-11-04 22:00:52 +01:00] Chat: Maria Jansen From: Me (reply to 3EB0A0000000000000000004): [Message ID: 3EB0A0000000000000000005] <message_content>Looks great!</message_content>\n[2026-11-04 21:59:00 +01:00] Chat: Maria Jansen From: Maria Jansen: [image - Message ID: 3EB0A0000000000000000004 - Chat JID: 31600000001@s.whatsapp.net] <message_content>Holiday photo, café terrace</message_content>\n[2026-11-04 20:45:00 +00:00] Chat: Maria Jansen From: Maria Jansen: [Message ID: 3EB0A0000000000000000006] <message_content>Sending the holiday photos now</message_content>\n[2026-10-25 02:30:00 +01:00] Chat: Maria Jansen From: Maria Jansen: [Message ID: 3EB0A0000000000000000003] <message_content>Did you get the slides?</message_content>\n[2026-10-24 09:20:00 +02:00] Chat: Maria Jansen From: Me: [Message ID: 3EB0A0000000000000000002] <message_content>Yes, the meeting is at 14:00 in the café.</message_content>\n[2026-10-24 09:15:00 +02:00] Chat: Maria Jansen From: Maria Jansen: [Message ID: 3EB0A0000000000000000001] <message_content>Good morning! Are we still on for the meeting?</message_content>\n"
+    }
+  },
+  "tool": "list_messages"
+}

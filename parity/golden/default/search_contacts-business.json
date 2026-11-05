@@ -1,0 +1,26 @@
+{
+  "args": {
+    "query": "bakery"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"phone_number\": \"31600000011\",\n  \"name\": \"Bakery Delta\",\n  \"jid\": \"31600000011@s.whatsapp.net\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": [
+        {
+          "jid": "31600000011@s.whatsapp.net",
+          "name": "Bakery Delta",
+          "phone_number": "31600000011"
+        }
+      ]
+    }
+  },
+  "tool": "search_contacts"
+}

@@ -59,3 +59,26 @@ jobs:
         env:
           PYTHONPATH: .
         run: uv run --locked --with pytest pytest -v tests
+
+  parity:
+    name: Parity harness
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: parity
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Check formatting
+        run: uv run --locked ruff format --check --diff
+
+      - name: Lint
+        run: uv run --locked ruff check --output-format=github
+
+      # Runs the Python MCP server against the test data and compares every
+      # result with the golden files (see parity/README.md).
+      - name: Compare with golden files
+        run: uv run --locked python run.py

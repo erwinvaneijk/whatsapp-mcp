@@ -70,6 +70,7 @@ Fixes and speed:
 - `fix/mcp2-tool-output-types` — fork fix: with mcp 2.x every read tool failed ("Error executing tool"), because the tools declared a different return type than they returned. Fixed, with a test that calls every tool through the MCP server.
 - `ci/github-actions` — upstream PR [#150](https://github.com/lharries/whatsapp-mcp/pull/150): GitHub Actions builds and tests the bridge (with and without full-text search) and runs the Python tests on every push.
 - `ci/python-ruff` — fork change: [Ruff](https://docs.astral.sh/ruff/) formats and lints the Python code, and CI fails when either finds something. Before committing, run `uv run ruff format && uv run ruff check --fix` in `whatsapp-mcp-server`.
+- `test/parity-harness` — fork change, phase 0 of the [Rust rewrite plan](docs/rust-1.0/plan.md): [`parity/`](parity/README.md) runs every MCP tool against invented test data and a fake bridge, and CI compares the results with recorded golden files. [docs/rust-1.0/interface.md](docs/rust-1.0/interface.md) describes everything 1.0 must keep.
 - `fix/gitignore-binary` — upstream PR [#349](https://github.com/lharries/whatsapp-mcp/pull/349): git ignores the compiled bridge program.
 - `fix/sqlite-indexes` — upstream PR [#279](https://github.com/lharries/whatsapp-mcp/pull/279): database indexes for faster message and chat queries.
 - `fix/sqlite-wal` — upstream PR [#393](https://github.com/lharries/whatsapp-mcp/pull/393): faster history sync and WAL mode for the databases.

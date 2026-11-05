@@ -1,0 +1,22 @@
+{
+  "args": {
+    "after": "2026-10-25T01:00:00Z",
+    "before": "2026-10-25T02:00:00Z",
+    "include_context": false
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "[2026-10-25 02:30:00 +01:00] Chat: Maria Jansen From: Maria Jansen: [Message ID: 3EB0A0000000000000000003] <message_content>Did you get the slides?</message_content>\n",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": "[2026-10-25 02:30:00 +01:00] Chat: Maria Jansen From: Maria Jansen: [Message ID: 3EB0A0000000000000000003] <message_content>Did you get the slides?</message_content>\n"
+    }
+  },
+  "tool": "list_messages"
+}

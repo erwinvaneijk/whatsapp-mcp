@@ -1,6 +1,6 @@
 # 1.0: rewrite in Rust
 
-Status: draft, for discussion. Progress is tracked in the [score sheet](scoresheet.md).
+Status: phase 0 done. Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
 
 ## Goal
 

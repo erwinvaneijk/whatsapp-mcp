@@ -1,0 +1,22 @@
+{
+  "args": {
+    "media_path": "photo.jpg",
+    "recipient": "31600000001"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"success\": false,\n  \"message\": \"Media path must be an absolute path inside WHATSAPP_MEDIA_DIR\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "message": "Media path must be an absolute path inside WHATSAPP_MEDIA_DIR",
+      "success": false
+    }
+  },
+  "tool": "send_file"
+}

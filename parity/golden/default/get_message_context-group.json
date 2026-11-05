@@ -1,0 +1,122 @@
+{
+  "args": {
+    "message_id": "3EB0D0000000000000000004"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"message\": {\n    \"timestamp\": \"2026-11-02T19:03:00+01:00\",\n    \"sender\": \"31600000000\",\n    \"content\": \"<message_content>I can host</message_content>\",\n    \"is_from_me\": true,\n    \"chat_jid\": \"120363000000000001@g.us\",\n    \"id\": \"3EB0D0000000000000000004\",\n    \"chat_name\": \"Book club\",\n    \"media_type\": \"\",\n    \"quoted_message_id\": \"3EB0D0000000000000000003\"\n  },\n  \"before\": [\n    {\n      \"timestamp\": \"2026-11-02T19:02:00+01:00\",\n      \"sender\": \"31600000009\",\n      \"content\": \"<message_content>Who is hosting?</message_content>\",\n      \"is_from_me\": false,\n      \"chat_jid\": \"120363000000000001@g.us\",\n      \"id\": \"3EB0D0000000000000000003\",\n      \"chat_name\": \"Book club\",\n      \"media_type\": \"\",\n      \"quoted_message_id\": null\n    },\n    {\n      \"timestamp\": \"2026-11-02T19:01:00+01:00\",\n      \"sender\": \"200000000000002@lid\",\n      \"content\": \"<message_content>I'll bring snacks</message_content>\",\n      \"is_from_me\": false,\n      \"chat_jid\": \"120363000000000001@g.us\",\n      \"id\": \"3EB0D0000000000000000002\",\n      \"chat_name\": \"Book club\",\n      \"media_type\": \"\",\n      \"quoted_message_id\": null\n    },\n    {\n      \"timestamp\": \"2026-11-02T19:00:00+01:00\",\n      \"sender\": \"31600000001\",\n      \"content\": \"<message_content>Next meeting: chapters 3 to 5</message_content>\",\n      \"is_from_me\": false,\n      \"chat_jid\": \"120363000000000001@g.us\",\n      \"id\": \"3EB0D0000000000000000001\",\n      \"chat_name\": \"Book club\",\n      \"media_type\": \"\",\n      \"quoted_message_id\": null\n    }\n  ],\n  \"after\": [\n    {\n      \"timestamp\": \"2026-11-02T19:04:00+01:00\",\n      \"sender\": \"31600000001\",\n      \"content\": \"<message_content></message_content>\",\n      \"is_from_me\": false,\n      \"chat_jid\": \"120363000000000001@g.us\",\n      \"id\": \"3EB0D0000000000000000005\",\n      \"chat_name\": \"Book club\",\n      \"media_type\": \"audio\",\n      \"quoted_message_id\": null\n    },\n    {\n      \"timestamp\": \"2026-11-02T19:05:00+01:00\",\n      \"sender\": \"31600000003\",\n      \"content\": \"<message_content>[poll: Which evening? (Friday, Saturday)]</message_content>\",\n      \"is_from_me\": false,\n      \"chat_jid\": \"120363000000000001@g.us\",\n      \"id\": \"3EB0D0000000000000000006\",\n      \"chat_name\": \"Book club\",\n      \"media_type\": \"\",\n      \"quoted_message_id\": null\n    },\n    {\n      \"timestamp\": \"2026-11-02T19:06:00+01:00\",\n      \"sender\": \"31600000001\",\n      \"content\": \"<message_content>Chapter 3 is long</message_content>\",\n      \"is_from_me\": false,\n      \"chat_jid\": \"120363000000000001@g.us\",\n      \"id\": \"3EB0D0000000000000000007\",\n      \"chat_name\": \"Book club\",\n      \"media_type\": \"\",\n      \"quoted_message_id\": null\n    },\n    {\n      \"timestamp\": \"2026-11-02T19:07:00+01:00\",\n      \"sender\": \"200000000000002@lid\",\n      \"content\": \"<message_content>Chapter 4 is better</message_content>\",\n      \"is_from_me\": false,\n      \"chat_jid\": \"120363000000000001@g.us\",\n      \"id\": \"3EB0D0000000000000000008\",\n      \"chat_name\": \"Book club\",\n      \"media_type\": \"\",\n      \"quoted_message_id\": null\n    },\n    {\n      \"timestamp\": \"2026-11-02T19:08:00+01:00\",\n      \"sender\": \"31600000009\",\n      \"content\": \"<message_content>[edited] Who is hosting this time?</message_content>\",\n      \"is_from_me\": false,\n      \"chat_jid\": \"120363000000000001@g.us\",\n      \"id\": \"3EB0D0000000000000000009\",\n      \"chat_name\": \"Book club\",\n      \"media_type\": \"\",\n      \"quoted_message_id\": null\n    }\n  ]\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "after": [
+        {
+          "chat_jid": "120363000000000001@g.us",
+          "chat_name": "Book club",
+          "content": "<message_content></message_content>",
+          "id": "3EB0D0000000000000000005",
+          "is_from_me": false,
+          "media_type": "audio",
+          "quoted_message_id": null,
+          "sender": "31600000001",
+          "timestamp": "2026-11-02T19:04:00+01:00"
+        },
+        {
+          "chat_jid": "120363000000000001@g.us",
+          "chat_name": "Book club",
+          "content": "<message_content>[poll: Which evening? (Friday, Saturday)]</message_content>",
+          "id": "3EB0D0000000000000000006",
+          "is_from_me": false,
+          "media_type": "",
+          "quoted_message_id": null,
+          "sender": "31600000003",
+          "timestamp": "2026-11-02T19:05:00+01:00"
+        },
+        {
+          "chat_jid": "120363000000000001@g.us",
+          "chat_name": "Book club",
+          "content": "<message_content>Chapter 3 is long</message_content>",
+          "id": "3EB0D0000000000000000007",
+          "is_from_me": false,
+          "media_type": "",
+          "quoted_message_id": null,
+          "sender": "31600000001",
+          "timestamp": "2026-11-02T19:06:00+01:00"
+        },
+        {
+          "chat_jid": "120363000000000001@g.us",
+          "chat_name": "Book club",
+          "content": "<message_content>Chapter 4 is better</message_content>",
+          "id": "3EB0D0000000000000000008",
+          "is_from_me": false,
+          "media_type": "",
+          "quoted_message_id": null,
+          "sender": "200000000000002@lid",
+          "timestamp": "2026-11-02T19:07:00+01:00"
+        },
+        {
+          "chat_jid": "120363000000000001@g.us",
+          "chat_name": "Book club",
+          "content": "<message_content>[edited] Who is hosting this time?</message_content>",
+          "id": "3EB0D0000000000000000009",
+          "is_from_me": false,
+          "media_type": "",
+          "quoted_message_id": null,
+          "sender": "31600000009",
+          "timestamp": "2026-11-02T19:08:00+01:00"
+        }
+      ],
+      "before": [
+        {
+          "chat_jid": "120363000000000001@g.us",
+          "chat_name": "Book club",
+          "content": "<message_content>Who is hosting?</message_content>",
+          "id": "3EB0D0000000000000000003",
+          "is_from_me": false,
+          "media_type": "",
+          "quoted_message_id": null,
+          "sender": "31600000009",
+          "timestamp": "2026-11-02T19:02:00+01:00"
+        },
+        {
+          "chat_jid": "120363000000000001@g.us",
+          "chat_name": "Book club",
+          "content": "<message_content>I'll bring snacks</message_content>",
+          "id": "3EB0D0000000000000000002",
+          "is_from_me": false,
+          "media_type": "",
+          "quoted_message_id": null,
+          "sender": "200000000000002@lid",
+          "timestamp": "2026-11-02T19:01:00+01:00"
+        },
+        {
+          "chat_jid": "120363000000000001@g.us",
+          "chat_name": "Book club",
+          "content": "<message_content>Next meeting: chapters 3 to 5</message_content>",
+          "id": "3EB0D0000000000000000001",
+          "is_from_me": false,
+          "media_type": "",
+          "quoted_message_id": null,
+          "sender": "31600000001",
+          "timestamp": "2026-11-02T19:00:00+01:00"
+        }
+      ],
+      "message": {
+        "chat_jid": "120363000000000001@g.us",
+        "chat_name": "Book club",
+        "content": "<message_content>I can host</message_content>",
+        "id": "3EB0D0000000000000000004",
+        "is_from_me": true,
+        "media_type": "",
+        "quoted_message_id": "3EB0D0000000000000000003",
+        "sender": "31600000000",
+        "timestamp": "2026-11-02T19:03:00+01:00"
+      }
+    }
+  },
+  "tool": "get_message_context"
+}

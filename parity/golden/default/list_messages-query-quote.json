@@ -1,0 +1,21 @@
+{
+  "args": {
+    "include_context": false,
+    "query": "a\"b OR"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "No messages to display.",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": "No messages to display."
+    }
+  },
+  "tool": "list_messages"
+}

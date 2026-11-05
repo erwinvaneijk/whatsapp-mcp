@@ -1,6 +1,6 @@
 # 1.0 score sheet
 
-Feature parity between today's code (Go bridge + Python MCP server) and the Rust rewrite. See the [plan](plan.md).
+Feature parity between today's code (Go bridge + Python MCP server) and the Rust rewrite. See the [plan](plan.md) and [the interface to keep](interface.md).
 
 **How to keep it up to date:** every pull request for the rewrite updates the rows it touches, and the totals below. A row moves forward only when its check is in place.
 
@@ -22,7 +22,7 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-05 (plan written, no Rust code yet).
+Last updated: 2026-11-05 (phase 0: parity harness in place, no Rust code yet).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
@@ -31,8 +31,8 @@ Last updated: 2026-11-05 (plan written, no Rust code yet).
 | Bridge: WhatsApp | 17 | 17 | 0 | 0 | 0 | 0 |
 | Bridge: API and security | 7 | 7 | 0 | 0 | 0 | 0 |
 | Bridge: storage | 6 | 6 | 0 | 0 | 0 | 0 |
-| Build, release, docs | 8 | 8 | 0 | 0 | 0 | 0 |
-| **Total** | **70** | **70** | **0** | **0** | **0** | **0** |
+| Build, release, docs | 8 | 7 | 0 | 1 | 0 | 0 |
+| **Total** | **70** | **69** | **0** | **1** | **0** | **0** |
 
 ## MCP interface
 
@@ -59,7 +59,7 @@ What Claude and other MCP clients see. Today: `whatsapp-mcp-server/main.py` and 
 | M17 | Structured output: same JSON fields and types as today | harness | todo | The Python MCP SDK (`mcp` 2.x) validates return types against the declared output schema; the Rust server must declare and return the same schemas. |
 | M18 | Messages from others marked as data (`<message_content>`, tag neutralising, names on one line, read-tool notice) | harness, tests | todo | |
 | M19 | Times shown with UTC offset; `after`/`before` accept ISO-8601, naive times are local | harness, tests | todo | |
-| M20 | Error texts for bad input and an unreachable bridge | harness | todo | |
+| M20 | Error texts for bad input and an unreachable bridge | harness | todo | Decided: today's quirks get better behaviour in Rust, so this row becomes `changed` when done; see [interface.md, section 5](interface.md#5-behaviour-that-improves-in-10). |
 
 ## Configuration
 
@@ -133,7 +133,7 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 
 | ID | Feature | Check | Status | Notes |
 |---|---|---|---|---|
-| R01 | Parity harness and fixture database, passing against today's code | CI | todo | Phase 0. |
+| R01 | Parity harness and fixture database, passing against today's code | CI | done | Phase 0: [`parity/`](../../parity/README.md), 93 golden files, `Parity harness` CI job. |
 | R02 | CI: rustfmt, clippy, tests on macOS, Linux, Windows | CI | todo | |
 | R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | todo | |
 | R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | todo | |

@@ -1,0 +1,17 @@
+{
+  "args": {
+    "jid": "31600000001@s.whatsapp.net",
+    "limit": 1,
+    "page": 1
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": []
+    }
+  },
+  "tool": "get_contact_chats"
+}

@@ -1,0 +1,27 @@
+{
+  "args": {
+    "sender_phone_number": "31600000002"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"jid\": \"200000000000002@lid\",\n  \"name\": \"Tom B.\",\n  \"last_message_time\": \"2026-11-02T08:00:00+01:00\",\n  \"last_message\": \"<message_content>[reaction: ❤️]</message_content>\",\n  \"last_sender\": \"200000000000002\",\n  \"last_is_from_me\": false\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": {
+        "jid": "200000000000002@lid",
+        "last_is_from_me": false,
+        "last_message": "<message_content>[reaction: ❤️]</message_content>",
+        "last_message_time": "2026-11-02T08:00:00+01:00",
+        "last_sender": "200000000000002",
+        "name": "Tom B."
+      }
+    }
+  },
+  "tool": "get_direct_chat_by_contact"
+}
