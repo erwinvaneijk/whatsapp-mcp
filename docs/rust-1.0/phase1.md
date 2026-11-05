@@ -71,6 +71,50 @@ Fill in one result per platform:
 | 19 | W17 | Re-request expired media | `download` on an old photo from history fails; `retry <id>` with the phone online succeeds | | | | `retry` worked on a new photo (re-upload and download in 1 second). Still to do on media that has expired. Messages the program sent itself were not known to `retry`; they are now. |
 | 20 | — | Builds without warnings | `cargo build --release` | ✅ | | | Also passes `cargo clippy -- -D warnings`. |
 
+## Test run, step by step
+
+All 20 items, in an order that works in one session of about 30 minutes. Each platform gets its own run. Before a new platform, remove the old linked devices on the spare phone. The numbers match the checklist.
+
+**1. Linking and connection**
+
+- **1. QR code:** start, scan, then wait for `PAIRED` and `CONNECTED`.
+- **5. History sync:** after linking, `HISTORY` lines appear, and `stats` shows conversations and messages.
+- **3. Restart:** `quit`, then start again. There should be no QR code, just `CONNECTED`.
+- **2. Pairing code:** `rm -rf store`, start with `--pair-phone 316…`, enter the code on the phone, wait for `PAIRED`.
+- **4. Network loss:** start with `--net-log`. Turn the network off for 2 minutes and send a message to the test account meanwhile. Turn it back on: expect a keepalive warning, then `CONNECTED`, then the message.
+
+**2. Receiving** (send from your own phone to the test account)
+
+- **6. Direct and group:** text, directly and in the group.
+- **7. Caption:** a photo with a caption.
+- **8. Other kinds:** a reaction, a poll and a vote on it, a location, a sticker, a voice note and a contact card. Also edit one message (`MESSAGE_EDIT`) and delete another (`REVOKE`).
+- **9. Reply:** a reply on the phone shows `quotes=<id>`.
+- **10. LID map:** every `MSG` line shows `lid=… pn=…`.
+- **11. Names:** `push_name` on `MSG` lines, and `CONTACT` lines appear.
+
+**3. Groups**
+
+- **12. Group info:** `groups` lists the group, and `group <jid>` shows its subject and member count.
+
+**4. Sending** (use `recent` to find IDs)
+
+- **13. Text:** `send 316… hello`.
+- **14. Reply:** `reply <id> text`, directly and in the group.
+- **15. Mention:** `mention <group-jid> 316… @316… hi`. On the phone, the mention should be highlighted.
+- **16. Media:** `image`, `video`, `doc` and `voice` with a file. A voice note must be Opus in Ogg; `ffmpeg -i in.m4a -c:a libopus out.ogg` makes one.
+- **17. Reactions:** `react <id> 👍`, then `unreact <id>`, directly and in the group.
+
+**5. Media**
+
+- **18. Download:** `download <id>` for a photo, a video, a voice note and a document sent from your phone.
+- **19. Expired media:** `download` an old photo from history. When it fails, run `retry <id>` with the phone online. This only works once media has expired, usually after a few weeks. A recent photo only shows that `retry` itself works.
+
+**6. Build**
+
+- **20. Clean build:** `cargo build --release` gives no warnings.
+
+**Still open on macOS:** voice note in 16, voice note and document in 18, and 19.
+
 ## Results
 
 ### macOS, first run (2026-11-05)
