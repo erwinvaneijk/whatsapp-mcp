@@ -46,6 +46,21 @@ struct State {
 }
 
 impl State {
+    /// Remember a message this program sent, so `reply`, `react`, `download`
+    /// and `retry` work on it too.
+    fn remember_sent(&self, id: &str, to: &Jid, message: wa::Message) {
+        self.remember(
+            id,
+            Seen {
+                chat: to.clone(),
+                sender: None,
+                from_me: true,
+                message: Arc::new(message),
+                origin: "sent",
+            },
+        );
+    }
+
     fn remember(&self, id: &str, seen: Seen) {
         let mut map = self.seen.lock().unwrap();
         if map.insert(id.to_string(), seen).is_none() {
@@ -149,8 +164,20 @@ fn describe(state: &State, msg: &wa::Message) -> String {
         parts.push("poll".into());
     } else if base.poll_update_message.is_set() {
         parts.push("poll vote".into());
-    } else if base.protocol_message.is_set() {
-        parts.push("protocol (edit/delete/other)".into());
+    } else if let Some(p) = base.protocol_message.as_option() {
+        // Edits and deletes are protocol messages that point at an earlier one.
+        let kind = p
+            .r#type
+            .as_ref()
+            .map_or_else(|| "unknown".to_string(), |t| format!("{t:?}"));
+        let mut text = format!("protocol {kind}");
+        if let Some(id) = p.key.as_option().and_then(|k| k.id.as_deref()) {
+            text.push_str(&format!(" on {id}"));
+        }
+        if let Some(edited) = p.edited_message.as_option() {
+            text.push_str(&format!(" new: {}", describe(state, edited)));
+        }
+        parts.push(text);
     } else {
         parts.push("other".into());
     }
@@ -361,23 +388,20 @@ async fn command(state: &Arc<State>, client: &Arc<Client>, line: &str) -> Result
         "quit" | "exit" => return Ok(false),
         "send" => {
             let (to, text) = rest.split_once(' ').context("usage: send <to> <text>")?;
-            let sent = client
-                .send_message(parse_jid(to)?, wa::Message::text(text.trim()))
-                .await?;
+            let msg = wa::Message::text(text.trim());
+            let sent = client.send_message(parse_jid(to)?, msg.clone()).await?;
             out!("SENT id={} to={}", sent.message_id, sent.to);
+            state.remember_sent(sent.message_id.as_str(), &sent.to, msg);
         }
         "reply" => {
             let (id, text) = rest.split_once(' ').context("usage: reply <id> <text>")?;
             let seen = state.get(id)?;
             let sender = seen.sender.clone().unwrap_or_else(|| seen.chat.clone());
             let ctx = wacore_quote(id, &sender, &seen.chat, &seen.message);
-            let sent = client
-                .send_message(
-                    seen.chat.clone(),
-                    wa::Message::text_with_context(text.trim(), ctx),
-                )
-                .await?;
+            let msg = wa::Message::text_with_context(text.trim(), ctx);
+            let sent = client.send_message(seen.chat.clone(), msg.clone()).await?;
             out!("SENT reply id={} to={}", sent.message_id, sent.to);
+            state.remember_sent(sent.message_id.as_str(), &sent.to, msg);
         }
         "mention" => {
             let mut it = rest.splitn(3, ' ');
@@ -386,10 +410,10 @@ async fn command(state: &Arc<State>, client: &Arc<Client>, line: &str) -> Result
             };
             let mut ctx = wa::ContextInfo::default();
             ctx.mentioned_jid = vec![parse_jid(number)?.to_string()];
-            let sent = client
-                .send_message(parse_jid(to)?, wa::Message::text_with_context(text, ctx))
-                .await?;
+            let msg = wa::Message::text_with_context(text, ctx);
+            let sent = client.send_message(parse_jid(to)?, msg.clone()).await?;
             out!("SENT mention id={} to={}", sent.message_id, sent.to);
+            state.remember_sent(sent.message_id.as_str(), &sent.to, msg);
         }
         "image" | "video" | "doc" | "voice" => {
             let mut it = rest.splitn(3, ' ');
@@ -398,8 +422,9 @@ async fn command(state: &Arc<State>, client: &Arc<Client>, line: &str) -> Result
             };
             let caption = it.next().unwrap_or("").trim().to_string();
             let msg = upload_media(client, cmd, Path::new(file), caption).await?;
-            let sent = client.send_message(parse_jid(to)?, msg).await?;
+            let sent = client.send_message(parse_jid(to)?, msg.clone()).await?;
             out!("SENT {cmd} id={} to={}", sent.message_id, sent.to);
+            state.remember_sent(sent.message_id.as_str(), &sent.to, msg);
         }
         "react" | "unreact" => {
             let (id, emoji) = match rest.split_once(' ') {
@@ -439,6 +464,9 @@ async fn command(state: &Arc<State>, client: &Arc<Client>, line: &str) -> Result
             retry(state, client, rest, &seen).await?;
         }
         "group" => {
+            if rest.is_empty() {
+                bail!("usage: group <jid>; `groups` lists them");
+            }
             let jid = parse_jid(rest)?;
             let meta = client
                 .groups()
@@ -460,11 +488,17 @@ async fn command(state: &Arc<State>, client: &Arc<Client>, line: &str) -> Result
                 .await
                 .map_err(|e| anyhow!("{e:?}"))?;
             out!("GROUPS {} groups", groups.len());
-            // The overview includes group names: only with --show-content.
-            if state.show_content {
-                for g in groups {
-                    println!("  {g:?}");
-                }
+            // Group names only with --show-content.
+            for g in groups {
+                let members = g
+                    .participant_count
+                    .map_or_else(|| "?".to_string(), |n| n.to_string());
+                let subject = g.subject.as_deref().unwrap_or("");
+                println!(
+                    "  {} participants={members} subject={}",
+                    g.id,
+                    state.content(subject)
+                );
             }
         }
         "lid" => {
