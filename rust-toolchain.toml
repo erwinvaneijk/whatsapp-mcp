@@ -1,0 +1,7 @@
+# The Rust version for the whole workspace. whatsapp-rust needs 1.95 or newer
+# (see rust-version in Cargo.toml); this pins the exact compiler CI and every
+# developer use, so builds and lints are the same everywhere.
+[toolchain]
+channel = "1.99"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

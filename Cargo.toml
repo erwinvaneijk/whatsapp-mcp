@@ -1,0 +1,36 @@
+# Rust rewrite of the bridge and MCP server (docs/rust-1.0/plan.md).
+# The crates live in crates/; see crates/README.md.
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+# The phase 1 test program has its own lock file and toolchain.
+exclude = ["spike"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+repository = "https://github.com/erwinvaneijk/whatsapp-mcp"
+publish = false
+
+[workspace.dependencies]
+whatsapp-mcp-config = { path = "crates/config" }
+whatsapp-mcp-store = { path = "crates/store" }
+whatsapp-mcp-bridge = { path = "crates/bridge" }
+whatsapp-mcp-server = { path = "crates/mcp" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+# `serve` talks MCP over stdout: a stray print would corrupt the protocol.
+# Code that must write to stdout says so with #[allow].
+print_stdout = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
