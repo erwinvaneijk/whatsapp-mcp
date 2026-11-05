@@ -38,6 +38,7 @@ cargo run --release -- --show-content       # also print message text and names 
 | `lid <jid-or-number>` | Look up the LID-to-phone mapping |
 | `recent [n]` | The last messages seen, with their IDs |
 | `stats` | Counters since start: live messages, history sync, contacts |
+| `status` | Whether the client is logged in right now |
 
 ## Checklist
 
@@ -51,7 +52,7 @@ Fill in one result per platform:
 | 1 | W02 | Link with a QR code | Start without `--pair-phone`, scan the QR code | ✅ | | | Linked and connected within seconds. |
 | 2 | W03 | Link with a pairing code | Delete `store/`, start with `--pair-phone`, enter the code on the phone | ✅ | | | Code entered on the phone: `PAIRED` within a minute, then history sync. Needs the country code; a leading `+` is fine. The first try used 06… and was refused without a reason; the program now refuses that format, hides the QR code when pairing by code, and sends the real OS name. |
 | 3 | W04 | Session kept after a restart | `quit`, start again: no QR code, `CONNECTED` | ✅ | | | No QR code after `quit`; `CONNECTED` within a second. |
-| 4 | W01 | Reconnect after network loss | Turn Wi-Fi off for a minute, then on: `DISCONNECTED`, then `CONNECTED` | | | | Not done yet. |
+| 4 | W01 | Reconnect after network loss | Turn Wi-Fi off for 2 minutes (no cable or other network), then on, with `RUST_LOG=warn,Client/Keepalive=debug`: keepalive warnings, then `CONNECTED`; then `status` and a message both ways | | | | First try (1 minute): nothing in the log, no keepalive warning and no `CONNECTED`, so the connection probably never broke. A reconnect the keepalive forces is treated as expected and sends no `DISCONNECTED` event; look for the keepalive warnings and a new `CONNECTED` instead. Redo with the steps in the How column. |
 | 5 | W06 | History sync on first link | After linking: `HISTORY` lines; `stats` shows conversations and messages | ✅ | | | First link on a new account: 1 conversation, 2 messages. Second link, after the tests above: 2 conversations, 24 messages, 9 with media. History messages in a direct chat have no sender; phase 5 must take it from the chat or from `from_me`. |
 | 6 | W05 | Receive text, direct and group | Send from the other phone: `MSG` line with the right chat and sender | ✅ | | | Direct and in a group. Messages sent from the test account's own phone also arrive, with `from_me=true`. |
 | 7 | W07 | Captions | Send a photo with a caption: `image caption=` is not empty | ✅ | | | |
@@ -62,9 +63,9 @@ Fill in one result per platform:
 | 12 | W11 | Group names | `group <jid>` shows the subject (with `--show-content`) and member count; `groups` lists them | ✅ | | | `group <jid>` shows subject, 2 members and LID addressing. `groups` only printed a count; it now lists the JIDs. |
 | 13 | W13 | Send text | `send <your number> hello` arrives on the phone | ✅ | | | Sent to a number and to `+316…`. A mistyped number (one digit short) was also "sent" without an error: the library does not check that the number is on WhatsApp. Text is sent as typed, quotes included. |
 | 14 | W13 | Reply | `reply <id> text` shows as a reply on the phone, also in the group | | | | Direct reply works. Group reply not done yet. |
-| 15 | W13 | Mention | `mention <group> <number> @<number> hi` highlights the mention | | | | Sent to the group. To confirm: the mention is highlighted on the phone. |
+| 15 | W13 | Mention | `mention <group> <number> @<number> hi` highlights the mention | ✅ | | | Highlighted on the phone. |
 | 16 | W14 | Send image, video, document, voice note | Each arrives and opens; the document keeps its name and type | | | | Image (PNG), video (MP4) and document (PDF) sent. Voice note not done yet. |
-| 17 | W15 | React and remove a reaction | `react <id> 👍`, then `unreact <id>`, direct and in the group | | | | React and unreact work in a direct chat; the library also accepted a plain letter as reaction. Group not done yet. |
+| 17 | W15 | React and remove a reaction | `react <id> 👍`, then `unreact <id>`, direct and in the group | | | | React (👍 shown on the phone) and unreact work in a direct chat; the library also accepted a plain letter as reaction. Group not done yet. |
 | 18 | W16 | Download media | `download <id>` for a photo, video, voice note and document from the phone | | | | Photo and video work. Voice note and document not done yet. |
 | 19 | W17 | Re-request expired media | `download` on an old photo from history fails; `retry <id>` with the phone online succeeds | | | | `retry` worked on a new photo (re-upload and download in 1 second). Still to do on media that has expired. Messages the program sent itself were not known to `retry`; they are now. |
 | 20 | — | Builds without warnings | `cargo build --release` | ✅ | | | Also passes `cargo clippy -- -D warnings`. |
@@ -80,6 +81,7 @@ Linking, restarting, history sync, receiving and downloading work. Nothing has f
 - **Own messages:** messages the test account sends from its own phone arrive as live messages with `from_me=true`. The bridge needs that to store sent messages (W12).
 - **App state warning:** after linking by code, the library warned "Initial App State Sync incomplete" and skipped the `regular_low` collection, which holds chat settings such as pinned, muted and archived. Contact names come from another collection and did arrive. The bridge doesn't use those settings; check that the warning goes away after a restart.
 - **Sent to the phone number, stored chat is the LID:** messages sent to `316…` go to the phone-number JID, while the chat with that person is under its LID. W12 needs the bridge's rule: store a sent message in the chat that already exists.
+- **No `DISCONNECTED` on a forced reconnect:** when the keepalive gives up (pings every 15 to 30 seconds, 20 seconds to answer), the library reconnects and treats that as expected, so it sends no `Disconnected` event. The bridge can't rely on that event to notice an outage.
 - **Protocol messages:** right after linking, the phone sends a few protocol messages (app state and history notices). They show as `protocol`; phase 5 must not store them as chat messages.
 
 ## Open items

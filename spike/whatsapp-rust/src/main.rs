@@ -376,6 +376,7 @@ commands:
   lid <jid-or-number>          look up the LID <-> phone number mapping
   recent [n]                   last n messages seen (default 20), with ids
   stats                        counters since start
+  status                       whether the client is logged in right now
   quit";
 
 async fn command(state: &Arc<State>, client: &Arc<Client>, line: &str) -> Result<bool> {
@@ -501,6 +502,10 @@ async fn command(state: &Arc<State>, client: &Arc<Client>, line: &str) -> Result
                 );
             }
         }
+        "status" => out!(
+            "STATUS logged_in={}",
+            if client.is_logged_in() { "yes" } else { "no" }
+        ),
         "lid" => {
             let jid = parse_jid(rest)?;
             match client.get_lid_pn_entry(&jid).await? {
