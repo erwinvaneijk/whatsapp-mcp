@@ -54,6 +54,7 @@ Security:
 - `fix/api-hardening` — upstream PR [#387](https://github.com/lharries/whatsapp-mcp/pull/387): the bridge API listens on `127.0.0.1` only, requires a shared token, only sends files from one folder, and keeps downloads inside `store/`. **Changes setup:** see [Bridge token and media folder](#bridge-token-and-media-folder).
 - `fix/store-permissions` — upstream PR [#389](https://github.com/lharries/whatsapp-mcp/pull/389): `store/` and its databases and media are readable by your user only.
 - `feat/read-only-mode` — upstream PR [#388](https://github.com/lharries/whatsapp-mcp/pull/388): optional [read-only mode](#read-only-mode) that hides the send tools.
+- `docs/security-policy` — fork change: [SECURITY.md](SECURITY.md) explains how to report a security problem privately, through GitHub's private vulnerability reporting.
 
 Fixes and speed:
 
@@ -228,6 +229,8 @@ The bridge and the MCP server read their settings from environment variables, or
 - A file named in `WHATSAPP_MCP_CONFIG` must exist; the default file is optional.
 
 ## Security
+
+Found a security problem? Please report it privately, as described in [SECURITY.md](SECURITY.md), not in a public issue.
 
 ### Bridge token and media folder
 
