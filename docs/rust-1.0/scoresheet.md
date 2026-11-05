@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-05 (phase 2: Rust workspace and CI in place; no features yet).
+Last updated: 2026-11-05 (phase 3: the config crate reads and checks every setting; the bridge and server use it from phases 4 and 5).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
 | MCP interface | 20 | 20 | 0 | 0 | 0 | 0 |
-| Configuration | 12 | 12 | 0 | 0 | 0 | 0 |
+| Configuration | 12 | 0 | 6 | 6 | 0 | 0 |
 | Bridge: WhatsApp | 17 | 17 | 0 | 0 | 0 | 0 |
 | Bridge: API and security | 7 | 7 | 0 | 0 | 0 | 0 |
 | Bridge: storage | 6 | 6 | 0 | 0 | 0 | 0 |
 | Build, release, docs | 9 | 7 | 0 | 2 | 0 | 0 |
-| **Total** | **71** | **69** | **0** | **2** | **0** | **0** |
+| **Total** | **71** | **57** | **6** | **8** | **0** | **0** |
 
 ## MCP interface
 
@@ -67,18 +67,18 @@ Same file, same environment variables, same rules. Today: `whatsapp-bridge/confi
 
 | ID | Feature | Check | Status | Notes |
 |---|---|---|---|---|
-| C01 | File at `~/.config/whatsapp-mcp/config.yaml`, or the path in `WHATSAPP_MCP_CONFIG` (must exist when named) | tests | todo | |
-| C02 | A set environment variable wins; an empty one counts as unset | tests | todo | |
-| C03 | Values keep their exact text (`0612` stays `0612`) | tests | todo | |
-| C04 | `send_allowlist` as a YAML list or a separated string | tests | todo | |
-| C05 | Unknown setting or wrong type is an error with the line number | tests | todo | |
-| C06 | Refuse a file others can read or change (not on Windows) | tests | todo | |
-| C07 | `bridge_token` / `WHATSAPP_BRIDGE_TOKEN`: bridge refuses to start without one (32+ characters) | tests | todo | |
-| C08 | `media_dir` / `WHATSAPP_MEDIA_DIR` | tests | todo | |
-| C09 | `send_allowlist` / `WHATSAPP_SEND_ALLOWLIST`: a bad entry stops the bridge | tests | todo | |
-| C10 | `read_only` / `WHATSAPP_MCP_READ_ONLY` | tests | todo | |
-| C11 | `log_content` / `WHATSAPP_LOG_CONTENT` | tests | todo | |
-| C12 | `pair_phone` / `WHATSAPP_PAIR_PHONE` | tests | todo | |
+| C01 | File at `~/.config/whatsapp-mcp/config.yaml`, or the path in `WHATSAPP_MCP_CONFIG` (must exist when named) | tests | done | `whatsapp-mcp-config`: `Config::load`; tests in `crates/config/tests/load.rs`. `~/` at the start of `WHATSAPP_MCP_CONFIG` means the home folder, as in Python. |
+| C02 | A set environment variable wins; an empty one counts as unset | tests | done | `load.rs`: `environment_wins_and_empty_counts_as_unset`. |
+| C03 | Values keep their exact text (`0612` stays `0612`) | tests | done | Works on the YAML parser's events, so values keep their text; shared cases in `parity/config-cases.json`. |
+| C04 | `send_allowlist` as a YAML list or a separated string | tests | done | Shared cases: block list, flow list, empty list, one line. |
+| C05 | Unknown setting or wrong type is an error with the line number | tests | done | Shared cases check the line number and the name. Stricter than today: a setting given twice, several YAML documents, and YAML aliases are errors too. |
+| C06 | Refuse a file others can read or change (not on Windows) | tests | done | `load.rs`: modes 644, 620 and 604 are refused; not checked on Windows. |
+| C07 | `bridge_token` / `WHATSAPP_BRIDGE_TOKEN`: bridge refuses to start without one (32+ characters) | tests | wip | `Config::bridge_token` refuses fewer than 32 characters. The bridge uses it from phase 5. |
+| C08 | `media_dir` / `WHATSAPP_MEDIA_DIR` | tests | wip | `Config::media_dir`. Used from phase 4. |
+| C09 | `send_allowlist` / `WHATSAPP_SEND_ALLOWLIST`: a bad entry stops the bridge | tests | wip | `SendAllowlist::parse`, with the bridge's rules; shared cases run against Go and Rust. Matching a LID to its phone number stays in the bridge (phase 5). |
+| C10 | `read_only` / `WHATSAPP_MCP_READ_ONLY` | tests | wip | `Config::read_only`. Used by `serve` from phase 4. |
+| C11 | `log_content` / `WHATSAPP_LOG_CONTENT` | tests | wip | `Config::log_content`. Used by the bridge from phase 5. |
+| C12 | `pair_phone` / `WHATSAPP_PAIR_PHONE` | tests | wip | `Config::pair_phone`. Used by the bridge from phase 5. |
 
 ## Bridge: WhatsApp
 

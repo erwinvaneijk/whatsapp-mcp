@@ -71,3 +71,15 @@ The harness starts the server with the command for `--server` (see `SERVERS` in 
 [`adapters/python_server.py`](adapters/python_server.py) does this for the Python server without changing it. The Rust server will get a hidden option for the same purpose.
 
 Time zones are set through `TZ`, so the harness runs on macOS and Linux, not on Windows.
+
+## Configuration cases
+
+[`config-cases.json`](config-cases.json) holds configuration files, send allowlists and yes/no values, each with the result it must give: the values read, or an error with its line number. Three test suites read it:
+
+| Implementation | Test |
+|---|---|
+| Go bridge | [`whatsapp-bridge/config_shared_test.go`](../whatsapp-bridge/config_shared_test.go) |
+| Python server | `test_shared_config_*` in [`whatsapp-mcp-server/tests/test_config.py`](../whatsapp-mcp-server/tests/test_config.py) (no allowlist cases: only the bridge reads it) |
+| Rust config crate | [`crates/config/tests/shared_cases.rs`](../crates/config/tests/shared_cases.rs) |
+
+Add a case here, not in one implementation's tests, so all three keep following the same rules. A rule only one implementation has, such as the stricter Rust checks in [interface.md](../docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10), is tested in that implementation only.

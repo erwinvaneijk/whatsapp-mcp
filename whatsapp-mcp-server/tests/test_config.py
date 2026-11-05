@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 
@@ -114,3 +115,31 @@ def test_example_file_is_valid():
         values = config.parse_config(f.read())
     assert values.get("WHATSAPP_BRIDGE_TOKEN", "") == ""
     assert set(values) <= set(config.SETTINGS.values())
+
+
+# The configuration cases shared with the Go bridge and the Rust config crate
+# (parity/config-cases.json): all three must follow the same rules. The send
+# allowlist is only read by the bridge, so its cases are not run here.
+SHARED = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..", "parity", "config-cases.json"
+)
+with open(SHARED, encoding="utf-8") as _f:
+    SHARED_CASES = json.load(_f)
+
+
+@pytest.mark.parametrize("case", SHARED_CASES["files"], ids=lambda c: c["name"])
+def test_shared_config_files(case):
+    if "error_contains" in case:
+        with pytest.raises(config.ConfigError) as e:
+            config.parse_config(case["yaml"])
+        for fragment in case["error_contains"]:
+            assert fragment in str(e.value)
+    else:
+        assert config.parse_config(case["yaml"]) == case["values"]
+
+
+def test_shared_config_flags():
+    for value in SHARED_CASES["flags"]["on"]:
+        assert config.flag(value), value
+    for value in SHARED_CASES["flags"]["off"]:
+        assert not config.flag(value), value
