@@ -107,11 +107,20 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Runs on the runner, not in the cargo-deny container, so it uses the
+      # toolchain pinned in rust-toolchain.toml.
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
       # Vulnerabilities (RustSec), licenses, duplicate crates and sources;
       # see deny.toml.
-      - uses: EmbarkStudios/cargo-deny-action@v2
-        with:
-          command: check
+      - name: Check dependencies
+        run: cargo deny --locked check
 
   parity:
     name: Parity harness

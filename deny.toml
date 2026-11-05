@@ -16,6 +16,9 @@ ignore = []
 [licenses]
 version = 2
 confidence-threshold = 0.9
+# The list covers what later phases will bring in; no warning for a
+# license no dependency uses yet.
+unused-allowed-license = "allow"
 allow = [
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
@@ -34,6 +37,8 @@ ignore = true
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# Our own crates depend on each other by path, without a version.
+allow-wildcard-paths = true
 
 # Crates only from crates.io. A git dependency (such as a pinned
 # whatsapp-rust commit) must be added here on purpose.
