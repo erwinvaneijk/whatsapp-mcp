@@ -9,14 +9,16 @@ Feature parity between today's code (Go bridge + Python MCP server) and the Rust
 | `todo` | Not started. |
 | `wip` | Being built. |
 | `done` | Built in Rust; its tests (ported or new) pass in CI. |
-| `verified` | `done`, and it passes the parity harness (or for bridge rows, works in a live test with a real account). Also marked by whom and when. |
+| `verified` | `done`, and it passes the parity harness (or for bridge rows, works in a live test with the test account). Also marked by whom and when. |
 | `changed` | Intentionally different from today; the Notes column says how and why. |
 | `dropped` | Not carried over; the Notes column says why. |
 
 The **Check** column says how parity is shown:
 - `harness`: the parity harness compares golden output.
 - `tests`: today's tests are ported.
-- `live`: a manual test with a real account.
+- `live`: a manual test with the WhatsApp test account (a spare number, not a personal one).
+- `CI`: a CI job or check that must pass, such as a build, lint or audit step.
+- `review`: checked by reading, in the pull request that makes the change (for documentation and clean-up).
 
 ## Totals
 
@@ -54,7 +56,7 @@ What Claude and other MCP clients see. Today: `whatsapp-mcp-server/main.py` and 
 | M14 | `send_audio_message`: ffmpeg conversion, temp file cleanup | harness, tests | todo | |
 | M15 | `download_media`: returns the file path | harness | todo | |
 | M16 | `react_to_message`, including removing a reaction | harness | todo | |
-| M17 | Structured output: same JSON fields and types as today | harness | todo | mcp 2.x validates return types; Rust must produce the same schemas. |
+| M17 | Structured output: same JSON fields and types as today | harness | todo | The Python MCP SDK (`mcp` 2.x) validates return types against the declared output schema; the Rust server must declare and return the same schemas. |
 | M18 | Messages from others marked as data (`<message_content>`, tag neutralising, names on one line, read-tool notice) | harness, tests | todo | |
 | M19 | Times shown with UTC offset; `after`/`before` accept ISO-8601, naive times are local | harness, tests | todo | |
 | M20 | Error texts for bad input and an unreachable bridge | harness | todo | |
