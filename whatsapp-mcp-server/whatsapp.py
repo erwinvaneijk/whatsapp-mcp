@@ -1,13 +1,15 @@
+import json
+import os.path
+import re
 import sqlite3
 import sys
-from datetime import datetime, timezone
-import re
-from dataclasses import dataclass, replace
-from typing import Optional, List, Tuple
-import os.path
 import time
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime
+from typing import Optional
+
 import requests
-import json
+
 import audio
 import config
 
@@ -151,9 +153,9 @@ class Message:
     is_from_me: bool
     chat_jid: str
     id: str
-    chat_name: Optional[str] = None
-    media_type: Optional[str] = None
-    quoted_message_id: Optional[str] = None  # set when this message is a reply
+    chat_name: str | None = None
+    media_type: str | None = None
+    quoted_message_id: str | None = None  # set when this message is a reply
 
     def __post_init__(self):
         # SQLite returns 0/1; the declared type (and the MCP output) is a bool.
@@ -163,11 +165,11 @@ class Message:
 @dataclass
 class Chat:
     jid: str
-    name: Optional[str]
-    last_message_time: Optional[datetime]
-    last_message: Optional[str] = None
-    last_sender: Optional[str] = None
-    last_is_from_me: Optional[bool] = None
+    name: str | None
+    last_message_time: datetime | None
+    last_message: str | None = None
+    last_sender: str | None = None
+    last_is_from_me: bool | None = None
 
     def __post_init__(self):
         if self.last_is_from_me is not None:
@@ -182,15 +184,15 @@ class Chat:
 @dataclass
 class Contact:
     phone_number: str
-    name: Optional[str]
+    name: str | None
     jid: str
 
 
 @dataclass
 class MessageContext:
     message: Message
-    before: List[Message]
-    after: List[Message]
+    before: list[Message]
+    after: list[Message]
 
 
 def get_sender_name(sender_jid: str) -> str:
@@ -265,7 +267,7 @@ _TAG_IN_TEXT = re.compile(r"<\s*/?\s*" + UNTRUSTED_TAG + r"\b[^>]*>", re.IGNOREC
 _LINE_BREAKS = re.compile(r"[\s\x00-\x1f\x7f\u2028\u2029]+")
 
 
-def mark_untrusted(text: Optional[str]) -> Optional[str]:
+def mark_untrusted(text: str | None) -> str | None:
     """Wrap text written by someone else in <message_content> tags.
 
     A copy of the tag inside the text is neutralised (its "<" becomes "&lt;"),
@@ -277,7 +279,7 @@ def mark_untrusted(text: Optional[str]) -> Optional[str]:
     return f"<{UNTRUSTED_TAG}>{safe}</{UNTRUSTED_TAG}>"
 
 
-def one_line(name: Optional[str]) -> Optional[str]:
+def one_line(name: str | None) -> str | None:
     """Put a name on one line, so it cannot fake extra lines of output."""
     if name is None:
         return None
@@ -332,7 +334,7 @@ def _moment(value: str, name: str) -> str:
         )
     if moment.tzinfo is None:
         moment = moment.astimezone()  # local time
-    return moment.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")
+    return moment.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S.%f")
 
 
 def format_time(moment: datetime) -> str:
@@ -376,7 +378,7 @@ def format_message(message: Message, show_chat_info: bool = True) -> str:
     return output
 
 
-def format_messages_list(messages: List[Message], show_chat_info: bool = True) -> str:
+def format_messages_list(messages: list[Message], show_chat_info: bool = True) -> str:
     output = ""
     if not messages:
         output += "No messages to display."
@@ -405,11 +407,11 @@ def _fts_ready(cursor) -> bool:
 
 
 def list_messages(
-    after: Optional[str] = None,
-    before: Optional[str] = None,
-    sender_phone_number: Optional[str] = None,
-    chat_jid: Optional[str] = None,
-    query: Optional[str] = None,
+    after: str | None = None,
+    before: str | None = None,
+    sender_phone_number: str | None = None,
+    chat_jid: str | None = None,
+    query: str | None = None,
     limit: int = 20,
     page: int = 0,
     include_context: bool = True,
@@ -617,12 +619,12 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
 
 
 def list_chats(
-    query: Optional[str] = None,
+    query: str | None = None,
     limit: int = 20,
     page: int = 0,
     include_last_message: bool = True,
     sort_by: str = "last_active",
-) -> List[Chat]:
+) -> list[Chat]:
     """Get chats matching the specified criteria."""
     _check_non_negative(limit=limit, page=page)
     try:
@@ -714,7 +716,7 @@ def list_chats(
             conn.close()
 
 
-def search_contacts(query: str) -> List[Contact]:
+def search_contacts(query: str) -> list[Contact]:
     """Search contacts by name or phone number."""
     try:
         conn = _connect()
@@ -760,7 +762,7 @@ def search_contacts(query: str) -> List[Contact]:
             conn.close()
 
 
-def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Chat]:
+def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[Chat]:
     """Get all chats involving the contact.
 
     Args:
@@ -824,7 +826,7 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Chat]:
             conn.close()
 
 
-def get_last_interaction(jid: str) -> Optional[str]:
+def get_last_interaction(jid: str) -> str | None:
     """Get most recent message involving the contact."""
     try:
         conn = _connect()
@@ -878,7 +880,7 @@ def get_last_interaction(jid: str) -> Optional[str]:
             conn.close()
 
 
-def get_chat(chat_jid: str, include_last_message: bool = True) -> Optional[Chat]:
+def get_chat(chat_jid: str, include_last_message: bool = True) -> Chat | None:
     """Get chat metadata by JID."""
     try:
         conn = _connect()
@@ -935,7 +937,7 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> Optional[Chat]
             conn.close()
 
 
-def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Chat]:
+def get_direct_chat_by_contact(sender_phone_number: str) -> Chat | None:
     """Get chat metadata by sender phone number."""
     try:
         conn = _connect()
@@ -989,10 +991,10 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Chat]:
 def send_message(
     recipient: str,
     message: str,
-    reply_to_message_id: Optional[str] = None,
-    reply_to_sender_jid: Optional[str] = None,
-    mentions: Optional[List[str]] = None,
-) -> Tuple[bool, str]:
+    reply_to_message_id: str | None = None,
+    reply_to_sender_jid: str | None = None,
+    mentions: list[str] | None = None,
+) -> tuple[bool, str]:
     try:
         # Validate input
         if not recipient:
@@ -1028,14 +1030,14 @@ def send_message(
             "Timed out waiting for the WhatsApp bridge. The message may still have been sent, so check the chat before retrying.",
         )
     except requests.RequestException as e:
-        return False, f"Request error: {str(e)}"
+        return False, f"Request error: {e!s}"
     except json.JSONDecodeError:
         return False, f"Error parsing response: {response.text}"
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return False, f"Unexpected error: {e!s}"
 
 
-def send_file(recipient: str, media_path: str, caption: str = "") -> Tuple[bool, str]:
+def send_file(recipient: str, media_path: str, caption: str = "") -> tuple[bool, str]:
     try:
         # Validate input
         if not recipient:
@@ -1073,14 +1075,14 @@ def send_file(recipient: str, media_path: str, caption: str = "") -> Tuple[bool,
             "Timed out waiting for the WhatsApp bridge. The message may still have been sent, so check the chat before retrying.",
         )
     except requests.RequestException as e:
-        return False, f"Request error: {str(e)}"
+        return False, f"Request error: {e!s}"
     except json.JSONDecodeError:
         return False, f"Error parsing response: {response.text}"
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return False, f"Unexpected error: {e!s}"
 
 
-def send_audio_message(recipient: str, media_path: str) -> Tuple[bool, str]:
+def send_audio_message(recipient: str, media_path: str) -> tuple[bool, str]:
     converted_path = None
     try:
         # Validate input
@@ -1103,7 +1105,7 @@ def send_audio_message(recipient: str, media_path: str) -> Tuple[bool, str]:
             except Exception as e:
                 return (
                     False,
-                    f"Error converting file to opus ogg. You likely need to install ffmpeg: {str(e)}",
+                    f"Error converting file to opus ogg. You likely need to install ffmpeg: {e!s}",
                 )
 
         url = f"{WHATSAPP_API_BASE_URL}/send"
@@ -1124,11 +1126,11 @@ def send_audio_message(recipient: str, media_path: str) -> Tuple[bool, str]:
             "Timed out waiting for the WhatsApp bridge. The message may still have been sent, so check the chat before retrying.",
         )
     except requests.RequestException as e:
-        return False, f"Request error: {str(e)}"
+        return False, f"Request error: {e!s}"
     except json.JSONDecodeError:
         return False, f"Error parsing response: {response.text}"
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return False, f"Unexpected error: {e!s}"
     finally:
         if converted_path is not None:
             try:
@@ -1138,7 +1140,7 @@ def send_audio_message(recipient: str, media_path: str) -> Tuple[bool, str]:
                 pass
 
 
-def react_to_message(message_id: str, chat_jid: str, emoji: str) -> Tuple[bool, str]:
+def react_to_message(message_id: str, chat_jid: str, emoji: str) -> tuple[bool, str]:
     """React to a WhatsApp message with an emoji.
 
     Args:
@@ -1175,14 +1177,14 @@ def react_to_message(message_id: str, chat_jid: str, emoji: str) -> Tuple[bool, 
             "Timed out waiting for the WhatsApp bridge. The reaction may still have been sent, so check the chat before retrying.",
         )
     except requests.RequestException as e:
-        return False, f"Request error: {str(e)}"
+        return False, f"Request error: {e!s}"
     except json.JSONDecodeError:
         return False, f"Error parsing response: {response.text}"
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return False, f"Unexpected error: {e!s}"
 
 
-def download_media(message_id: str, chat_jid: str) -> Optional[str]:
+def download_media(message_id: str, chat_jid: str) -> str | None:
     """Download media from a message and return the local file path.
 
     Args:
@@ -1212,11 +1214,11 @@ def download_media(message_id: str, chat_jid: str) -> Optional[str]:
             return None
 
     except requests.RequestException as e:
-        print(f"Request error: {str(e)}", file=sys.stderr)
+        print(f"Request error: {e!s}", file=sys.stderr)
         return None
     except json.JSONDecodeError:
         print(f"Error parsing response: {response.text}", file=sys.stderr)
         return None
     except Exception as e:
-        print(f"Unexpected error: {str(e)}", file=sys.stderr)
+        print(f"Unexpected error: {e!s}", file=sys.stderr)
         return None

@@ -33,3 +33,7 @@ select = [
 ]
 # The formatter wraps code; long strings and docstrings may stay long.
 ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+# Keep `from x import (a as b, c as d)` together instead of one block per name.
+combine-as-imports = true

@@ -17,7 +17,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-import whatsapp  # noqa: E402
+import whatsapp
 
 CHAT = "123@g.us"
 # (id, stored time) in the bridge's format

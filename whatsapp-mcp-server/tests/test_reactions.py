@@ -1,8 +1,8 @@
 """Tests for WhatsApp MCP server - reaction functionality."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-import json
 
 
 @pytest.fixture(autouse=True)

@@ -1,12 +1,11 @@
 import os
-import stat
 import sys
 
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-import config  # noqa: E402
+import config
 
 EXAMPLE = """
 # Settings for the bridge and the MCP server
@@ -96,6 +95,7 @@ def test_read_only_from_file_hides_send_tools(tmp_path, monkeypatch):
     config.load_config()
     sys.modules.pop("main", None)
     import asyncio
+
     import main
 
     try:

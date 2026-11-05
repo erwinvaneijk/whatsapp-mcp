@@ -1,23 +1,31 @@
 import os
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
-from whatsapp import Chat, Contact, MessageContext
-from whatsapp import UNTRUSTED_NOTICE, UNTRUSTED_TAG, mark_chat, mark_contact, mark_context
+
 from whatsapp import (
-    search_contacts as whatsapp_search_contacts,
-    list_messages as whatsapp_list_messages,
-    list_chats as whatsapp_list_chats,
+    UNTRUSTED_NOTICE,
+    UNTRUSTED_TAG,
+    Chat,
+    Contact,
+    MessageContext,
+    download_media as whatsapp_download_media,
     get_chat as whatsapp_get_chat,
-    get_direct_chat_by_contact as whatsapp_get_direct_chat_by_contact,
     get_contact_chats as whatsapp_get_contact_chats,
+    get_direct_chat_by_contact as whatsapp_get_direct_chat_by_contact,
     get_last_interaction as whatsapp_get_last_interaction,
     get_message_context as whatsapp_get_message_context,
-    send_message as whatsapp_send_message,
-    send_file as whatsapp_send_file,
-    send_audio_message as whatsapp_audio_voice_message,
-    download_media as whatsapp_download_media,
+    list_chats as whatsapp_list_chats,
+    list_messages as whatsapp_list_messages,
+    mark_chat,
+    mark_contact,
+    mark_context,
     react_to_message as whatsapp_react_to_message,
+    search_contacts as whatsapp_search_contacts,
+    send_audio_message as whatsapp_audio_voice_message,
+    send_file as whatsapp_send_file,
+    send_message as whatsapp_send_message,
 )
 
 # Sent to the client once, when it connects. Message content comes from other
@@ -81,7 +89,7 @@ def send_tool(annotations: ToolAnnotations):
 
 
 @read_tool("Search Contacts")
-def search_contacts(query: str) -> List[Contact]:
+def search_contacts(query: str) -> list[Contact]:
     """Search WhatsApp contacts by name or phone number.
 
     Args:
@@ -93,11 +101,11 @@ def search_contacts(query: str) -> List[Contact]:
 
 @read_tool("List Messages")
 def list_messages(
-    after: Optional[str] = None,
-    before: Optional[str] = None,
-    sender_phone_number: Optional[str] = None,
-    chat_jid: Optional[str] = None,
-    query: Optional[str] = None,
+    after: str | None = None,
+    before: str | None = None,
+    sender_phone_number: str | None = None,
+    chat_jid: str | None = None,
+    query: str | None = None,
     limit: int = 20,
     page: int = 0,
     include_context: bool = True,
@@ -141,12 +149,12 @@ def list_messages(
 
 @read_tool("List Chats")
 def list_chats(
-    query: Optional[str] = None,
+    query: str | None = None,
     limit: int = 20,
     page: int = 0,
     include_last_message: bool = True,
     sort_by: str = "last_active",
-) -> List[Chat]:
+) -> list[Chat]:
     """Get WhatsApp chats matching specified criteria.
 
     Args:
@@ -167,7 +175,7 @@ def list_chats(
 
 
 @read_tool("Get Chat")
-def get_chat(chat_jid: str, include_last_message: bool = True) -> Optional[Chat]:
+def get_chat(chat_jid: str, include_last_message: bool = True) -> Chat | None:
     """Get WhatsApp chat metadata by JID.
 
     Args:
@@ -179,7 +187,7 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> Optional[Chat]
 
 
 @read_tool("Get Direct Chat by Contact")
-def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Chat]:
+def get_direct_chat_by_contact(sender_phone_number: str) -> Chat | None:
     """Get WhatsApp chat metadata by sender phone number.
 
     Args:
@@ -190,7 +198,7 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Chat]:
 
 
 @read_tool("Get Contact Chats")
-def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Chat]:
+def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[Chat]:
     """Get all WhatsApp chats involving the contact.
 
     Args:
@@ -203,7 +211,7 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Chat]:
 
 
 @read_tool("Get Last Interaction")
-def get_last_interaction(jid: str) -> Optional[str]:
+def get_last_interaction(jid: str) -> str | None:
     """Get most recent WhatsApp message involving the contact.
 
     Args:
@@ -230,10 +238,10 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
 def send_message(
     recipient: str,
     message: str,
-    reply_to_message_id: Optional[str] = None,
-    reply_to_sender_jid: Optional[str] = None,
-    mentions: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    reply_to_message_id: str | None = None,
+    reply_to_sender_jid: str | None = None,
+    mentions: list[str] | None = None,
+) -> dict[str, Any]:
     """Send a WhatsApp message to a person or group. For group chats use the JID.
 
     Args:
@@ -268,7 +276,7 @@ def send_message(
 
 
 @send_tool(send_annotations("Send File"))
-def send_file(recipient: str, media_path: str, caption: str = "") -> Dict[str, Any]:
+def send_file(recipient: str, media_path: str, caption: str = "") -> dict[str, Any]:
     """Send a file such as a picture, raw audio, video or document via WhatsApp to the specified recipient. For group messages use the JID. Optionally include a caption that appears attached to the media in WhatsApp.
 
     Args:
@@ -287,7 +295,7 @@ def send_file(recipient: str, media_path: str, caption: str = "") -> Dict[str, A
 
 
 @send_tool(send_annotations("Send Audio Message"))
-def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
+def send_audio_message(recipient: str, media_path: str) -> dict[str, Any]:
     """Send any audio file as a WhatsApp audio message to the specified recipient. For group messages use the JID. If it errors due to ffmpeg not being installed, use send_file instead.
 
     Args:
@@ -311,7 +319,7 @@ def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
         open_world_hint=True,
     )
 )
-def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
+def download_media(message_id: str, chat_jid: str) -> dict[str, Any]:
     """Download media from a WhatsApp message and get the local file path.
 
     Args:
@@ -330,7 +338,7 @@ def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
 
 
 @send_tool(send_annotations("React to Message"))
-def react_to_message(message_id: str, chat_jid: str, emoji: str) -> Dict[str, Any]:
+def react_to_message(message_id: str, chat_jid: str, emoji: str) -> dict[str, Any]:
     """React to a WhatsApp message with an emoji.
 
     Args:

@@ -13,7 +13,6 @@ import os
 import stat
 import sys
 from pathlib import Path
-from typing import Dict, Optional
 
 import yaml
 
@@ -38,7 +37,7 @@ class ConfigError(Exception):
     pass
 
 
-def config_path() -> "tuple[Optional[Path], bool]":
+def config_path() -> "tuple[Path | None, bool]":
     """The file to read, and whether it must exist (only when WHATSAPP_MCP_CONFIG names it)."""
     explicit = os.environ.get(CONFIG_PATH_ENV, "").strip()
     if explicit:
@@ -49,7 +48,7 @@ def config_path() -> "tuple[Optional[Path], bool]":
         return None, False
 
 
-def parse_config(text: str) -> Dict[str, str]:
+def parse_config(text: str) -> dict[str, str]:
     """Turn the YAML text into environment-variable values.
 
     Values keep their exact text (YAML would read 0612 as another number).
@@ -58,7 +57,7 @@ def parse_config(text: str) -> Dict[str, str]:
         root = yaml.compose(text, Loader=yaml.SafeLoader)
     except yaml.YAMLError as e:
         raise ConfigError(str(e)) from e
-    values: Dict[str, str] = {}
+    values: dict[str, str] = {}
     if root is None:
         return values  # empty file
     if not isinstance(root, yaml.MappingNode):
@@ -85,7 +84,7 @@ def parse_config(text: str) -> Dict[str, str]:
     return values
 
 
-def load_config() -> Optional[Path]:
+def load_config() -> Path | None:
     """Apply the configuration file to os.environ, for settings whose
     environment variable is not set. Returns the file used, or None."""
     path, required = config_path()
@@ -111,7 +110,7 @@ def load_config() -> Optional[Path]:
     return path
 
 
-def load_config_or_exit() -> Optional[Path]:
+def load_config_or_exit() -> Path | None:
     """load_config, but stop with a clear message (on stderr) on any problem."""
     try:
         return load_config()
