@@ -54,6 +54,9 @@ impl State {
     }
 
     fn get(&self, id: &str) -> Result<Seen> {
+        if id.is_empty() {
+            bail!("give a message id; run `recent` to see known ids");
+        }
         self.seen
             .lock()
             .unwrap()
@@ -222,12 +225,14 @@ async fn handle_message(
         Err(e) => format!(" lidmap-error={e}"),
     };
     out!(
-        "MSG id={} chat={} sender={}{} alt={:?} from_me={} group={} push_name={} ts={} :: {}",
+        "MSG id={} chat={} sender={}{} alt={} from_me={} group={} push_name={} ts={} :: {}",
         info.id,
         src.chat,
         src.sender,
         mapping,
-        src.sender_alt,
+        src.sender_alt
+            .as_ref()
+            .map_or_else(|| "-".to_string(), |j| j.to_string()),
         src.is_from_me,
         src.is_group,
         state.content(&info.push_name),
@@ -740,6 +745,40 @@ fn print_qr(code: &str) {
     }
 }
 
+/// The phone number for a pairing code: digits only, with the country code.
+/// WhatsApp rejects a national number such as 06..., without saying why.
+fn pair_phone(raw: &str) -> Result<String> {
+    let digits: String = raw
+        .chars()
+        .filter(|c| !matches!(c, '+' | ' ' | '-' | '(' | ')'))
+        .collect();
+    if digits.is_empty() || !digits.chars().all(|c| c.is_ascii_digit()) {
+        bail!("--pair-phone {raw:?}: use digits only, such as 316...");
+    }
+    if digits.starts_with('0') {
+        bail!(
+            "--pair-phone {raw:?}: start with the country code, not 0 (for the Netherlands: 316... instead of 06...)"
+        );
+    }
+    Ok(digits)
+}
+
+/// Refuse arguments the program does not know, so a typo is not silently ignored.
+fn check_args(args: &[String]) -> Result<()> {
+    let mut rest = args.iter().skip(1);
+    while let Some(arg) = rest.next() {
+        match arg.as_str() {
+            "--store" | "--pair-phone" => {
+                rest.next()
+                    .with_context(|| format!("{arg} needs a value"))?;
+            }
+            "--show-content" => {}
+            other => bail!("unknown argument {other:?}; see --help"),
+        }
+    }
+    Ok(())
+}
+
 fn arg_value(args: &[String], name: &str) -> Option<String> {
     args.iter()
         .position(|a| a == name)
@@ -754,6 +793,10 @@ async fn main() -> Result<()> {
         println!("usage: wa-spike [--store DIR] [--pair-phone NUMBER] [--show-content]\n\n{HELP}");
         return Ok(());
     }
+    check_args(&args)?;
+    let pair = arg_value(&args, "--pair-phone")
+        .map(|p| pair_phone(&p))
+        .transpose()?;
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
     let store = PathBuf::from(arg_value(&args, "--store").unwrap_or_else(|| "store".into()));
@@ -782,7 +825,7 @@ async fn main() -> Result<()> {
             let state = Arc::clone(&handler_state);
             async move { on_event(state, client, event).await }
         });
-    if let Some(phone) = arg_value(&args, "--pair-phone") {
+    if let Some(phone) = pair {
         builder = builder.with_pair_code(PairCodeOptions {
             phone_number: phone,
             ..Default::default()

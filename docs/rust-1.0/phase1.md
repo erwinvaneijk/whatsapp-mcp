@@ -48,30 +48,37 @@ Fill in one result per platform:
 
 | # | Score sheet | Test | How | macOS | Linux | Windows | Notes |
 |---|---|---|---|---|---|---|---|
-| 1 | W02 | Link with a QR code | Start without `--pair-phone`, scan the QR code | | | | |
-| 2 | W03 | Link with a pairing code | Delete `store/`, start with `--pair-phone`, enter the code on the phone | | | | |
-| 3 | W04 | Session kept after a restart | `quit`, start again: no QR code, `CONNECTED` | | | | |
-| 4 | W01 | Reconnect after network loss | Turn Wi-Fi off for a minute, then on: `DISCONNECTED`, then `CONNECTED` | | | | |
-| 5 | W06 | History sync on first link | After linking: `HISTORY` lines; `stats` shows conversations and messages | | | | |
-| 6 | W05 | Receive text, direct and group | Send from the other phone: `MSG` line with the right chat and sender | | | | |
-| 7 | W07 | Captions | Send a photo with a caption: `image caption=` is not empty | | | | |
-| 8 | W08 | Non-text messages | Send a reaction, poll, location, contact card, sticker; edit and delete a message: each gives a `MSG` line of the right kind | | | | |
-| 9 | W09 | Quoted message ID | Reply to a message on the phone: `quotes=<id>` | | | | |
-| 10 | W10 | LID-to-phone map | For a LID sender: `lid=… pn=…` on the `MSG` line, or `lid <jid>` | | | | |
-| 11 | W10 | Contact and push names | `push_name` on `MSG` lines (with `--show-content`); `CONTACT` lines; `stats` | | | | |
-| 12 | W11 | Group names | `group <jid>` shows the subject (with `--show-content`) and member count; `groups` lists them | | | | |
-| 13 | W13 | Send text | `send <your number> hello` arrives on the phone | | | | |
-| 14 | W13 | Reply | `reply <id> text` shows as a reply on the phone, also in the group | | | | |
-| 15 | W13 | Mention | `mention <group> <number> @<number> hi` highlights the mention | | | | |
-| 16 | W14 | Send image, video, document, voice note | Each arrives and opens; the document keeps its name and type | | | | |
-| 17 | W15 | React and remove a reaction | `react <id> 👍`, then `unreact <id>`, direct and in the group | | | | |
-| 18 | W16 | Download media | `download <id>` for a photo, video, voice note and document from the phone | | | | |
-| 19 | W17 | Re-request expired media | `download` on an old photo from history fails; `retry <id>` with the phone online succeeds | | | | |
-| 20 | — | Builds without warnings | `cargo build --release` | | | | |
+| 1 | W02 | Link with a QR code | Start without `--pair-phone`, scan the QR code | ✅ | | | Linked and connected within seconds. |
+| 2 | W03 | Link with a pairing code | Delete `store/`, start with `--pair-phone`, enter the code on the phone | | | | Not done yet. The first try used the national format (06…); WhatsApp refused it without a reason and the program fell back to a QR code. The program now refuses a number that starts with 0. Redo with the country code (316…). |
+| 3 | W04 | Session kept after a restart | `quit`, start again: no QR code, `CONNECTED` | ✅ | | | No QR code after `quit`; `CONNECTED` within a second. |
+| 4 | W01 | Reconnect after network loss | Turn Wi-Fi off for a minute, then on: `DISCONNECTED`, then `CONNECTED` | | | | Not done yet. |
+| 5 | W06 | History sync on first link | After linking: `HISTORY` lines; `stats` shows conversations and messages | ✅ | | | First link on a new account: 1 conversation, 2 messages. Second link, after the tests above: 2 conversations, 24 messages, 9 with media. History messages in a direct chat have no sender; phase 5 must take it from the chat or from `from_me`. |
+| 6 | W05 | Receive text, direct and group | Send from the other phone: `MSG` line with the right chat and sender | ✅ | | | Direct and in a group. Messages sent from the test account's own phone also arrive, with `from_me=true`. |
+| 7 | W07 | Captions | Send a photo with a caption: `image caption=` is not empty | ✅ | | | |
+| 8 | W08 | Non-text messages | Send a reaction, poll, location, contact card, sticker; edit and delete a message: each gives a `MSG` line of the right kind | | | | Reaction, poll, poll vote, location, sticker and voice note work. Contact card, edit and delete not done yet. |
+| 9 | W09 | Quoted message ID | Reply to a message on the phone: `quotes=<id>` | ✅ | | | |
+| 10 | W10 | LID-to-phone map | For a LID sender: `lid=… pn=…` on the `MSG` line, or `lid <jid>` | ✅ | | | Every `MSG` line had the LID and the phone number, for both accounts. |
+| 11 | W10 | Contact and push names | `push_name` on `MSG` lines (with `--show-content`); `CONTACT` lines; `stats` | ✅ | | | Push names on live messages; `CONTACT` lines with a name and LID. |
+| 12 | W11 | Group names | `group <jid>` shows the subject (with `--show-content`) and member count; `groups` lists them | | | | Not done yet. |
+| 13 | W13 | Send text | `send <your number> hello` arrives on the phone | | | | Not done yet. |
+| 14 | W13 | Reply | `reply <id> text` shows as a reply on the phone, also in the group | | | | Not done yet. |
+| 15 | W13 | Mention | `mention <group> <number> @<number> hi` highlights the mention | | | | Not done yet. |
+| 16 | W14 | Send image, video, document, voice note | Each arrives and opens; the document keeps its name and type | | | | Not done yet. |
+| 17 | W15 | React and remove a reaction | `react <id> 👍`, then `unreact <id>`, direct and in the group | | | | Not done yet. |
+| 18 | W16 | Download media | `download <id>` for a photo, video, voice note and document from the phone | | | | Video from history works (195 KB). Photo, voice note and document not done yet. |
+| 19 | W17 | Re-request expired media | `download` on an old photo from history fails; `retry <id>` with the phone online succeeds | | | | Not done yet. |
+| 20 | — | Builds without warnings | `cargo build --release` | ✅ | | | Also passes `cargo clippy -- -D warnings`. |
 
 ## Results
 
-Not run yet.
+### macOS, first run (2026-11-05)
+
+Linking, restarting, history sync, receiving and downloading work. Nothing has failed so far. The send commands, the network test, group names and media retry still need a run.
+
+- **Pairing code:** WhatsApp refuses a number without its country code and gives no reason. The program now checks the format before it asks.
+- **Sender in history:** history messages in a direct chat leave the sender empty. The bridge stores one, so phase 5 has to fill it in from the chat or `from_me`.
+- **Own messages:** messages the test account sends from its own phone arrive as live messages with `from_me=true`. The bridge needs that to store sent messages (W12).
+- **Protocol messages:** right after linking, the phone sends a few protocol messages (app state and history notices). They show as `protocol`; phase 5 must not store them as chat messages.
 
 ## Open items
 
