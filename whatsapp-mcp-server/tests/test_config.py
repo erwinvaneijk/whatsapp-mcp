@@ -30,17 +30,22 @@ def test_parse_config():
         "WHATSAPP_PAIR_PHONE": "0612345678",
         "WHATSAPP_SEND_ALLOWLIST": "31612345678, +31 6 8765 4321, 120363000000000000@g.us",
     }
-    assert config.parse_config("send_allowlist: 316123, 316456") == {"WHATSAPP_SEND_ALLOWLIST": "316123, 316456"}
+    assert config.parse_config("send_allowlist: 316123, 316456") == {
+        "WHATSAPP_SEND_ALLOWLIST": "316123, 316456"
+    }
     assert config.parse_config("# only comments\n") == {}
 
 
-@pytest.mark.parametrize("text", [
-    "bridge_tokn: x",                 # typo in a name
-    "media_dir: [a, b]",              # list for a single value
-    "send_allowlist:\n  - a: b",      # nested entry in a list
-    "- just a list",                  # not settings
-    "bridge_token: [unclosed",        # invalid YAML
-])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "bridge_tokn: x",  # typo in a name
+        "media_dir: [a, b]",  # list for a single value
+        "send_allowlist:\n  - a: b",  # nested entry in a list
+        "- just a list",  # not settings
+        "bridge_token: [unclosed",  # invalid YAML
+    ],
+)
 def test_parse_config_errors(text):
     with pytest.raises(config.ConfigError):
         config.parse_config(text)
@@ -92,6 +97,7 @@ def test_read_only_from_file_hides_send_tools(tmp_path, monkeypatch):
     sys.modules.pop("main", None)
     import asyncio
     import main
+
     try:
         names = {t.name for t in asyncio.run(main.mcp.list_tools())}
         assert "send_message" not in names and "list_messages" in names
@@ -101,7 +107,9 @@ def test_read_only_from_file_hides_send_tools(tmp_path, monkeypatch):
 
 def test_example_file_is_valid():
     """config.example.yaml must stay valid; its token is empty on purpose."""
-    example = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "config.example.yaml")
+    example = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "..", "config.example.yaml"
+    )
     values = config.parse_config(open(example).read())
     assert values.get("WHATSAPP_BRIDGE_TOKEN", "") == ""
     assert set(values) <= set(config.SETTINGS.values())

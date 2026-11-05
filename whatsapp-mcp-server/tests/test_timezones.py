@@ -44,18 +44,24 @@ CREATE INDEX idx_chats_last_message_moment ON chats(julianday(last_message_time)
 def db(tmp_path, monkeypatch):
     path = tmp_path / "messages.db"
     conn = sqlite3.connect(path)
-    conn.executescript("""
+    conn.executescript(
+        """
         CREATE TABLE chats (jid TEXT PRIMARY KEY, name TEXT, last_message_time TIMESTAMP);
         CREATE TABLE messages (
             id TEXT, chat_jid TEXT, sender TEXT, content TEXT, timestamp TIMESTAMP,
             is_from_me BOOLEAN, media_type TEXT, filename TEXT, url TEXT,
             media_key BLOB, file_sha256 BLOB, file_enc_sha256 BLOB, file_length INTEGER,
             quoted_message_id TEXT, PRIMARY KEY (id, chat_jid));
-    """ + BRIDGE_INDEXES)
+    """
+        + BRIDGE_INDEXES
+    )
     conn.execute("INSERT INTO chats VALUES (?, 'Book club', '2026-11-04 20:00:00+00:00')", (CHAT,))
     for msg_id, ts in ROWS:
-        conn.execute("INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me) "
-                     "VALUES (?, ?, '1', ?, ?, 0)", (msg_id, CHAT, "text " + msg_id, ts))
+        conn.execute(
+            "INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me) "
+            "VALUES (?, ?, '1', ?, ?, 0)",
+            (msg_id, CHAT, "text " + msg_id, ts),
+        )
     conn.commit()
     conn.close()
     monkeypatch.setattr(whatsapp, "MESSAGES_DB_PATH", str(path))
@@ -109,24 +115,43 @@ def test_context_uses_moments(db):
 
 
 def test_text_output_shows_the_offset(db):
-    out = whatsapp.list_messages(limit=1, include_context=False, after="2026-10-04T19:15:00+02:00",
-                                 before="2026-10-04T19:45:00+02:00")
+    out = whatsapp.list_messages(
+        limit=1,
+        include_context=False,
+        after="2026-10-04T19:15:00+02:00",
+        before="2026-10-04T19:45:00+02:00",
+    )
     assert "[2026-10-04 19:30:00 +02:00]" in out
 
 
 def test_format_time():
     t = datetime(2026, 11, 4, 22, 0, 52)
-    assert whatsapp.format_time(t.replace(tzinfo=timezone(timedelta(hours=1)))) == "2026-11-04 22:00:52 +01:00"
-    assert whatsapp.format_time(t.replace(tzinfo=timezone(timedelta(hours=-3, minutes=-30)))) == "2026-11-04 22:00:52 -03:30"
+    assert (
+        whatsapp.format_time(t.replace(tzinfo=timezone(timedelta(hours=1))))
+        == "2026-11-04 22:00:52 +01:00"
+    )
+    assert (
+        whatsapp.format_time(t.replace(tzinfo=timezone(timedelta(hours=-3, minutes=-30))))
+        == "2026-11-04 22:00:52 -03:30"
+    )
     assert whatsapp.format_time(t) == "2026-11-04 22:00:52"
 
 
-@pytest.mark.parametrize("sql,index", [
-    ("SELECT id FROM messages WHERE julianday(messages.timestamp) > julianday(?) "
-     "ORDER BY julianday(messages.timestamp) DESC LIMIT 5", "idx_messages_moment"),
-    ("SELECT id FROM messages WHERE messages.chat_jid = ? AND julianday(messages.timestamp) < julianday(?) "
-     "ORDER BY julianday(messages.timestamp) DESC LIMIT 5", "idx_messages_chat_moment"),
-])
+@pytest.mark.parametrize(
+    "sql,index",
+    [
+        (
+            "SELECT id FROM messages WHERE julianday(messages.timestamp) > julianday(?) "
+            "ORDER BY julianday(messages.timestamp) DESC LIMIT 5",
+            "idx_messages_moment",
+        ),
+        (
+            "SELECT id FROM messages WHERE messages.chat_jid = ? AND julianday(messages.timestamp) < julianday(?) "
+            "ORDER BY julianday(messages.timestamp) DESC LIMIT 5",
+            "idx_messages_chat_moment",
+        ),
+    ],
+)
 def test_queries_use_the_bridge_indexes(db, sql, index):
     """The server's expressions must match the bridge's index expressions."""
     conn = sqlite3.connect(db)

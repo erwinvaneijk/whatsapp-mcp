@@ -80,12 +80,15 @@ def server(tmp_path, monkeypatch):
     monkeypatch.setattr(whatsapp, "WHATSAPP_DB_PATH", str(tmp_path / "missing.db"))
     monkeypatch.setattr(whatsapp, "MEDIA_DIR", str(media))
     monkeypatch.setattr(whatsapp, "BRIDGE_TOKEN", "t" * 32)
-    bridge = Mock(status_code=200, json=lambda: {"success": True, "message": "ok", "path": "/tmp/x.jpg"})
+    bridge = Mock(
+        status_code=200, json=lambda: {"success": True, "message": "ok", "path": "/tmp/x.jpg"}
+    )
     monkeypatch.setattr(whatsapp.requests, "post", Mock(return_value=bridge))
 
     monkeypatch.delenv("WHATSAPP_MCP_READ_ONLY", raising=False)
     sys.modules.pop("main", None)
     import main
+
     return main.mcp
 
 

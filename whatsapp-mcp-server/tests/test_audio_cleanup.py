@@ -11,9 +11,11 @@ import whatsapp
 # it at its own temp folder.
 class AudioCleanupTests(unittest.TestCase):
     def test_converted_file_is_cleaned_after_success_and_failure(self):
-        for response in [Mock(status_code=200, json=lambda: {"success": True}),
-                         Mock(status_code=500, text="failed"),
-                         requests.ConnectionError("offline")]:
+        for response in [
+            Mock(status_code=200, json=lambda: {"success": True}),
+            Mock(status_code=500, text="failed"),
+            requests.ConnectionError("offline"),
+        ]:
             with self.subTest(response=response), tempfile.TemporaryDirectory() as directory:
                 source = Path(directory) / "original.wav"
                 converted = Path(directory) / "converted.ogg"
@@ -27,7 +29,13 @@ class AudioCleanupTests(unittest.TestCase):
                         raise response
                     return response
 
-                with patch.object(whatsapp, "MEDIA_DIR", directory), patch.object(whatsapp.audio, "convert_to_opus_ogg_temp", return_value=str(converted)), patch.object(whatsapp.requests, "post", side_effect=post):
+                with (
+                    patch.object(whatsapp, "MEDIA_DIR", directory),
+                    patch.object(
+                        whatsapp.audio, "convert_to_opus_ogg_temp", return_value=str(converted)
+                    ),
+                    patch.object(whatsapp.requests, "post", side_effect=post),
+                ):
                     whatsapp.send_audio_message("123", str(source))
                 self.assertFalse(converted.exists())
                 self.assertEqual(source.read_bytes(), b"original")
@@ -36,6 +44,11 @@ class AudioCleanupTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "original.ogg"
             source.write_bytes(b"original")
-            with patch.object(whatsapp, "MEDIA_DIR", directory), patch.object(whatsapp.requests, "post", side_effect=requests.ConnectionError("offline")):
+            with (
+                patch.object(whatsapp, "MEDIA_DIR", directory),
+                patch.object(
+                    whatsapp.requests, "post", side_effect=requests.ConnectionError("offline")
+                ),
+            ):
                 whatsapp.send_audio_message("123", str(source))
             self.assertEqual(source.read_bytes(), b"original")

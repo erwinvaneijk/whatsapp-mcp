@@ -75,7 +75,9 @@ def parse_config(text: str) -> Dict[str, str]:
             items = []
             for item in value.value:
                 if not isinstance(item, yaml.ScalarNode):
-                    raise ConfigError(f"line {item.start_mark.line + 1}: {key} entries must be single values")
+                    raise ConfigError(
+                        f"line {item.start_mark.line + 1}: {key} entries must be single values"
+                    )
                 items.append(item.value)
             values[env] = ", ".join(items)
         else:
