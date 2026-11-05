@@ -84,15 +84,20 @@ Unavoidable, and covered by the migration guide:
 - **Re-pairing:** likely. whatsapp-rust keeps the session in its own format, so the WhatsApp link stored in `store/whatsapp.db` probably cannot be carried over. The bridge must then be linked again once, with QR or pairing code. `messages.db`, and with it all history, is kept.
 - **Build requirements:** Go, Python, uv and a C compiler (for CGO) are no longer needed to build. ffmpeg is still needed for voice messages.
 
-## Open questions
+## Decisions
 
-See the questions in the conversation; answers will be recorded here.
+Made on 2026-11-05:
+
+- **Re-linking is acceptable.** If the whatsmeow session cannot be carried over, users link the bridge again once after upgrading. `messages.db` is kept.
+- **Release 0.9 first.** 0.9 is the Rust MCP server with the existing Go bridge, and Python removed. 1.0 adds the Rust bridge.
+- **Platforms:** release binaries for macOS (arm64, x86_64), Linux (x86_64, arm64) and Windows (x86_64).
+- **Bridge API kept as is for 1.0:** HTTP on `127.0.0.1:8080` with `X-Bridge-Token`. A Unix socket may follow after 1.0.
 
 ## Risks
 
 | Risk | Effect | Mitigation |
 |---|---|---|
-| whatsapp-rust lacks a feature or breaks on a WhatsApp change | Bridge cannot match today's features, or stops working | Phase 1 gate; fall back to the Go bridge; contribute fixes upstream. |
+| whatsapp-rust lacks a feature or breaks on a WhatsApp change | Bridge cannot match today's features, or stops working | Phase 1 gate (on all three platforms); fall back to the Go bridge; contribute fixes upstream. |
 | whatsapp-rust is less proven than whatsmeow | Protocol or crypto bugs, account flagged | Test account during phases 1 and 5; weeks of parallel use before 1.0. |
 | Output differs in small ways (whitespace, field order, time format) | Clients or prompts that relied on it behave differently | Parity harness compares byte for byte. |
 | `messages.db` written by two programs during the switch | Corrupt or duplicate rows | Only one bridge runs at a time; the Rust bridge uses the same migrations and is tested on a copy of a real database first. |
