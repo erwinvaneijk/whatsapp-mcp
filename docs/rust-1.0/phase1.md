@@ -4,6 +4,8 @@ Can [whatsapp-rust](https://github.com/oxidezap/whatsapp-rust) do everything the
 
 **Go** when every item works on macOS, Linux and Windows, or has a workaround. **No-go** otherwise: 1.0 then keeps the Go bridge and only replaces the Python server.
 
+**Decision (2026-11-05): go.** Nothing failed on macOS or Linux. Windows is skipped for now; the Windows build and a run of this checklist come back in phase 2 (CI) and before the release. Voice notes and expired media, not tested on any platform, move to the end-to-end tests of phase 5.
+
 ## Setup
 
 - **Test account only.** Use the spare number. Never link your own account: whatsapp-rust is an unofficial client, and Meta may suspend accounts that use one.
