@@ -18,6 +18,7 @@ cd spike/whatsapp-rust
 cargo run --release                         # link with a QR code
 cargo run --release -- --pair-phone 316...  # or link with a pairing code (test number, with country code)
 cargo run --release -- --show-content       # also print message text and names (test account only)
+cargo run --release -- --net-log            # also log keepalive pings and reconnects
 ```
 
 - **Storage:** the session lives in `spike/whatsapp-rust/store/`, which git ignores. Delete that folder to start over.
@@ -52,7 +53,7 @@ Fill in one result per platform:
 | 1 | W02 | Link with a QR code | Start without `--pair-phone`, scan the QR code | ✅ | | | Linked and connected within seconds. |
 | 2 | W03 | Link with a pairing code | Delete `store/`, start with `--pair-phone`, enter the code on the phone | ✅ | | | Code entered on the phone: `PAIRED` within a minute, then history sync. Needs the country code; a leading `+` is fine. The first try used 06… and was refused without a reason; the program now refuses that format, hides the QR code when pairing by code, and sends the real OS name. |
 | 3 | W04 | Session kept after a restart | `quit`, start again: no QR code, `CONNECTED` | ✅ | | | No QR code after `quit`; `CONNECTED` within a second. |
-| 4 | W01 | Reconnect after network loss | Turn Wi-Fi off for 2 minutes (no cable or other network), then on, with `RUST_LOG=warn,Client/Keepalive=debug`: keepalive warnings, then `CONNECTED`; then `status` and a message both ways | | | | Two tries (1 and 2 minutes): nothing in the log, no keepalive warning and no new `CONNECTED`; `status` said logged in. The second run showed no keepalive lines at all, so the debug setting was probably not applied. A reconnect the keepalive forces sends no `DISCONNECTED` event. What counts: messages sent during the outage arrive afterwards, and sending works again. Redo with a longer outage (5 minutes). |
+| 4 | W01 | Reconnect after network loss | Start with `--net-log`. Turn Wi-Fi off for 2 minutes (no cable or other network), send a message to the test account meanwhile, then turn Wi-Fi on: keepalive warning, reconnect attempts, then `CONNECTED` and the message | ✅ | | | Ping unanswered, 20 s later the library reconnects. While offline it retries with growing waits (1 s up to 20 s); back within 1 minute of Wi-Fi returning. The message sent during the outage arrived through offline sync. No `DISCONNECTED` event, as expected for a forced reconnect. Shorter outages (1–2 minutes) went unnoticed: the connection survived them. |
 | 5 | W06 | History sync on first link | After linking: `HISTORY` lines; `stats` shows conversations and messages | ✅ | | | First link on a new account: 1 conversation, 2 messages. Second link, after the tests above: 2 conversations, 24 messages, 9 with media. History messages in a direct chat have no sender; phase 5 must take it from the chat or from `from_me`. |
 | 6 | W05 | Receive text, direct and group | Send from the other phone: `MSG` line with the right chat and sender | ✅ | | | Direct and in a group. Messages sent from the test account's own phone also arrive, with `from_me=true`. |
 | 7 | W07 | Captions | Send a photo with a caption: `image caption=` is not empty | ✅ | | | |
@@ -81,7 +82,7 @@ Linking, restarting, history sync, receiving and downloading work. Nothing has f
 - **Own messages:** messages the test account sends from its own phone arrive as live messages with `from_me=true`. The bridge needs that to store sent messages (W12).
 - **App state warning:** after linking by code, the library warned "Initial App State Sync incomplete" and skipped the `regular_low` collection, which holds chat settings such as pinned, muted and archived. Contact names come from another collection and did arrive. The bridge doesn't use those settings; check that the warning goes away after a restart.
 - **Sent to the phone number, stored chat is the LID:** messages sent to `316…` go to the phone-number JID, while the chat with that person is under its LID. W12 needs the bridge's rule: store a sent message in the chat that already exists.
-- **No `DISCONNECTED` on a forced reconnect:** when the keepalive gives up (pings every 15 to 30 seconds, 20 seconds to answer), the library reconnects and treats that as expected, so it sends no `Disconnected` event. The bridge can't rely on that event to notice an outage.
+- **No `DISCONNECTED` on a forced reconnect:** when the keepalive gives up (pings every 15 to 30 seconds, 20 seconds to answer), the library reconnects and treats that as expected, so it sends no `Disconnected` event. The bridge can't rely on that event to notice an outage. `RUST_LOG` can't select the keepalive log on its own (env_logger reads the `/` in `Client/Keepalive` as a text filter); use `--net-log`.
 - **Protocol messages:** right after linking, the phone sends a few protocol messages (app state and history notices). They show as `protocol`; phase 5 must not store them as chat messages.
 
 ## Open items

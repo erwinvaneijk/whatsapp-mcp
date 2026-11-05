@@ -820,7 +820,7 @@ fn check_args(args: &[String]) -> Result<()> {
                 rest.next()
                     .with_context(|| format!("{arg} needs a value"))?;
             }
-            "--show-content" => {}
+            "--show-content" | "--net-log" => {}
             other => bail!("unknown argument {other:?}; see --help"),
         }
     }
@@ -838,14 +838,25 @@ fn arg_value(args: &[String], name: &str) -> Option<String> {
 async fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
-        println!("usage: wa-spike [--store DIR] [--pair-phone NUMBER] [--show-content]\n\n{HELP}");
+        println!(
+            "usage: wa-spike [--store DIR] [--pair-phone NUMBER] [--show-content] [--net-log]\n\n{HELP}"
+        );
         return Ok(());
     }
     check_args(&args)?;
     let pair = arg_value(&args, "--pair-phone")
         .map(|p| pair_phone(&p))
         .transpose()?;
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
+    let mut logger =
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn"));
+    if args.iter().any(|a| a == "--net-log") {
+        // Keepalive pings and reconnects only. RUST_LOG can't name the
+        // keepalive target: env_logger reads the `/` in it as a text filter.
+        logger
+            .filter_module("Client/Keepalive", log::LevelFilter::Debug)
+            .filter_module("whatsapp_rust::client::lifecycle", log::LevelFilter::Info);
+    }
+    logger.init();
 
     let store = PathBuf::from(arg_value(&args, "--store").unwrap_or_else(|| "store".into()));
     std::fs::create_dir_all(&store)?;
