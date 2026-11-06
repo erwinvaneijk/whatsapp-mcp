@@ -9,19 +9,25 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+# Pinned to the commit tested in phase 1 (docs/rust-1.0/phase1.md).
+whatsapp-rust = { git = "https://github.com/oxidezap/whatsapp-rust", rev = "52fb6643ba3a97c7271ce6ffe5814c32d47070d8" }
 bytes = "1.12.1"
 http-body-util = "0.1.5"
 hyper = { version = "1.12.0", features = ["server", "http1"] }
 hyper-util = { version = "0.1.21", features = ["tokio"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
-tokio = { version = "1.54.1", features = ["rt", "rt-multi-thread", "net", "macros", "time"] }
+tokio = { version = "1.54.1", features = ["rt", "rt-multi-thread", "net", "macros", "time", "signal", "sync"] }
 whatsapp-mcp-config.workspace = true
 whatsapp-mcp-store.workspace = true
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+qrcode = { version = "0.14", default-features = false }
+env_logger = "0.11"
 
 [lints]
 workspace = true
 
 [dev-dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
 tempfile = "3.27.0"
 tokio = { version = "1.54.1", features = ["rt", "macros", "net", "io-util"] }

@@ -24,8 +24,12 @@ allow = [
     "Apache-2.0 WITH LLVM-exception",
     "BSD-2-Clause",
     "BSD-3-Clause",
+    # Mozilla's list of certificate authorities, as data (webpki-roots).
+    "CDLA-Permissive-2.0",
     "ISC",
     "MIT",
+    # MIT without the attribution requirement (borrow-or-share).
+    "MIT-0",
     "Unicode-3.0",
     "Zlib",
 ]
@@ -45,4 +49,7 @@ allow-wildcard-paths = true
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
-allow-git = []
+allow-git = [
+    # The WhatsApp library, pinned to one commit in crates/bridge/Cargo.toml.
+    "https://github.com/oxidezap/whatsapp-rust",
+]

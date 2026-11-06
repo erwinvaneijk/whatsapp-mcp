@@ -17,7 +17,7 @@ const NAMES_SQL: &str = include_str!("schema/names.sql");
 
 /// A message to store. Text fields are empty, not absent, when there is
 /// nothing, as in the Go bridge.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NewMessage {
     pub id: String,
     pub chat_jid: String,
@@ -183,6 +183,47 @@ impl Writer {
             .query_row("SELECT 1 FROM chats WHERE jid = ?", [jid], |_| Ok(()))
             .optional()?
             .is_some())
+    }
+
+    /// A chat's stored name; `None` when the chat is not stored or has no
+    /// name.
+    pub fn chat_name(&self, jid: &str) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row("SELECT name FROM chats WHERE jid = ?", [jid], |row| {
+                row.get::<_, Option<String>>(0)
+            })
+            .optional()?
+            .flatten()
+            .filter(|name| !name.is_empty()))
+    }
+
+    /// A contact's full name (the name saved in the phone's address book);
+    /// `None` when there is none.
+    pub fn contact_full_name(&self, jid: &str) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT full_name FROM contacts WHERE jid = ?",
+                [jid],
+                |row| row.get::<_, Option<String>>(0),
+            )
+            .optional()?
+            .flatten()
+            .filter(|name| !name.is_empty()))
+    }
+
+    /// The phone number (user part) for a LID, or the LID for a phone
+    /// number, as stored in `lid_map`.
+    pub fn lid_counterpart(&self, user: &str, is_lid: bool) -> Result<Option<String>> {
+        let sql = if is_lid {
+            "SELECT pn FROM lid_map WHERE lid = ?"
+        } else {
+            "SELECT lid FROM lid_map WHERE pn = ?"
+        };
+        self.conn
+            .query_row(sql, [user], |row| row.get::<_, String>(0))
+            .optional()
     }
 
     /// Stores a contact's names; empty names do not replace known ones.

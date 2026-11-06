@@ -488,3 +488,67 @@ fn names_need_both_tables_in_messages_db() {
     let db = Store::new(dir.path()).open().unwrap();
     assert_eq!(db.sender_name("31600000001"), "Maria from whatsapp.db");
 }
+
+#[test]
+fn lookups_for_chat_names_and_the_lid_map() {
+    let dir = tempfile::tempdir().unwrap();
+    let writer = Writer::open(dir.path()).unwrap();
+    let chat = "31600000001@s.whatsapp.net";
+    assert_eq!(writer.chat_name(chat).unwrap(), None);
+    writer
+        .store_chat(chat, "", time("2026-11-04T22:00:52+01:00"))
+        .unwrap();
+    assert_eq!(writer.chat_name(chat).unwrap(), None, "empty is no name");
+    writer
+        .store_chat(chat, "Maria", time("2026-11-04T22:00:53+01:00"))
+        .unwrap();
+    assert_eq!(writer.chat_name(chat).unwrap().as_deref(), Some("Maria"));
+
+    assert_eq!(writer.contact_full_name(chat).unwrap(), None);
+    writer
+        .store_contact(
+            chat,
+            &ContactNames {
+                push_name: "Mia".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        writer.contact_full_name(chat).unwrap(),
+        None,
+        "push name only"
+    );
+    writer
+        .store_contact(
+            chat,
+            &ContactNames {
+                full_name: "Maria Jansen".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        writer.contact_full_name(chat).unwrap().as_deref(),
+        Some("Maria Jansen")
+    );
+
+    writer
+        .store_lid_mapping("123456789012345", "31600000001")
+        .unwrap();
+    assert_eq!(
+        writer
+            .lid_counterpart("123456789012345", true)
+            .unwrap()
+            .as_deref(),
+        Some("31600000001")
+    );
+    assert_eq!(
+        writer
+            .lid_counterpart("31600000001", false)
+            .unwrap()
+            .as_deref(),
+        Some("123456789012345")
+    );
+    assert_eq!(writer.lid_counterpart("31600000002", false).unwrap(), None);
+}

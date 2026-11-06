@@ -10,7 +10,9 @@ publish.workspace = true
 
 [dependencies]
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
-rusqlite = { version = "0.41.1", features = ["bundled", "functions"] }
+# 0.40, not newer: it links the same libsqlite3-sys (0.38) as whatsapp-rust's
+# session store, and a program can link only one SQLite.
+rusqlite = { version = "0.40", features = ["bundled", "functions"] }
 serde = { version = "1.0.229", features = ["derive"] }
 
 
