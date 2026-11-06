@@ -18,14 +18,14 @@
   "result": {
     "content": [
       {
-        "text": "{\n  \"success\": false,\n  \"message\": \"Request error: Expecting value: line 1 column 1 (char 0)\"\n}",
+        "text": "{\n  \"success\": false,\n  \"message\": \"The bridge's answer could not be read: it is not JSON.\"\n}",
         "type": "text"
       }
     ],
     "isError": false,
     "resultType": "complete",
     "structuredContent": {
-      "message": "Request error: Expecting value: line 1 column 1 (char 0)",
+      "message": "The bridge's answer could not be read: it is not JSON.",
       "success": false
     }
   },

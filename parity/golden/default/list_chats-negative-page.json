@@ -6,7 +6,7 @@
   "result": {
     "content": [
       {
-        "text": "Error executing tool list_chats",
+        "text": "'page' must be 0 or greater, got -1",
         "type": "text"
       }
     ],

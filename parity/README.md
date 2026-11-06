@@ -1,6 +1,6 @@
 # Parity harness
 
-Records what the MCP server shows to an MCP client, so a new implementation (the Rust rewrite, see [docs/rust-1.0](../docs/rust-1.0/plan.md)) can be checked against it. It is also a regression test for today's server.
+Records what the MCP server shows to an MCP client, and checks that it stays the same. The golden files were first recorded from the Python server, and the Rust server ([docs/rust-1.0](../docs/rust-1.0/plan.md)) was built to match them; since version 0.9 the Rust server is the only one, and the harness is its regression test.
 
 For each **profile** in [`cases.json`](cases.json) the harness:
 
@@ -68,27 +68,25 @@ The harness starts the server with the command for `--server` (see `SERVERS` in 
 - `PARITY_STORE_DIR`: the folder with `messages.db` and `whatsapp.db`;
 - `PARITY_BRIDGE_URL`: the bridge API base, such as `http://127.0.0.1:54321/api`.
 
-[`adapters/python_server.py`](adapters/python_server.py) does this for the Python server without changing it. [`adapters/rust_server.py`](adapters/rust_server.py) starts the Rust server with `cargo run`, passing them as `serve --store … --bridge-url …`.
+[`adapters/rust_server.py`](adapters/rust_server.py) starts the Rust server with `cargo run`, passing them as `serve --store … --bridge-url …`.
 
-**Rust-specific results.** A few cases have today's error quirks in their golden file; the Rust server behaves better there on purpose ([interface.md, section 5](../docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10)). Such a case has `"rust_differs": "<reason>"` in `cases.json`, and the Rust server is compared with `golden/<profile>/<case>.rust.json` instead. `run.py --server rust --update` writes only those files; the shared golden files always come from the Python server. With `--server-cmd`, also pass `--server rust` when the command starts a Rust server, so these files apply.
-
-While the Rust server is being built, `--only` limits the comparison to the files it should already match. The other cases still run:
+`--only` limits the comparison to some of the files; the other cases still run:
 
 ```bash
-uv run --locked python run.py --server rust --only _server            # what CI checks now
-uv run --locked python run.py --server rust --only 'list_messages-*'  # one tool
+uv run --locked python run.py --only 'list_messages-*'  # one tool
 ```
+
+**History.** Until version 0.9 the harness also ran the Python server, and recorded the shared golden files from it. Eleven cases, where the Rust server gives clearer errors on purpose ([interface.md, section 5](../docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10)), had a separate `<case>.rust.json` file. With the Python server removed, those became the golden files.
 
 Time zones are set through `TZ`, so the harness runs on macOS and Linux, not on Windows.
 
 ## Configuration cases
 
-[`config-cases.json`](config-cases.json) holds configuration files, send allowlists and yes/no values, each with the result it must give: the values read, or an error with its line number. Three test suites read it:
+[`config-cases.json`](config-cases.json) holds configuration files, send allowlists and yes/no values, each with the result it must give: the values read, or an error with its line number. Both implementations of the configuration rules read it (the Python server's tests did too, until 0.9):
 
 | Implementation | Test |
 |---|---|
 | Go bridge | [`whatsapp-bridge/config_shared_test.go`](../whatsapp-bridge/config_shared_test.go) |
-| Python server | `test_shared_config_*` in [`whatsapp-mcp-server/tests/test_config.py`](../whatsapp-mcp-server/tests/test_config.py) (no allowlist cases: only the bridge reads it) |
 | Rust config crate | [`crates/config/tests/shared_cases.rs`](../crates/config/tests/shared_cases.rs) |
 
-Add a case here, not in one implementation's tests, so all three keep following the same rules. A rule only one implementation has, such as the stricter Rust checks in [interface.md](../docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10), is tested in that implementation only.
+Add a case here, not in one implementation's tests, so both keep following the same rules. A rule only one implementation has, such as the stricter Rust checks in [interface.md](../docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10), is tested in that implementation only.

@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-// The configuration cases shared with the Python server and the Rust config
-// crate (parity/config-cases.json): all three must follow the same rules.
+// The configuration cases shared with the Rust config
+// crate (parity/config-cases.json): both must follow the same rules.
 type sharedConfigCases struct {
 	Files []struct {
 		Name          string            `json:"name"`

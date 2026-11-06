@@ -18,14 +18,14 @@
   "result": {
     "content": [
       {
-        "text": "{\n  \"success\": false,\n  \"message\": \"Error: HTTP 500 - {\\\"success\\\":false,\\\"message\\\":\\\"Error sending message: not connected\\\"}\\n\"\n}",
+        "text": "{\n  \"success\": false,\n  \"message\": \"Error sending message: not connected\"\n}",
         "type": "text"
       }
     ],
     "isError": false,
     "resultType": "complete",
     "structuredContent": {
-      "message": "Error: HTTP 500 - {\"success\":false,\"message\":\"Error sending message: not connected\"}\n",
+      "message": "Error sending message: not connected",
       "success": false
     }
   },

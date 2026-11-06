@@ -36,49 +36,21 @@ jobs:
       - name: Test with FTS5
         run: go test -tags sqlite_fts5 -timeout 300s ./...
 
-  python:
-    name: Python lint and tests
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: whatsapp-mcp-server
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-
-      # Uses the versions pinned in uv.lock (Python 3.11+, mcp 2.x, ruff).
-      - name: Check formatting
-        run: uv run --locked ruff format --check --diff
-
-      - name: Lint
-        run: uv run --locked ruff check --output-format=github
-
-      - name: Run tests
-        env:
-          PYTHONPATH: .
-        run: uv run --locked --with pytest pytest -v tests
-
   # Rust workspace (docs/rust-1.0/plan.md, phase 2). Every release platform
   # builds, lints and tests here; the toolchain comes from rust-toolchain.toml.
   rust:
     name: Rust (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
-    # An optional platform shows its own result but cannot fail the run.
-    continue-on-error: ${{ matrix.optional == true }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - { name: Linux x86_64, os: ubuntu-latest }
           - { name: Linux arm64, os: ubuntu-24.04-arm }
-          # Optional: GitHub is short of macOS arm64 runners, and a job that
-          # gets none is cancelled after 15 minutes in the queue ("not
-          # acquired by Runner of type hosted"). macOS x86_64 still has to
-          # pass; the arm64 release binary (phase 6) is built separately.
-          - { name: macOS arm64 (optional), os: macos-15, optional: true }
+          # macOS arm64 runs in its own workflow (macos-arm64.yml): GitHub
+          # is often short of those runners, and a job that never gets one is
+          # cancelled, which would fail this whole run.
           - { name: macOS x86_64, os: macos-15-intel }
           - { name: Windows x86_64, os: windows-latest }
     defaults:
@@ -96,10 +68,18 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: cargo fmt --all --check
 
-      # So the voice-note conversion test runs instead of skipping.
+      # So the voice-note conversion test runs instead of skipping. Optional:
+      # if apt is slow or broken, the test skips rather than the job hanging
+      # (it once waited the full 30 minutes).
       - name: Install ffmpeg
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg
 
       - name: Lint
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
@@ -152,20 +132,15 @@ jobs:
       - name: Lint
         run: uv run --locked ruff check --output-format=github
 
-      # Runs the Python MCP server against the test data and compares every
-      # result with the golden files (see parity/README.md).
-      - name: Compare with golden files
-        run: uv run --locked python run.py
-
-      # The Rust server (phase 4) must match the same golden files, except
-      # the cases marked rust_differs, which have <case>.rust.json files.
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Build the Rust server
+      - name: Build the MCP server
         run: cargo build --locked --package whatsapp-mcp
 
-      - name: Compare the Rust server with golden files
-        run: uv run --locked python run.py --server rust
+      # Runs the MCP server against the test data and compares every result
+      # with the golden files (see parity/README.md).
+      - name: Compare with golden files
+        run: uv run --locked python run.py

@@ -1403,7 +1403,7 @@ dependencies = [
 
 [[package]]
 name = "whatsapp-mcp"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "clap",
  "whatsapp-mcp-bridge",
@@ -1414,7 +1414,7 @@ dependencies = [
 
 [[package]]
 name = "whatsapp-mcp-bridge"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "whatsapp-mcp-config",
  "whatsapp-mcp-store",
@@ -1422,7 +1422,7 @@ dependencies = [
 
 [[package]]
 name = "whatsapp-mcp-config"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1432,7 +1432,7 @@ dependencies = [
 
 [[package]]
 name = "whatsapp-mcp-server"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "regex",
  "rmcp",
@@ -1447,7 +1447,7 @@ dependencies = [
 
 [[package]]
 name = "whatsapp-mcp-store"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "chrono",
  "rusqlite",

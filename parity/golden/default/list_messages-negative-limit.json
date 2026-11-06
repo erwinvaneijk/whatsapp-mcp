@@ -6,7 +6,7 @@
   "result": {
     "content": [
       {
-        "text": "Error executing tool list_messages",
+        "text": "'limit' must be 0 or greater, got -1",
         "type": "text"
       }
     ],

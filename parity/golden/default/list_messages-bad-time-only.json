@@ -6,7 +6,7 @@
   "result": {
     "content": [
       {
-        "text": "Error executing tool list_messages",
+        "text": "Invalid date format for 'after': 21:00. Use an ISO-8601 date, or date and time, for example 2026-11-04 or 2026-11-04T21:00:00+01:00.",
         "type": "text"
       }
     ],

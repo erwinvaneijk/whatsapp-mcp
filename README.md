@@ -77,6 +77,7 @@ Fixes and speed:
 - `feat/rust-mcp-skeleton` — fork change, phase 4 step 1 of the [Rust rewrite plan](docs/rust-1.0/plan.md): `whatsapp-mcp serve` publishes the same server name, instructions and tool definitions as the Python server, hiding the send tools in read-only mode. The parity harness can now test it (`run.py --server rust`). The tools themselves follow in the next steps.
 - `feat/rust-read-tools` — fork change, phase 4 step 2 of the [Rust rewrite plan](docs/rust-1.0/plan.md): the Rust server's eight read tools give the same results as the Python server in every harness profile, with clearer error messages for bad input.
 - `feat/rust-send-tools` — fork change, phase 4 step 3 of the [Rust rewrite plan](docs/rust-1.0/plan.md): the Rust server's send tools (`send_message`, `send_file`, `send_audio_message`, `react_to_message`, `download_media`) work through the Go bridge. The Rust server now passes the whole parity harness; bridge errors give the bridge's reason.
+- `feat/release-0.9` — fork change, phase 4 step 4 of the [Rust rewrite plan](docs/rust-1.0/plan.md): version 0.9. The Rust MCP server replaces the Python one, which is removed; the Go bridge stays. The installation steps and an upgrade section are updated, and the parity harness now records and checks the Rust server only.
 - `fix/gitignore-binary` — upstream PR [#349](https://github.com/lharries/whatsapp-mcp/pull/349): git ignores the compiled bridge program.
 - `fix/sqlite-indexes` — upstream PR [#279](https://github.com/lharries/whatsapp-mcp/pull/279): database indexes for faster message and chat queries.
 - `fix/sqlite-wal` — upstream PR [#393](https://github.com/lharries/whatsapp-mcp/pull/393): faster history sync and WAL mode for the databases.
@@ -105,10 +106,9 @@ This is temporary. The plan is to merge `dev-main` into `main` at some point and
 
 ### Prerequisites
 
-- Go
-- Python 3.11+ (uv installs it for you if needed)
+- Go, for the WhatsApp bridge
+- [Rust](https://rustup.rs) (`rustup`) and a C compiler, to build the MCP server. rustup installs the right Rust version by itself. A C compiler is needed for the SQLite that is built in: the Xcode command line tools on macOS, `gcc` or `clang` on Linux, the Visual Studio build tools on Windows.
 - Anthropic Claude Desktop app (or Cursor)
-- UV (Python package manager), install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - FFmpeg (_optional_) - Only needed for audio messages. If you want to send audio files as playable WhatsApp voice messages, they must be in `.ogg` Opus format. With FFmpeg installed, the MCP server will automatically convert non-Opus audio files. Without FFmpeg, you can still send raw audio files using the `send_file` tool.
 
 ### Steps
@@ -152,20 +152,29 @@ This is temporary. The plan is to merge `dev-main` into `main` at some point and
 
    After approximately 20 days, you will might need to re-authenticate.
 
-3. **Connect to the MCP server**
+3. **Build the MCP server**
 
-   Copy the below json with the appropriate {{PATH}} values:
+   In the repository folder:
+
+   ```bash
+   cargo build --release
+   ```
+
+   This builds `target/release/whatsapp-mcp` (`whatsapp-mcp.exe` on Windows), one program without further dependencies. Build it again after pulling new changes.
+
+4. **Connect to the MCP server**
+
+   Copy the below json with the appropriate {{PATH}} values. `{{PATH_TO_SRC}}` is the folder you cloned into: in the repository, run `pwd` and leave out the last `/whatsapp-mcp`. Use absolute paths; the client starts the server from a folder of its own choosing.
 
    ```json
    {
      "mcpServers": {
        "whatsapp": {
-         "command": "{{PATH_TO_UV}}", // Run `which uv` and place the output here
+         "command": "{{PATH_TO_SRC}}/whatsapp-mcp/target/release/whatsapp-mcp",
          "args": [
-           "--directory",
-           "{{PATH_TO_SRC}}/whatsapp-mcp/whatsapp-mcp-server", // cd into the repo, run `pwd` and enter the output here + "/whatsapp-mcp-server"
-           "run",
-           "main.py"
+           "serve",
+           "--store",
+           "{{PATH_TO_SRC}}/whatsapp-mcp/whatsapp-bridge/store"
          ],
          "env": {
            "WHATSAPP_BRIDGE_TOKEN": "{{SAME_TOKEN_AS_THE_BRIDGE}}",
@@ -177,6 +186,8 @@ This is temporary. The plan is to merge `dev-main` into `main` at some point and
    ```
 
    With the [configuration file](#configuration), leave out the `env` block: the MCP server reads the token and the media folder from the file.
+
+   `--store` is the bridge's store folder, with `messages.db`. If the bridge's API is not at `http://127.0.0.1:8080/api`, add `"--bridge-url", "http://…/api"` to the arguments.
 
    For **Claude**, save this as `claude_desktop_config.json` in your Claude Desktop configuration directory at:
 
@@ -190,11 +201,21 @@ This is temporary. The plan is to merge `dev-main` into `main` at some point and
    ~/.cursor/mcp.json
    ```
 
-4. **Restart Claude Desktop / Cursor**
+5. **Restart Claude Desktop / Cursor**
 
    Open Claude Desktop and you should now see WhatsApp as an available integration.
 
    Or restart Cursor.
+
+### Upgrading from the Python MCP server
+
+Before version 0.9, the MCP server was a Python program run with `uv`. From 0.9 it is the Rust program built in step 3, with the same tools and the same configuration. To upgrade:
+
+1. Pull the new version and run `cargo build --release` (step 3).
+2. In your MCP client's configuration, replace `"command"` and `"args"` with the ones in step 4. Keep the `env` block, if you have one.
+3. Restart the client.
+
+Nothing else changes: the configuration file, the environment variables, the bridge and its link with your phone, and `messages.db` with your message history all stay as they are. A few error messages are clearer; see [Behaviour that improves](docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10).
 
 ### Windows Compatibility
 
@@ -267,8 +288,8 @@ Set `WHATSAPP_MCP_READ_ONLY=1` in the MCP server's environment to remove the too
 {
   "mcpServers": {
     "whatsapp": {
-      "command": "{{PATH_TO_UV}}",
-      "args": ["--directory", "{{PATH_TO_SRC}}/whatsapp-mcp/whatsapp-mcp-server", "run", "main.py"],
+      "command": "{{PATH_TO_SRC}}/whatsapp-mcp/target/release/whatsapp-mcp",
+      "args": ["serve", "--store", "{{PATH_TO_SRC}}/whatsapp-mcp/whatsapp-bridge/store"],
       "env": { "WHATSAPP_MCP_READ_ONLY": "1" }
     }
   }
@@ -318,7 +339,7 @@ This application consists of two main components:
 
 1. **Go WhatsApp Bridge** (`whatsapp-bridge/`): A Go application that connects to WhatsApp's web API, handles authentication via QR code, and stores message history in SQLite. It serves as the bridge between WhatsApp and the MCP server.
 
-2. **Python MCP Server** (`whatsapp-mcp-server/`): A Python server implementing the Model Context Protocol (MCP), which provides standardized tools for Claude to interact with WhatsApp data and send/receive messages.
+2. **MCP Server** (`whatsapp-mcp serve`, built from [`crates/`](crates/README.md)): a Rust program implementing the Model Context Protocol (MCP), which provides standardized tools for Claude to interact with WhatsApp data and send/receive messages. It reads `messages.db` directly and sends through the bridge's local API. Before version 0.9 this was a Python server.
 
 ### Data Storage
 
@@ -369,7 +390,7 @@ By default, just the metadata of the media is stored in the local database. The 
 
 ## Technical Details
 
-1. Claude sends requests to the Python MCP server
+1. Claude sends requests to the MCP server
 2. The MCP server queries the Go bridge for WhatsApp data or directly to the SQLite database
 3. The Go accesses the WhatsApp API and keeps the SQLite database up to date
 4. Data flows back through the chain to Claude
@@ -377,8 +398,9 @@ By default, just the metadata of the media is stored in the local database. The 
 
 ## Troubleshooting
 
-- If you encounter permission issues when running uv, you may need to add it to your PATH or use the full path to the executable.
-- Make sure both the Go application and the Python server are running for the integration to work properly.
+- Use absolute paths for `"command"` and `--store` in the client configuration: MCP clients start the server from a folder of their own choosing.
+- Make sure the Go bridge is running: the MCP server reads what it stores, and sends through it. The client starts the MCP server itself.
+- The MCP server writes its warnings and errors to stderr. Claude Desktop keeps them in its MCP log (`~/Library/Logs/Claude/mcp-server-whatsapp.log` on macOS); a missing `messages.db` is reported there when the server starts.
 
 ### Authentication Issues
 

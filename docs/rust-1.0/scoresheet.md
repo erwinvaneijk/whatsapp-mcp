@@ -22,7 +22,7 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-06 (phase 4, step 3: every MCP tool in the Rust server matches the Python server, or improves on it as decided).
+Last updated: 2026-11-06 (phase 4 done: the Rust MCP server replaces the Python one in 0.9; the Go bridge stays until 1.0).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
@@ -31,8 +31,8 @@ Last updated: 2026-11-06 (phase 4, step 3: every MCP tool in the Rust server mat
 | Bridge: WhatsApp | 17 | 17 | 0 | 0 | 0 | 0 |
 | Bridge: API and security | 7 | 7 | 0 | 0 | 0 | 0 |
 | Bridge: storage | 6 | 6 | 0 | 0 | 0 | 0 |
-| Build, release, docs | 9 | 7 | 0 | 2 | 0 | 0 |
-| **Total** | **71** | **37** | **6** | **27** | **0** | **1** |
+| Build, release, docs | 9 | 5 | 2 | 2 | 0 | 0 |
+| **Total** | **71** | **35** | **8** | **27** | **0** | **1** |
 
 ## MCP interface
 
@@ -134,11 +134,11 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | ID | Feature | Check | Status | Notes |
 |---|---|---|---|---|
 | R01 | Parity harness and fixture database, passing against today's code | CI | done | Phase 0: [`parity/`](../../parity/README.md), 93 golden files, `Parity harness` CI job. |
-| R02 | CI: rustfmt, clippy, tests on macOS, Linux, Windows | CI | done | Phase 2: `Rust (…)` CI jobs on Linux x86_64 and arm64, macOS arm64 and x86_64, Windows x86_64 (macOS arm64 is optional: GitHub often has no runner for it); see [crates/README.md](../../crates/README.md). |
+| R02 | CI: rustfmt, clippy, tests on macOS, Linux, Windows | CI | done | Phase 2: `Rust (…)` CI jobs on Linux x86_64 and arm64, macOS arm64 and x86_64, Windows x86_64 (macOS arm64 in a workflow of its own, `macos-arm64.yml`, because GitHub often has no runner for it); see [crates/README.md](../../crates/README.md). |
 | R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | todo | |
 | R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | todo | |
-| R05 | README rewritten for the single binary | review | todo | |
+| R05 | README rewritten for the single binary | review | wip | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. The full rewrite comes with the Rust bridge (1.0). |
 | R06 | `SECURITY.md` and the issue page updated | review | todo | |
-| R07 | Go and Python code removed | review | todo | Only when everything else is `verified`. |
+| R07 | Go and Python code removed | review | wip | 0.9: the Python server is removed. The Go bridge goes in 1.0, when everything else is `verified`. |
 | R08 | `dev-main` merged into `main`, tagged `v1.0.0` | review | todo | |
 | R09 | Dependency checks (vulnerabilities, licenses, sources) and no `unsafe` code | CI | done | Phase 2: `cargo deny check` in the `Rust dependencies` CI job ([deny.toml](../../deny.toml)); `unsafe_code = "forbid"` for every crate. |

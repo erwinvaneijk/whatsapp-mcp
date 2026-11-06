@@ -18,14 +18,14 @@
   "result": {
     "content": [
       {
-        "text": "{\n  \"success\": false,\n  \"message\": \"Failed to download media\"\n}",
+        "text": "{\n  \"success\": false,\n  \"message\": \"Failed to download media: message has no media\"\n}",
         "type": "text"
       }
     ],
     "isError": false,
     "resultType": "complete",
     "structuredContent": {
-      "message": "Failed to download media",
+      "message": "Failed to download media: message has no media",
       "success": false
     }
   },
