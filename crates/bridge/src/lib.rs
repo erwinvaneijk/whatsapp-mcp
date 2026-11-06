@@ -4,6 +4,7 @@
 //! done, the Go bridge in whatsapp-bridge/ is the one to run.
 
 pub mod api;
+pub mod convert;
 pub mod jid;
 pub mod log;
 
