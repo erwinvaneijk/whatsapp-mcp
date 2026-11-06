@@ -1,5 +1,5 @@
 {
-  "_about": "Configuration cases shared by the Go bridge, the Python server and the Rust config crate. Each implementation's tests read this file, so all three follow the same rules. See parity/README.md.",
+  "_about": "Configuration cases shared by the Go bridge and the Rust config crate (and the Python server, until 0.9). Each implementation's tests read this file, so they follow the same rules. See parity/README.md.",
   "files": [
     {
       "name": "full example",

@@ -18,7 +18,8 @@ import (
 // path in WHATSAPP_MCP_CONFIG. An environment variable that is set takes
 // precedence over the same setting in the file.
 //
-// whatsapp-mcp-server/config.py reads the same file; keep both in sync.
+// The Rust config crate (crates/config) reads the same file; keep both in
+// sync. parity/config-cases.json holds the cases both must pass.
 
 const configPathEnv = "WHATSAPP_MCP_CONFIG"
 

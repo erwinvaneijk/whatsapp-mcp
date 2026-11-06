@@ -40,7 +40,7 @@ The parts that are easy to miss:
 
 ## 2. Configuration
 
-Shared by the bridge and the MCP server. The exact rules are in `whatsapp-bridge/config.go` and `whatsapp-mcp-server/config.py`, and their tests. The [README](../../README.md#configuration) and [`config.example.yaml`](../../config.example.yaml) describe them for users.
+Shared by the bridge and the MCP server. The exact rules are in `whatsapp-bridge/config.go` and the Rust config crate (`crates/config`), and their tests (until 0.9 also in the Python server's `config.py`). The [README](../../README.md#configuration) and [`config.example.yaml`](../../config.example.yaml) describe them for users.
 
 - **File:** `~/.config/whatsapp-mcp/config.yaml`, or the path in `WHATSAPP_MCP_CONFIG`. A file named that way must exist; the default file is optional.
 - **Precedence:** an environment variable that is set wins over the file. An empty one counts as unset.
@@ -59,7 +59,7 @@ Shared by the bridge and the MCP server. The exact rules are in `whatsapp-bridge
 
 Yes/no settings accept `1`, `true`, `yes` and `on`, in any case; anything else means no.
 
-**Shared cases:** [`parity/config-cases.json`](../../parity/config-cases.json) holds files, allowlists and yes/no values with the result each must give. The Go, Python and Rust tests all read it, so the three implementations cannot drift apart.
+**Shared cases:** [`parity/config-cases.json`](../../parity/config-cases.json) holds files, allowlists and yes/no values with the result each must give. The Go and Rust tests read it (and the Python tests did, until 0.9), so the implementations cannot drift apart.
 
 ## 3. Bridge API
 
@@ -122,4 +122,4 @@ The harness records today's behaviour, including the quirks below. **Decided on 
 
 `~/` at the start of `WHATSAPP_MCP_CONFIG` means the home folder, as in the Python server; the Go bridge did not expand it.
 
-**Harness:** these cases are marked `rust_differs` in [`parity/cases.json`](../../parity/cases.json) and have a second golden file, `<case>.rust.json`, that the Rust server is compared with. All other golden files stay shared, and both servers must match them.
+**Shipped in 0.9.** The Rust server replaced the Python one in version 0.9, so these improvements are in that release. The golden files in the table now hold the Rust results; the Python results ("Today") are in the git history before 0.9.

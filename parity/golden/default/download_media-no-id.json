@@ -18,14 +18,14 @@
   "result": {
     "content": [
       {
-        "text": "{\n  \"success\": false,\n  \"message\": \"Failed to download media\"\n}",
+        "text": "{\n  \"success\": false,\n  \"message\": \"Failed to download media: Bridge error (HTTP 400): Message ID and Chat JID are required\"\n}",
         "type": "text"
       }
     ],
     "isError": false,
     "resultType": "complete",
     "structuredContent": {
-      "message": "Failed to download media",
+      "message": "Failed to download media: Bridge error (HTTP 400): Message ID and Chat JID are required",
       "success": false
     }
   },

@@ -6,7 +6,7 @@
   "result": {
     "content": [
       {
-        "text": "Error executing tool get_message_context",
+        "text": "Message with ID NO-SUCH-ID not found",
         "type": "text"
       }
     ],

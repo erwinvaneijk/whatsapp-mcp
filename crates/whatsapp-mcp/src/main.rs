@@ -56,6 +56,14 @@ fn main() -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
+            // Keep serving: the bridge may create it later. But say so now,
+            // instead of leaving every tool to fail with a database error.
+            if !store.join("messages.db").is_file() {
+                eprintln!(
+                    "whatsapp-mcp: no messages.db in {}. Start the bridge once, and point --store at its store folder (an absolute path).",
+                    store.display()
+                );
+            }
             let options = whatsapp_mcp_server::ServeOptions {
                 store_dir: store,
                 bridge_url,

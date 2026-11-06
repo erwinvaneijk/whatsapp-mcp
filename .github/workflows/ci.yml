@@ -36,30 +36,6 @@ jobs:
       - name: Test with FTS5
         run: go test -tags sqlite_fts5 -timeout 300s ./...
 
-  python:
-    name: Python lint and tests
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: whatsapp-mcp-server
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-
-      # Uses the versions pinned in uv.lock (Python 3.11+, mcp 2.x, ruff).
-      - name: Check formatting
-        run: uv run --locked ruff format --check --diff
-
-      - name: Lint
-        run: uv run --locked ruff check --output-format=github
-
-      - name: Run tests
-        env:
-          PYTHONPATH: .
-        run: uv run --locked --with pytest pytest -v tests
-
   # Rust workspace (docs/rust-1.0/plan.md, phase 2). Every release platform
   # builds, lints and tests here; the toolchain comes from rust-toolchain.toml.
   rust:
@@ -152,20 +128,15 @@ jobs:
       - name: Lint
         run: uv run --locked ruff check --output-format=github
 
-      # Runs the Python MCP server against the test data and compares every
-      # result with the golden files (see parity/README.md).
-      - name: Compare with golden files
-        run: uv run --locked python run.py
-
-      # The Rust server (phase 4) must match the same golden files, except
-      # the cases marked rust_differs, which have <case>.rust.json files.
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Build the Rust server
+      - name: Build the MCP server
         run: cargo build --locked --package whatsapp-mcp
 
-      - name: Compare the Rust server with golden files
-        run: uv run --locked python run.py --server rust
+      # Runs the MCP server against the test data and compares every result
+      # with the golden files (see parity/README.md).
+      - name: Compare with golden files
+        run: uv run --locked python run.py
