@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-05 (phase 3: the config crate reads and checks every setting; the bridge and server use it from phases 4 and 5).
+Last updated: 2026-11-06 (phase 4, step 1: the Rust server publishes the same name, instructions and tools; the tools themselves follow).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
-| MCP interface | 20 | 20 | 0 | 0 | 0 | 0 |
+| MCP interface | 20 | 16 | 0 | 4 | 0 | 0 |
 | Configuration | 12 | 0 | 6 | 6 | 0 | 0 |
 | Bridge: WhatsApp | 17 | 17 | 0 | 0 | 0 | 0 |
 | Bridge: API and security | 7 | 7 | 0 | 0 | 0 | 0 |
 | Bridge: storage | 6 | 6 | 0 | 0 | 0 | 0 |
 | Build, release, docs | 9 | 7 | 0 | 2 | 0 | 0 |
-| **Total** | **71** | **57** | **6** | **8** | **0** | **0** |
+| **Total** | **71** | **53** | **6** | **12** | **0** | **0** |
 
 ## MCP interface
 
@@ -40,10 +40,10 @@ What Claude and other MCP clients see. Today: `whatsapp-mcp-server/main.py` and 
 
 | ID | Feature | Check | Status | Notes |
 |---|---|---|---|---|
-| M01 | Server name `whatsapp` and the server instructions text | harness | todo | |
-| M02 | Tool list: names, titles, descriptions, parameter schemas and defaults | harness | todo | |
-| M03 | Tool annotations (read-only, destructive, idempotent, open-world) | harness | todo | |
-| M04 | Read-only mode hides the send tools | harness | todo | `read_only` / `WHATSAPP_MCP_READ_ONLY` |
+| M01 | Server name `whatsapp` and the server instructions text | harness | done | Harness: `_server.json` in every profile matches (`run.py --server rust --only _server`). |
+| M02 | Tool list: names, titles, descriptions, parameter schemas and defaults | harness | done | Definitions are data (`crates/mcp/src/tools.json`); `crates/mcp/tests/definitions.rs` keeps them equal to the golden file. |
+| M03 | Tool annotations (read-only, destructive, idempotent, open-world) | harness | done | Part of the definitions; checked as M02. |
+| M04 | Read-only mode hides the send tools | harness | done | `read_only` / `WHATSAPP_MCP_READ_ONLY` Harness profiles `read_only_env` and `read_only_config`; `definitions.rs` checks exactly the four send tools are hidden. |
 | M05 | `search_contacts` | harness | todo | Names and LID-to-phone map; see plan, "Contact names". |
 | M06 | `list_messages`: filters (time, sender, chat), paging, sorting | harness | todo | |
 | M07 | `list_messages`: text search, FTS5 and the fallback scan | harness | todo | Rust always has FTS5; the fallback is still needed for a database without the index. |

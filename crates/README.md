@@ -8,9 +8,9 @@ The Rust rewrite of the bridge and the MCP server, as described in the [1.0 plan
 |---|---|---|---|
 | `config/` | `whatsapp-mcp-config` | `config.yaml` and the environment variables, with the same rules as today | done (phase 3) |
 | `store/` | `whatsapp-mcp-store` | `messages.db`: schema, migrations, full-text search, queries | phase 4 |
-| `mcp/` | `whatsapp-mcp-server` | The MCP tools, over stdio | phase 4 |
+| `mcp/` | `whatsapp-mcp-server` | The MCP tools, over stdio | phase 4: tool definitions done, tools in progress |
 | `bridge/` | `whatsapp-mcp-bridge` | The WhatsApp connection, storing messages, the local API | phase 5 |
-| `whatsapp-mcp/` | `whatsapp-mcp` | The binary: `whatsapp-mcp bridge` and `whatsapp-mcp serve` | each phase |
+| `whatsapp-mcp/` | `whatsapp-mcp` | The binary: `whatsapp-mcp bridge` and `whatsapp-mcp serve [--store DIR] [--bridge-url URL]` | each phase |
 
 ## Building
 

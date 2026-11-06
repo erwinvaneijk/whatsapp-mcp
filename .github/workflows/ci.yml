@@ -147,3 +147,16 @@ jobs:
       # result with the golden files (see parity/README.md).
       - name: Compare with golden files
         run: uv run --locked python run.py
+
+      # The Rust server (phase 4) must match the same golden files. It is
+      # checked for what it implements so far; the list grows with each step.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build the Rust server
+        run: cargo build --locked --package whatsapp-mcp
+
+      - name: Compare the Rust server with golden files
+        run: uv run --locked python run.py --server rust --only _server
