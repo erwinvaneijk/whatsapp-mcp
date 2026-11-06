@@ -226,9 +226,10 @@ fn convert_to_opus_ogg(input: &str, dir: &str) -> Result<tempfile::TempPath, Str
         .output()
         .map_err(|e| format!("cannot run ffmpeg: {e}"))?;
     if !output.status.success() {
+        // The caller already suggests installing ffmpeg; say what it reported.
         return Err(format!(
-            "Failed to convert audio. You likely need to install ffmpeg {}",
-            String::from_utf8_lossy(&output.stderr)
+            "ffmpeg could not convert the audio: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
         ));
     }
     Ok(file)
