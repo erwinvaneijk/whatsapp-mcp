@@ -86,15 +86,15 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 
 | ID | Feature | Check | Status | Notes |
 |---|---|---|---|---|
-| W01 | Connect and stay connected; reconnect after network loss | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, checks 3–4: reconnects after 2 minutes offline, the message sent meanwhile is stored. |
+| W01 | Connect and stay connected; reconnect after network loss | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 4: reconnects after 2 minutes offline, the message sent meanwhile is stored. |
 | W02 | Link with a QR code in the terminal | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 1. |
 | W03 | Link with a pairing code (`pair_phone`) | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 2 (`WHATSAPP_PAIR_PHONE`). The number must include the country code; a leading 0 is refused. |
 | W04 | Session kept across restarts | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 3. The session is in `store/session.db`; the Go bridge's link cannot be carried over (re-linked once). |
 | W05 | Receive and store text messages, direct and group | tests, live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 6, also messages sent from the phone itself. Tests: `crates/bridge/tests/receive.rs`. |
 | W06 | History sync on first link | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 5. Go's rules (senders, skipped conversations and messages) tested in `receive.rs`. |
-| W07 | Captions stored as message text | tests | verified | Tests ported (`caption_test.go`). Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 7. |
-| W08 | Non-text messages stored as bracketed text (reactions, polls, votes, locations, contacts, stickers, edits, deletes) | tests | verified | Tests ported (`reaction_test.go`, content parts of `main_test.go`). Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 8. |
-| W09 | Quoted message ID stored for replies | tests | verified | Tests ported (`quoted_test.go`). Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 9. |
+| W07 | Captions stored as message text | tests, live | verified | Tests ported (`caption_test.go`). Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 7. |
+| W08 | Non-text messages stored as bracketed text (reactions, polls, votes, locations, contacts, stickers, edits, deletes) | tests, live | verified | Tests ported (`reaction_test.go`, content parts of `main_test.go`). Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 8. |
+| W09 | Quoted message ID stored for replies | tests, live | verified | Tests ported (`quoted_test.go`). Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 9. |
 | W10 | Contact names, push names, LID-to-phone map | tests, live | verified | Stored in `contacts` and `lid_map` in `messages.db` (see plan), read by `serve`. Live test passed with the test account (user, 2026-11-06), phase 5 step 3, checks 10–11. |
 | W11 | Group names | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 12: the group's subject, asked from WhatsApp when the history sync has no name. |
 | W12 | Sent messages and reactions stored, in the existing PN or LID chat | tests | todo | |
