@@ -9,6 +9,7 @@
 
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use tokio::sync::mpsc;
@@ -143,9 +144,13 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
         .map_err(|e| format!("Failed to open the session database {session}: {e}"))?;
 
     let (events, mut queue) = mpsc::unbounded_channel();
+    let waiting = Arc::new(Waiting::default());
     let mut builder = Bot::builder()
         .with_backend(backend)
-        .with_event_handler(Forward(events));
+        .with_event_handler(Forward {
+            events,
+            waiting: Arc::clone(&waiting),
+        });
     let pairing = settings.pair_phone.is_some();
     if let Some(phone) = settings.pair_phone.clone() {
         builder = builder.with_pair_code(PairCodeOptions {
@@ -166,6 +171,7 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
         let client = Arc::clone(&client);
         tokio::spawn(async move {
             while let Some(event) = queue.recv().await {
+                waiting.taken();
                 handle_event(&shared, &client, &event, pairing).await;
             }
         })
@@ -228,13 +234,62 @@ async fn shutdown_signal() {
     let _ = tokio::signal::ctrl_c().await;
 }
 
-/// Passes every event to the bridge's own queue, without dropping any.
-struct Forward(mpsc::UnboundedSender<Arc<Event>>);
+/// Passes every event to the bridge's own queue, without dropping any. The
+/// queue has no limit: blocking here would stall the connection, and
+/// dropping would lose messages. Its length is watched instead.
+struct Forward {
+    events: mpsc::UnboundedSender<Arc<Event>>,
+    waiting: Arc<Waiting>,
+}
 
 impl EventHandler for Forward {
     fn handle_event(&self, event: Arc<Event>) {
         // Fails only after the worker stopped, during shutdown.
-        let _ = self.0.send(event);
+        if self.events.send(event).is_ok() {
+            self.waiting.added();
+        }
+    }
+}
+
+/// The number of events waiting to be stored. Each time it reaches the
+/// next of 1,000, 10,000, 100,000, ... the bridge says so, so a store
+/// that falls behind shows in the log long before memory runs out.
+#[derive(Default)]
+struct Waiting {
+    count: AtomicUsize,
+    warned_at: AtomicUsize,
+}
+
+/// The first queue length that is reported.
+const WAITING_WARN: usize = 1_000;
+
+impl Waiting {
+    fn added(&self) {
+        let count = self.count.fetch_add(1, Ordering::Relaxed) + 1;
+        let warned = self.warned_at.load(Ordering::Relaxed);
+        let next = if warned == 0 {
+            WAITING_WARN
+        } else {
+            warned * 10
+        };
+        if count >= next
+            && self
+                .warned_at
+                .compare_exchange(warned, next, Ordering::Relaxed, Ordering::Relaxed)
+                .is_ok()
+        {
+            log::line(&format!(
+                "{count} WhatsApp events are waiting to be stored; storing is falling behind"
+            ));
+        }
+    }
+
+    fn taken(&self) {
+        let count = self.count.fetch_sub(1, Ordering::Relaxed).saturating_sub(1);
+        // Back to normal: report the next build-up from the start again.
+        if count < WAITING_WARN / 10 {
+            self.warned_at.store(0, Ordering::Relaxed);
+        }
     }
 }
 
@@ -599,6 +654,33 @@ fn print_qr(code: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_growing_queue_is_reported_once_per_tenfold() {
+        let waiting = Waiting::default();
+        let mut warnings = Vec::new();
+        for _ in 0..12_000 {
+            let before = waiting.warned_at.load(Ordering::Relaxed);
+            waiting.added();
+            let after = waiting.warned_at.load(Ordering::Relaxed);
+            if after != before {
+                warnings.push(after);
+            }
+        }
+        assert_eq!(warnings, vec![1_000, 10_000]);
+        for _ in 0..11_950 {
+            waiting.taken();
+        }
+        assert_eq!(
+            waiting.warned_at.load(Ordering::Relaxed),
+            0,
+            "reset once drained"
+        );
+        for _ in 0..1_000 {
+            waiting.added();
+        }
+        assert_eq!(waiting.warned_at.load(Ordering::Relaxed), 1_000);
+    }
 
     #[test]
     fn pair_phone_needs_the_country_code() {
