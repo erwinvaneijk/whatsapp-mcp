@@ -1,0 +1,33 @@
+{
+  "args": {
+    "message": "fails",
+    "recipient": "31600000001"
+  },
+  "bridge_requests": [
+    {
+      "content_type": "application/json",
+      "json": {
+        "message": "fails",
+        "recipient": "31600000001"
+      },
+      "method": "POST",
+      "path": "/api/send",
+      "token": "ok"
+    }
+  ],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"success\": false,\n  \"message\": \"Error sending message: not connected\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "message": "Error sending message: not connected",
+      "success": false
+    }
+  },
+  "tool": "send_message"
+}

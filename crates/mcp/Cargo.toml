@@ -13,7 +13,9 @@ regex = "1.13.1"
 rmcp = { version = "3.9.0", default-features = false, features = ["server", "transport-io"] }
 serde = "1.0.229"
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
+tempfile = "3.27.0"
 tokio = { version = "1.54.1", features = ["rt", "macros", "io-std"] }
+ureq = { version = "3.5.1", default-features = false, features = ["json"] }
 whatsapp-mcp-config.workspace = true
 whatsapp-mcp-store.workspace = true
 

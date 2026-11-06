@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-06 (phase 4, step 2: the Rust server's read tools match the Python server; the send tools follow).
+Last updated: 2026-11-06 (phase 4, step 3: every MCP tool in the Rust server matches the Python server, or improves on it as decided).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
-| MCP interface | 20 | 5 | 2 | 13 | 0 | 0 |
+| MCP interface | 20 | 0 | 0 | 19 | 0 | 1 |
 | Configuration | 12 | 0 | 6 | 6 | 0 | 0 |
 | Bridge: WhatsApp | 17 | 17 | 0 | 0 | 0 | 0 |
 | Bridge: API and security | 7 | 7 | 0 | 0 | 0 | 0 |
 | Bridge: storage | 6 | 6 | 0 | 0 | 0 | 0 |
 | Build, release, docs | 9 | 7 | 0 | 2 | 0 | 0 |
-| **Total** | **71** | **42** | **8** | **21** | **0** | **0** |
+| **Total** | **71** | **37** | **6** | **27** | **0** | **1** |
 
 ## MCP interface
 
@@ -51,15 +51,15 @@ What Claude and other MCP clients see. Today: `whatsapp-mcp-server/main.py` and 
 | M09 | `list_chats`: search, paging, sort, with and without last message | harness | done | Harness: Rust matches the golden files (phase 4, step 2). |
 | M10 | `get_chat`, `get_direct_chat_by_contact`, `get_contact_chats` | harness | done | Harness: Rust matches the golden files (phase 4, step 2). |
 | M11 | `get_last_interaction`, `get_message_context` | harness | done | Harness: Rust matches the golden files (phase 4, step 2). |
-| M12 | `send_message`: text, reply, mentions | harness | todo | Against a fake bridge that records requests. |
-| M13 | `send_file`: caption, only from `media_dir` | harness | todo | |
-| M14 | `send_audio_message`: ffmpeg conversion, temp file cleanup | harness, tests | todo | |
-| M15 | `download_media`: returns the file path | harness | todo | |
-| M16 | `react_to_message`, including removing a reaction | harness | todo | |
-| M17 | Structured output: same JSON fields and types as today | harness | wip | The Python MCP SDK (`mcp` 2.x) validates return types against the declared output schema; the Rust server must declare and return the same schemas. Read tools match, text and structured content (step 2); send tools follow in step 3. |
+| M12 | `send_message`: text, reply, mentions | harness | done | Against a fake bridge that records requests. Harness: Rust matches the golden files (phase 4, step 3). |
+| M13 | `send_file`: caption, only from `media_dir` | harness | done | Harness: Rust matches the golden files (phase 4, step 3). Media folder checks also unit-tested (`..`, symlinks, shared prefix). |
+| M14 | `send_audio_message`: ffmpeg conversion, temp file cleanup | harness, tests | done | Harness: Rust matches the golden files (phase 4, step 3). Only `.ogg` in the harness; the ffmpeg conversion and temp file cleanup are unit-tested (CI installs ffmpeg on Linux x86_64). |
+| M15 | `download_media`: returns the file path | harness | done | Harness: Rust matches the golden files (phase 4, step 3). |
+| M16 | `react_to_message`, including removing a reaction | harness | done | Harness: Rust matches the golden files (phase 4, step 3). |
+| M17 | Structured output: same JSON fields and types as today | harness | done | The Python MCP SDK (`mcp` 2.x) validates return types against the declared output schema; the Rust server must declare and return the same schemas. All tools: text and structured content match (step 3). |
 | M18 | Messages from others marked as data (`<message_content>`, tag neutralising, names on one line, read-tool notice) | harness, tests | done | Harness: Rust matches the golden files (phase 4, step 2). Unit tests in `crates/mcp/src/untrusted.rs`. |
 | M19 | Times shown with UTC offset; `after`/`before` accept ISO-8601, naive times are local | harness, tests | done | Harness: Rust matches the golden files (phase 4, step 2). Unit tests in `crates/store/src/time.rs`. |
-| M20 | Error texts for bad input and an unreachable bridge | harness | wip | Decided: today's quirks get better behaviour in Rust, so this row becomes `changed` when done; see [interface.md, section 5](interface.md#5-behaviour-that-improves-in-10). Bad input done: five cases have Rust-specific golden files (`*.rust.json`) with the reason in the message. The bridge errors follow in step 3. |
+| M20 | Error texts for bad input and an unreachable bridge | harness | changed | Decided: today's quirks get better behaviour in Rust, so this row becomes `changed` when done; see [interface.md, section 5](interface.md#5-behaviour-that-improves-in-10). Eleven cases have Rust-specific golden files (`*.rust.json`): bad input and bridge errors give their reason. Bridge-down and missing-token messages are unchanged. |
 
 ## Configuration
 

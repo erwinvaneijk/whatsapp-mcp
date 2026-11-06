@@ -7,8 +7,10 @@
 //! same, so MCP clients see no difference.
 
 mod args;
+mod bridge;
 mod output;
 mod read_tools;
+mod send_tools;
 mod untrusted;
 
 use std::sync::Arc;
@@ -19,7 +21,7 @@ use rmcp::model::{
 };
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData as McpError, RoleServer, ServerHandler, ServiceExt};
-use whatsapp_mcp_config::Config;
+use whatsapp_mcp_config::{Config, Setting};
 use whatsapp_mcp_store::Store;
 
 pub use untrusted::{UNTRUSTED_NOTICE, mark_untrusted, one_line};
@@ -64,8 +66,8 @@ pub struct ServeOptions {
 pub struct Server {
     tools: Arc<Vec<Tool>>,
     store: Store,
-    #[allow(dead_code)] // used by the send tools, in the next step
-    options: Arc<ServeOptions>,
+    bridge: Arc<bridge::Bridge>,
+    media_dir: Option<Arc<str>>,
 }
 
 impl Server {
@@ -77,7 +79,12 @@ impl Server {
         Self {
             tools: Arc::new(tools),
             store: Store::new(&options.store_dir),
-            options: Arc::new(options),
+            // Any token is sent; the bridge itself refuses a short one.
+            bridge: Arc::new(bridge::Bridge::new(
+                &options.bridge_url,
+                config.get(Setting::BridgeToken),
+            )),
+            media_dir: config.media_dir().map(Arc::from),
         }
     }
 
@@ -111,15 +118,22 @@ impl ServerHandler for Server {
         if !self.tools.iter().any(|tool| tool.name == name) {
             return Ok(error_result(format!("Unknown tool: {name}")).into());
         }
-        let store = self.store.clone();
+        let server = self.clone();
         let arguments = request.arguments;
-        // SQLite blocks; keep it off the thread that serves stdio.
+        // SQLite and the bridge calls block; keep them off the thread that
+        // serves stdio.
         let result = tokio::task::spawn_blocking(move || {
             let args = args::Args::new(arguments.as_ref());
-            match read_tools::call(&store, &name, &args) {
+            let send = send_tools::SendContext {
+                bridge: &server.bridge,
+                media_dir: server.media_dir.as_deref(),
+            };
+            let outcome = read_tools::call(&server.store, &name, &args)
+                .or_else(|| send_tools::call(&send, &name, &args));
+            match outcome {
                 Some(Ok(output)) => output.into_result(),
                 Some(Err(error)) => error.into_result(),
-                None => error_result(format!("{name} is not implemented yet in the Rust server")),
+                None => error_result(format!("Unknown tool: {name}")),
             }
         })
         .await

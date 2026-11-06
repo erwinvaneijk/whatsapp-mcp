@@ -112,7 +112,7 @@ The harness records today's behaviour, including the quirks below. **Decided on 
 | Bridge answers with an error status | The message is `Error: HTTP 500 - ` followed by the bridge's raw JSON. | The bridge's own `message` when the answer is JSON, such as `This chat is not in WHATSAPP_SEND_ALLOWLIST, …`. Otherwise `Bridge error (HTTP 400): ` followed by its text. | `default/send_message-refused.json`, `default/send_message-bridge-failure.json` |
 | Bridge answers 200 with text that isn't JSON | `Request error: Expecting value: line 1 column 1 (char 0)`, Python's parser error. | A message that says the bridge's answer could not be read, without parser details. | `default/send_message-bridge-not-json.json` |
 | `get_message_context` with an unknown ID | `Error executing tool get_message_context`. | `Message with ID … not found`. | `default/get_message_context-unknown.json` |
-| `download_media` failures | Always `Failed to download media`; the bridge's reason is only written to the server's log. | The bridge's reason is included, for example `Failed to download media: message has no media`. | `default/download_media-failed.json`, `default/download_media-no-id.json` |
+| `download_media` failures | Always `Failed to download media`; the bridge's reason is only written to the server's log. | The bridge's reason is included, for example `Failed to download media: message has no media`. | `default/download_media-failed.json`, `default/download_media-no-id.json`, `bridge_down/download_media-ok.json` |
 
 **Configuration:** the Rust config crate is stricter than today's code in three cases that are almost certainly mistakes. Each is an error with the line number:
 
