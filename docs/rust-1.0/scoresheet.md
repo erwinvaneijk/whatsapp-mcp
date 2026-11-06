@@ -134,7 +134,7 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | ID | Feature | Check | Status | Notes |
 |---|---|---|---|---|
 | R01 | Parity harness and fixture database, passing against today's code | CI | done | Phase 0: [`parity/`](../../parity/README.md), 93 golden files, `Parity harness` CI job. |
-| R02 | CI: rustfmt, clippy, tests on macOS, Linux, Windows | CI | done | Phase 2: `Rust (…)` CI jobs on Linux x86_64 and arm64, macOS arm64 and x86_64, Windows x86_64 (macOS arm64 is optional: GitHub often has no runner for it); see [crates/README.md](../../crates/README.md). |
+| R02 | CI: rustfmt, clippy, tests on macOS, Linux, Windows | CI | done | Phase 2: `Rust (…)` CI jobs on Linux x86_64 and arm64, macOS arm64 and x86_64, Windows x86_64 (macOS arm64 in a workflow of its own, `macos-arm64.yml`, because GitHub often has no runner for it); see [crates/README.md](../../crates/README.md). |
 | R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | todo | |
 | R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | todo | |
 | R05 | README rewritten for the single binary | review | wip | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. The full rewrite comes with the Rust bridge (1.0). |

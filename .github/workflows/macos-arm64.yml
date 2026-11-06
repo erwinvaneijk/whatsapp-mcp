@@ -1,0 +1,39 @@
+name: macOS arm64
+
+# The Rust checks on macOS arm64, apart from the main CI workflow. GitHub is
+# often short of macOS arm64 runners; a job that gets none is cancelled after
+# 15 minutes in the queue ("not acquired by Runner of type hosted"). Here that
+# shows as a red run of its own, without failing CI. macOS x86_64, Linux and
+# Windows are checked in ci.yml and must pass.
+
+on:
+  push:
+    branches: [main, dev-main, "fix/**", "feat/**", "ci/**"]
+  pull_request:
+    branches: [main, dev-main]
+  workflow_dispatch:
+
+jobs:
+  rust:
+    name: Rust (macOS arm64)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Run the binary
+        run: target/release/whatsapp-mcp --version
