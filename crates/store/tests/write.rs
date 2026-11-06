@@ -34,7 +34,7 @@ fn go_schema() -> Vec<String> {
         env!("CARGO_MANIFEST_DIR"),
         "/../../parity/fixture/schema.sql"
     );
-    let text = std::fs::read_to_string(path).unwrap();
+    let text = std::fs::read_to_string(path).unwrap().replace("\r\n", "\n");
     text.split("\n\n")
         .map(str::trim)
         .filter(|s| !s.is_empty() && !s.starts_with("--"))
@@ -48,6 +48,11 @@ fn schema_is_the_go_bridges_plus_the_names_tables() {
     let writer = Writer::open(dir.path()).unwrap();
     let got = schema(writer.connection());
     let want = go_schema();
+    assert_eq!(want.len(), 10, "statements in parity/fixture/schema.sql");
+    assert!(
+        got.iter().all(|s| !s.contains('\r')),
+        "schema text has CRLF line endings; see .gitattributes"
+    );
     assert_eq!(
         got[..want.len()],
         want[..],
