@@ -72,10 +72,18 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: cargo fmt --all --check
 
-      # So the voice-note conversion test runs instead of skipping.
+      # So the voice-note conversion test runs instead of skipping. Optional:
+      # if apt is slow or broken, the test skips rather than the job hanging
+      # (it once waited the full 30 minutes).
       - name: Install ffmpeg
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg
 
       - name: Lint
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
