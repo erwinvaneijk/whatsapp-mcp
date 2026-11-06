@@ -327,7 +327,9 @@ def main() -> int:
     # A case marked "rust_differs" has its own golden file for the Rust
     # server, <case>.rust.json: there it behaves better on purpose (see
     # docs/rust-1.0/interface.md, section 5). All other files are shared.
-    rust = args.server == "rust" and not args.server_cmd
+    # --server-cmd only changes how the server starts, not which golden files
+    # apply: name the implementation with --server.
+    rust = args.server == "rust"
 
     def golden_name(profile: dict, stem: str) -> str:
         differs = profile.get("cases", {}).get(stem, {}).get("rust_differs")
@@ -371,7 +373,7 @@ def main() -> int:
                     difflib.unified_diff(
                         want.splitlines(True),
                         got.splitlines(True),
-                        f"golden/{name}/{stem}.json",
+                        f"golden/{name}/{golden_name(profiles[name], stem)}.json",
                         "now",
                     )
                 )
