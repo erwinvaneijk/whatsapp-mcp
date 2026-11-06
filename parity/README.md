@@ -68,7 +68,14 @@ The harness starts the server with the command for `--server` (see `SERVERS` in 
 - `PARITY_STORE_DIR`: the folder with `messages.db` and `whatsapp.db`;
 - `PARITY_BRIDGE_URL`: the bridge API base, such as `http://127.0.0.1:54321/api`.
 
-[`adapters/python_server.py`](adapters/python_server.py) does this for the Python server without changing it. The Rust server will get a hidden option for the same purpose.
+[`adapters/python_server.py`](adapters/python_server.py) does this for the Python server without changing it. [`adapters/rust_server.py`](adapters/rust_server.py) starts the Rust server with `cargo run`, passing them as `serve --store … --bridge-url …`.
+
+While the Rust server is being built, `--only` limits the comparison to the files it should already match. The other cases still run:
+
+```bash
+uv run --locked python run.py --server rust --only _server            # what CI checks now
+uv run --locked python run.py --server rust --only 'list_messages-*'  # one tool
+```
 
 Time zones are set through `TZ`, so the harness runs on macOS and Linux, not on Windows.
 

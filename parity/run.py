@@ -9,6 +9,7 @@ compare the results with the recorded golden files. See README.md.
 import argparse
 import asyncio
 import difflib
+import fnmatch
 import json
 import os
 import re
@@ -43,6 +44,7 @@ SERVERS = {
         "python",
         str(HERE / "adapters" / "python_server.py"),
     ],
+    "rust": [sys.executable, str(HERE / "adapters" / "rust_server.py")],
 }
 
 # Default fake-bridge answers, per API path, when a case does not set one.
@@ -298,6 +300,13 @@ def main() -> int:
         "--update", action="store_true", help="write the results as the new golden files"
     )
     parser.add_argument("--golden", type=Path, default=HERE / "golden", help="golden files folder")
+    parser.add_argument(
+        "--only",
+        action="append",
+        metavar="PATTERN",
+        help="compare (or record) only the files whose name matches, such as _server or "
+        "'list_*' (repeatable); the other cases still run",
+    )
     args = parser.parse_args()
 
     cases = json.loads((HERE / "cases.json").read_text("utf-8"))
@@ -310,13 +319,18 @@ def main() -> int:
 
     differences = 0
     total = 0
+
+    def wanted(stem: str) -> bool:
+        return not args.only or any(fnmatch.fnmatchcase(stem, p) for p in args.only)
+
     for name in selected:
         files = asyncio.run(run_profile(server_cmd, name, profiles[name]))
+        files = {stem: data for stem, data in files.items() if wanted(stem)}
         folder = args.golden / name
         if args.update:
             folder.mkdir(parents=True, exist_ok=True)
             for old in folder.glob("*.json"):
-                if old.stem not in files:
+                if old.stem not in files and wanted(old.stem):
                     old.unlink()
             for stem, data in files.items():
                 (folder / f"{stem}.json").write_text(to_text(data), "utf-8")
@@ -338,7 +352,7 @@ def main() -> int:
                         "now",
                     )
                 )
-        missing = {p.stem for p in folder.glob("*.json")} - set(files)
+        missing = {p.stem for p in folder.glob("*.json") if wanted(p.stem)} - set(files)
         for stem in sorted(missing):
             differences += 1
             print(f"DIFF {name}/{stem}: golden file has no case any more")
