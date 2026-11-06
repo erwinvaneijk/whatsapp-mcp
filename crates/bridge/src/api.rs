@@ -413,58 +413,99 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 }
 
 /// A request body read as Go's `encoding/json` reads it into a struct: the
-/// first JSON value only, unknown fields ignored, `null` leaves a field
-/// empty, field names matched exactly or else ignoring case, and a value of
-/// the wrong type is an error.
+/// first JSON value only, unknown fields ignored. Every key that matches a
+/// field, exactly or ignoring case, is applied in order, so a later one
+/// overwrites an earlier one; `null` leaves the field as it is; a value of
+/// the wrong type makes the whole body invalid.
 struct GoJson {
-    fields: Option<serde_json::Map<String, Value>>,
+    /// The object's keys and values in order, duplicates kept; `None` for a
+    /// body that is `null`.
+    pairs: Option<Vec<(String, Value)>>,
 }
 
 impl GoJson {
     fn parse(body: &[u8]) -> Result<GoJson, ()> {
         let first = serde_json::Deserializer::from_slice(body)
-            .into_iter::<Value>()
+            .into_iter::<Pairs>()
             .next();
         match first {
-            Some(Ok(Value::Object(fields))) => Ok(GoJson {
-                fields: Some(fields),
-            }),
-            Some(Ok(Value::Null)) => Ok(GoJson { fields: None }),
+            Some(Ok(Pairs(pairs))) => Ok(GoJson { pairs }),
             _ => Err(()),
         }
     }
 
-    fn get(&self, name: &str) -> Option<&Value> {
-        let fields = self.fields.as_ref()?;
-        fields.get(name).or_else(|| {
-            fields
-                .iter()
-                .rev()
-                .find(|(key, _)| key.eq_ignore_ascii_case(name))
-                .map(|(_, value)| value)
-        })
+    /// The values given for a field, in order.
+    fn values<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a Value> + 'a {
+        self.pairs
+            .iter()
+            .flatten()
+            .filter(move |(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value)
     }
 
     fn string(&self, name: &str) -> Result<String, ()> {
-        match self.get(name) {
-            None | Some(Value::Null) => Ok(String::new()),
-            Some(Value::String(s)) => Ok(s.clone()),
-            Some(_) => Err(()),
+        let mut result = String::new();
+        for value in self.values(name) {
+            match value {
+                Value::Null => {}
+                Value::String(s) => result = s.clone(),
+                _ => return Err(()),
+            }
         }
+        Ok(result)
     }
 
     fn strings(&self, name: &str) -> Result<Vec<String>, ()> {
-        match self.get(name) {
-            None | Some(Value::Null) => Ok(Vec::new()),
-            Some(Value::Array(items)) => items
-                .iter()
-                .map(|item| match item {
-                    Value::String(s) => Ok(s.clone()),
-                    Value::Null => Ok(String::new()),
-                    _ => Err(()),
-                })
-                .collect(),
-            Some(_) => Err(()),
+        let mut result = Vec::new();
+        for value in self.values(name) {
+            match value {
+                Value::Null => {}
+                Value::Array(items) => {
+                    result = items
+                        .iter()
+                        .map(|item| match item {
+                            Value::String(s) => Ok(s.clone()),
+                            Value::Null => Ok(String::new()),
+                            _ => Err(()),
+                        })
+                        .collect::<Result<_, _>>()?;
+                }
+                _ => return Err(()),
+            }
         }
+        Ok(result)
+    }
+}
+
+/// A JSON object as its key and value pairs in order, duplicates kept, or
+/// `null`. Anything else does not decode into a struct in Go.
+struct Pairs(Option<Vec<(String, Value)>>);
+
+impl<'de> serde::Deserialize<'de> for Pairs {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visitor;
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = Pairs;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str("a JSON object or null")
+            }
+
+            fn visit_unit<E: serde::de::Error>(self) -> Result<Pairs, E> {
+                Ok(Pairs(None))
+            }
+
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> Result<Pairs, A::Error> {
+                let mut pairs = Vec::new();
+                while let Some(pair) = map.next_entry::<String, Value>()? {
+                    pairs.push(pair);
+                }
+                Ok(Pairs(Some(pairs)))
+            }
+        }
+        deserializer.deserialize_any(Visitor)
     }
 }

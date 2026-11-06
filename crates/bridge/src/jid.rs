@@ -36,13 +36,19 @@ impl Jid {
         }
     }
 
-    /// whatsmeow's `ParseJID`. Without `@` the whole text is the server.
+    /// whatsmeow's `ParseJID`, but stricter: with an `@` there must be
+    /// exactly one, with a user before it and a server after it (whatsmeow
+    /// accepts `a@b@c` as `a@b`, and `@s.whatsapp.net`). Without `@` the
+    /// whole text is the server, as in whatsmeow.
     pub fn parse(text: &str) -> Result<Jid, InvalidJid> {
         let mut parts = text.split('@');
         let first = parts.next().unwrap_or("");
         let Some(server) = parts.next() else {
             return Ok(Jid::new("", first));
         };
+        if parts.next().is_some() || first.is_empty() || server.is_empty() {
+            return Err(InvalidJid);
+        }
         let mut jid = Jid::new(first, server);
         if first.contains('.') {
             let pieces: Vec<&str> = first.split('.').collect();
@@ -123,6 +129,10 @@ mod tests {
         assert_eq!(Jid::parse("g.us").unwrap().to_string(), "g.us");
         assert!(Jid::parse("1:x@s.whatsapp.net").is_err());
         assert!(Jid::parse("a.b.c@s.whatsapp.net").is_err());
+        // Stricter than whatsmeow.
+        for bad in ["a@b@c", "@s.whatsapp.net", "31612345678@", "@"] {
+            assert!(Jid::parse(bad).is_err(), "{bad}");
+        }
     }
 
     #[test]

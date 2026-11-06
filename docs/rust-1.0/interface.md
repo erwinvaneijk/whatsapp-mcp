@@ -123,4 +123,6 @@ The harness records today's behaviour, including the quirks below. **Decided on 
 
 `~/` at the start of `WHATSAPP_MCP_CONFIG` means the home folder, as in the Python server; the Go bridge did not expand it.
 
+**Bridge API:** the Rust bridge refuses a recipient or `chat_jid` with more than one `@`, or with an empty user or server (`400 Invalid recipient` / `Invalid chat_jid`). whatsmeow accepted `a@b@c` as `a@b`, and `@s.whatsapp.net`, which then failed when sending.
+
 **Shipped in 0.9.** The Rust server replaced the Python one in version 0.9, so these improvements are in that release. The golden files in the table now hold the Rust results; the Python results ("Today") are in the git history before 0.9.

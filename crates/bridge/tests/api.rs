@@ -307,6 +307,58 @@ async fn bodies_are_read_as_go_reads_them() {
 }
 
 #[tokio::test]
+async fn later_keys_overwrite_earlier_ones_as_in_go() {
+    let a = api(Fake::default(), "");
+    // Go applies every key that matches a field, in order: the last wins,
+    // whatever its case; null leaves the field as it is.
+    let r = post(
+        &a,
+        "/api/send",
+        r#"{"recipient":"a","Recipient":"316","message":"hi","MESSAGE":null}"#,
+    )
+    .await;
+    assert_eq!(r.status, 200);
+    let sent = a.backend.sent.lock().unwrap()[0].clone();
+    assert_eq!(
+        (sent.recipient.as_str(), sent.message.as_str()),
+        ("316", "hi")
+    );
+    // A wrong type is an error even when a later key would overwrite it.
+    let r = post(
+        &a,
+        "/api/send",
+        r#"{"recipient":5,"recipient":"316","message":"hi"}"#,
+    )
+    .await;
+    assert_eq!(
+        (r.status, r.body.as_str()),
+        (400, "Invalid request format\n")
+    );
+}
+
+#[tokio::test]
+async fn malformed_jids_are_refused() {
+    let a = api(Fake::default(), "");
+    for recipient in ["a@b@c", "@s.whatsapp.net", "31612345678@"] {
+        let body = format!(r#"{{"recipient":"{recipient}","message":"hi"}}"#);
+        let r = post(&a, "/api/send", &body).await;
+        assert_eq!(
+            (r.status, r.body.as_str()),
+            (400, "Invalid recipient\n"),
+            "{recipient}"
+        );
+    }
+    let r = post(
+        &a,
+        "/api/react",
+        r#"{"message_id":"M1","chat_jid":"a@b@c","emoji":"x"}"#,
+    )
+    .await;
+    assert_eq!((r.status, r.body.as_str()), (400, "Invalid chat_jid\n"));
+    assert!(a.backend.calls.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn json_answers() {
     let a = api(Fake::default(), "");
     let r = post(&a, "/api/send", r#"{"recipient":"316","message":"hi"}"#).await;
