@@ -6,6 +6,11 @@
 //! server publishes, recorded by the parity harness. A test keeps the two the
 //! same, so MCP clients see no difference.
 
+mod args;
+mod output;
+mod read_tools;
+mod untrusted;
+
 use std::sync::Arc;
 
 use rmcp::model::{
@@ -15,6 +20,9 @@ use rmcp::model::{
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData as McpError, RoleServer, ServerHandler, ServiceExt};
 use whatsapp_mcp_config::Config;
+use whatsapp_mcp_store::Store;
+
+pub use untrusted::{UNTRUSTED_NOTICE, mark_untrusted, one_line};
 
 /// The server name clients see.
 pub const SERVER_NAME: &str = "whatsapp";
@@ -55,7 +63,8 @@ pub struct ServeOptions {
 #[derive(Clone)]
 pub struct Server {
     tools: Arc<Vec<Tool>>,
-    #[allow(dead_code)] // used by the tools, from the next step on
+    store: Store,
+    #[allow(dead_code)] // used by the send tools, in the next step
     options: Arc<ServeOptions>,
 }
 
@@ -67,6 +76,7 @@ impl Server {
             .collect();
         Self {
             tools: Arc::new(tools),
+            store: Store::new(&options.store_dir),
             options: Arc::new(options),
         }
     }
@@ -97,11 +107,24 @@ impl ServerHandler for Server {
         request: CallToolRequestParams,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, McpError> {
-        let name = request.name.as_ref();
+        let name = request.name.to_string();
         if !self.tools.iter().any(|tool| tool.name == name) {
             return Ok(error_result(format!("Unknown tool: {name}")).into());
         }
-        Ok(error_result(format!("{name} is not implemented yet in the Rust server")).into())
+        let store = self.store.clone();
+        let arguments = request.arguments;
+        // SQLite blocks; keep it off the thread that serves stdio.
+        let result = tokio::task::spawn_blocking(move || {
+            let args = args::Args::new(arguments.as_ref());
+            match read_tools::call(&store, &name, &args) {
+                Some(Ok(output)) => output.into_result(),
+                Some(Err(error)) => error.into_result(),
+                None => error_result(format!("{name} is not implemented yet in the Rust server")),
+            }
+        })
+        .await
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+        Ok(result.into())
     }
 }
 

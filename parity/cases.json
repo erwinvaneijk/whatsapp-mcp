@@ -30,9 +30,9 @@
         "list_messages-after-utc": {"tool": "list_messages", "args": {"after": "2026-11-04T20:00:00Z", "include_context": false}},
         "list_messages-after-naive": {"tool": "list_messages", "args": {"after": "2026-11-04T21:00:00", "include_context": false}},
         "list_messages-dst-night": {"tool": "list_messages", "args": {"after": "2026-10-25T01:00:00Z", "before": "2026-10-25T02:00:00Z", "include_context": false}},
-        "list_messages-bad-time-only": {"tool": "list_messages", "args": {"after": "21:00"}},
-        "list_messages-bad-word": {"tool": "list_messages", "args": {"before": "yesterday"}},
-        "list_messages-negative-limit": {"tool": "list_messages", "args": {"limit": -1}},
+        "list_messages-bad-time-only": {"tool": "list_messages", "args": {"after": "21:00"}, "rust_differs": "the error says what was wrong (interface.md, section 5)"},
+        "list_messages-bad-word": {"tool": "list_messages", "args": {"before": "yesterday"}, "rust_differs": "the error says what was wrong (interface.md, section 5)"},
+        "list_messages-negative-limit": {"tool": "list_messages", "args": {"limit": -1}, "rust_differs": "the error says what was wrong (interface.md, section 5)"},
         "list_messages-empty-page": {"tool": "list_messages", "args": {"chat_jid": "31600000010@s.whatsapp.net"}},
 
         "list_chats-defaults": {"tool": "list_chats", "args": {}},
@@ -41,7 +41,7 @@
         "list_chats-sort-name": {"tool": "list_chats", "args": {"sort_by": "name"}},
         "list_chats-no-last-message": {"tool": "list_chats", "args": {"include_last_message": false}},
         "list_chats-paging": {"tool": "list_chats", "args": {"limit": 2, "page": 1}},
-        "list_chats-negative-page": {"tool": "list_chats", "args": {"page": -1}},
+        "list_chats-negative-page": {"tool": "list_chats", "args": {"page": -1}, "rust_differs": "the error says what was wrong (interface.md, section 5)"},
 
         "get_chat-contact": {"tool": "get_chat", "args": {"chat_jid": "31600000001@s.whatsapp.net"}},
         "get_chat-lid": {"tool": "get_chat", "args": {"chat_jid": "200000000000002@lid"}},
@@ -62,7 +62,7 @@
 
         "get_message_context-reply": {"tool": "get_message_context", "args": {"message_id": "3EB0A0000000000000000005", "before": 2, "after": 2}},
         "get_message_context-group": {"tool": "get_message_context", "args": {"message_id": "3EB0D0000000000000000004"}},
-        "get_message_context-unknown": {"tool": "get_message_context", "args": {"message_id": "NO-SUCH-ID"}},
+        "get_message_context-unknown": {"tool": "get_message_context", "args": {"message_id": "NO-SUCH-ID"}, "rust_differs": "the error says what was wrong (interface.md, section 5)"},
 
         "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "Hello from the parity test"}},
         "send_message-reply-mentions": {"tool": "send_message", "args": {"recipient": "120363000000000001@g.us", "message": "@31600000001 agreed", "reply_to_message_id": "3EB0D0000000000000000001", "reply_to_sender_jid": "31600000001@s.whatsapp.net", "mentions": ["31600000001"]}},

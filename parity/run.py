@@ -29,6 +29,7 @@ REPO = HERE.parent
 FIXTURE = HERE / "fixture"
 TOKEN = "parity-test-token-0123456789abcdef"  # 32+ characters, like a real one
 DEFAULT_TZ = "Europe/Amsterdam"
+RUST_SUFFIX = ".rust"  # golden/<profile>/<case>.rust.json
 
 # How to start each implementation. The command gets PARITY_STORE_DIR (the
 # folder with messages.db and whatsapp.db) and PARITY_BRIDGE_URL (the bridge
@@ -323,14 +324,36 @@ def main() -> int:
     def wanted(stem: str) -> bool:
         return not args.only or any(fnmatch.fnmatchcase(stem, p) for p in args.only)
 
+    # A case marked "rust_differs" has its own golden file for the Rust
+    # server, <case>.rust.json: there it behaves better on purpose (see
+    # docs/rust-1.0/interface.md, section 5). All other files are shared.
+    rust = args.server == "rust" and not args.server_cmd
+
+    def golden_name(profile: dict, stem: str) -> str:
+        differs = profile.get("cases", {}).get(stem, {}).get("rust_differs")
+        return f"{stem}{RUST_SUFFIX}" if rust and differs else stem
+
+    def shared(path: Path) -> bool:
+        return not path.stem.endswith(RUST_SUFFIX)
+
     for name in selected:
         files = asyncio.run(run_profile(server_cmd, name, profiles[name]))
         files = {stem: data for stem, data in files.items() if wanted(stem)}
         folder = args.golden / name
         if args.update:
             folder.mkdir(parents=True, exist_ok=True)
+            if rust:
+                # Only the Rust-specific files; the shared ones come from Python.
+                written = 0
+                for stem, data in files.items():
+                    if golden_name(profiles[name], stem) != stem:
+                        path = folder / f"{golden_name(profiles[name], stem)}.json"
+                        path.write_text(to_text(data), "utf-8")
+                        written += 1
+                print(f"{name}: recorded {written} Rust-specific files")
+                continue
             for old in folder.glob("*.json"):
-                if old.stem not in files and wanted(old.stem):
+                if shared(old) and old.stem not in files and wanted(old.stem):
                     old.unlink()
             for stem, data in files.items():
                 (folder / f"{stem}.json").write_text(to_text(data), "utf-8")
@@ -338,7 +361,7 @@ def main() -> int:
             continue
         for stem, data in files.items():
             total += 1
-            path = folder / f"{stem}.json"
+            path = folder / f"{golden_name(profiles[name], stem)}.json"
             want = path.read_text("utf-8") if path.exists() else ""
             got = to_text(data)
             if want != got:
@@ -352,7 +375,9 @@ def main() -> int:
                         "now",
                     )
                 )
-        missing = {p.stem for p in folder.glob("*.json") if wanted(p.stem)} - set(files)
+        missing = {p.stem for p in folder.glob("*.json") if shared(p) and wanted(p.stem)} - set(
+            files
+        )
         for stem in sorted(missing):
             differences += 1
             print(f"DIFF {name}/{stem}: golden file has no case any more")

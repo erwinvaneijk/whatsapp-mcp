@@ -111,6 +111,7 @@ The harness records today's behaviour, including the quirks below. **Decided on 
 | Errors raised by a tool (a bad date, a negative limit) | The client gets only `Error executing tool list_messages`. mcp 2.x hides the exception text, so the model doesn't learn what was wrong. | An error result with the reason, for example `Invalid date format for 'after': 21:00. Use an ISO-8601 date, or date and time, …`. | `default/list_messages-bad-*.json`, `default/list_messages-negative-limit.json`, `default/list_chats-negative-page.json` |
 | Bridge answers with an error status | The message is `Error: HTTP 500 - ` followed by the bridge's raw JSON. | The bridge's own `message` when the answer is JSON, such as `This chat is not in WHATSAPP_SEND_ALLOWLIST, …`. Otherwise `Bridge error (HTTP 400): ` followed by its text. | `default/send_message-refused.json`, `default/send_message-bridge-failure.json` |
 | Bridge answers 200 with text that isn't JSON | `Request error: Expecting value: line 1 column 1 (char 0)`, Python's parser error. | A message that says the bridge's answer could not be read, without parser details. | `default/send_message-bridge-not-json.json` |
+| `get_message_context` with an unknown ID | `Error executing tool get_message_context`. | `Message with ID … not found`. | `default/get_message_context-unknown.json` |
 | `download_media` failures | Always `Failed to download media`; the bridge's reason is only written to the server's log. | The bridge's reason is included, for example `Failed to download media: message has no media`. | `default/download_media-failed.json`, `default/download_media-no-id.json` |
 
 **Configuration:** the Rust config crate is stricter than today's code in three cases that are almost certainly mistakes. Each is an error with the line number:
@@ -121,4 +122,4 @@ The harness records today's behaviour, including the quirks below. **Decided on 
 
 `~/` at the start of `WHATSAPP_MCP_CONFIG` means the home folder, as in the Python server; the Go bridge did not expand it.
 
-**Harness:** when the Rust server is built, these golden files get a second, Rust-specific expected result. All other golden files stay shared, and both servers must match them.
+**Harness:** these cases are marked `rust_differs` in [`parity/cases.json`](../../parity/cases.json) and have a second golden file, `<case>.rust.json`, that the Rust server is compared with. All other golden files stay shared, and both servers must match them.

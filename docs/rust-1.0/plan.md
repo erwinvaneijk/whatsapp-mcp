@@ -1,6 +1,6 @@
 # 1.0: rewrite in Rust
 
-Status: phase 0 done; phase 1 done, decision **go** ([checklist and results](phase1.md)); phase 2 done (workspace and CI, see [crates/README.md](../../crates/README.md)); phase 3 done (config crate; shared cases in [`parity/config-cases.json`](../../parity/config-cases.json)); phase 4 in progress: step 1 of 4 done (`serve` publishes the same tools). Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
+Status: phase 0 done; phase 1 done, decision **go** ([checklist and results](phase1.md)); phase 2 done (workspace and CI, see [crates/README.md](../../crates/README.md)); phase 3 done (config crate; shared cases in [`parity/config-cases.json`](../../parity/config-cases.json)); phase 4 in progress: steps 1 and 2 of 4 done (`serve` publishes the same tools; the read tools match). Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
 
 ## Goal
 

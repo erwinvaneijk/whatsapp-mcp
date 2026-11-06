@@ -70,6 +70,8 @@ The harness starts the server with the command for `--server` (see `SERVERS` in 
 
 [`adapters/python_server.py`](adapters/python_server.py) does this for the Python server without changing it. [`adapters/rust_server.py`](adapters/rust_server.py) starts the Rust server with `cargo run`, passing them as `serve --store … --bridge-url …`.
 
+**Rust-specific results.** A few cases have today's error quirks in their golden file; the Rust server behaves better there on purpose ([interface.md, section 5](../docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10)). Such a case has `"rust_differs": "<reason>"` in `cases.json`, and the Rust server is compared with `golden/<profile>/<case>.rust.json` instead. `run.py --server rust --update` writes only those files; the shared golden files always come from the Python server.
+
 While the Rust server is being built, `--only` limits the comparison to the files it should already match. The other cases still run:
 
 ```bash
