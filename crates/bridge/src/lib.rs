@@ -1,8 +1,8 @@
 //! The bridge: the WhatsApp connection (whatsapp-rust), storing messages,
 //! sending, media, the send allowlist and the local API on `127.0.0.1:8080`.
 //! Being built in phase 5 of the plan (docs/rust-1.0/phase5.md): it links,
-//! receives and stores now; sending comes in step 4, so until phase 5 is
-//! done the Go bridge in whatsapp-bridge/ is the one to use daily.
+//! receives, stores, sends and downloads; until phase 5 is done the Go
+//! bridge in whatsapp-bridge/ is the one to use daily.
 
 pub mod api;
 pub mod convert;

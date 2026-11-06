@@ -13,7 +13,7 @@ Each step is one pull request and ends with something that works and is tested. 
 | 1. Writing `messages.db` — **done** | The `store` crate also writes: the schema and migrations the Go bridge applies on start (tables, the `julianday` indexes, `quoted_message_id`, FTS5 with its triggers and rebuild), storing chats and messages with the same values (times as local time with offset, as Go writes them), media details. New tables `contacts` and `lid_map` for names, written by the bridge from step 3 on. `serve` reads names from them when they exist, and from whatsmeow's `whatsapp.db` otherwise. | The schema matches `parity/fixture/schema.sql` (plus the two new tables). Store tests ported from Go: FTS, `julianday` indexes, quoted IDs. A database written by Rust reads the same in `serve`; the parity harness still passes. |
 | 2. Local API — **done** | The HTTP API on `127.0.0.1:8080`, exactly as [interface.md, section 3](interface.md#3-bridge-api) describes: token (constant-time), JSON only, 1 MiB, the status codes and texts, the send allowlist (with LID and phone number matching through `lid_map`), media paths only inside `media_dir`. WhatsApp sits behind a trait, so all of this is tested without a connection. | API tests ported from Go (`main_test.go`, `allowlist_test.go`, the API parts of the others) pass, plus new ones for every row of section 3. |
 | 3. Connection and receiving — **done** | `whatsapp-mcp bridge`: pairing with a QR code or `pair_phone`, the session in its own file (`store/session.db`), reconnecting. Storing incoming messages: text, captions, non-text messages as bracketed text, quoted IDs, media details, edits and deletes; history sync; chat and group names; contacts, push names and the LID map into `contacts` and `lid_map`. | Message-conversion tests ported (`caption_test.go`, `reaction_test.go`, `quoted_test.go` and the parts of `main_test.go` on content). Live: phase 1 checklist items 1–12 against the test account. |
-| 4. Sending and media | Text with reply and mentions, files (image, video, document, voice note with Ogg duration and waveform), reactions; sent messages stored in the existing phone-number or LID chat; downloads into `<store>/<chat>/<file>`, with re-requesting expired media. | Tests ported (`outgoing_test.go`, `send_context_test.go`, `media_*_test.go`). Live: phase 1 checklist items 13–19, and the MCP tools end to end. |
+| 4. Sending and media — **built; live test open** | Text with reply and mentions, files (image, video, document, voice note with Ogg duration and waveform), reactions; sent messages stored in the existing phone-number or LID chat; downloads into `<store>/<chat>/<file>`, with re-requesting expired media. | Tests ported (`outgoing_test.go`, `send_context_test.go`, `media_*_test.go`). Live: phase 1 checklist items 13–19, and the MCP tools end to end. |
 | 5. Security and operation | Folder `0700` and files `0600`; logs without message content unless `log_content`, and without control characters; a token shorter than 32 characters stops the bridge; clear messages on start (store, link status, allowlist size). | `fsperm_test.go` and `log_test.go` ported; a review of everything the bridge logs. |
 | 6. Week of use | The Rust bridge replaces the Go bridge in daily use for a week; problems are fixed as they come. | A week without problems; the score sheet's `W`, `A` and `S` rows are `verified`. Then phase 6 (packaging) and 7 (release 1.0). |
 
@@ -48,11 +48,39 @@ Then check, as phase 1 items 1–12 did, but now in `messages.db` (`sqlite3 ~/wa
 
 And the MCP server on the same store: `whatsapp-mcp serve --store ~/wa-rust-test/store`, with `list_chats` and `list_messages` showing names instead of numbers.
 
+## Step 4: live test
+
+The bridge now sends, reacts and downloads. Test it through the MCP tools, with `whatsapp-mcp serve` talking to the Rust bridge, on the **test account** and its store from step 3 (the Go bridge stopped):
+
+```sh
+cargo build --release
+export WHATSAPP_BRIDGE_TOKEN=<the same token for both>
+export WHATSAPP_MEDIA_DIR=~/wa-rust-test/media   # the files to send, and nothing else
+./target/release/whatsapp-mcp bridge --store ~/wa-rust-test/store
+# in the MCP client: whatsapp-mcp serve --store ~/wa-rust-test/store, with the same token
+```
+
+Put a photo, a short video (MP4), a PDF and a voice note (`.ogg`, or any audio file for `send_audio_message` with ffmpeg installed) in the media folder. Then check, as phase 1 items 13–19 did:
+
+| # | Check | Expected |
+|---|---|---|
+| 13 | `send_message` with text, to a number and to the group | Arrives on the phone; a row with `is_from_me` 1 in the chat that already exists for the contact (its LID chat when received messages are stored there) |
+| 14 | `send_message` as a reply, direct and in the group | Shown as a reply on the phone; `quoted_message_id` stored |
+| 15 | `send_message` with a mention in the group | The mention is highlighted on the phone |
+| 16 | `send_file` with the photo, video and PDF (with a caption); `send_audio_message` with the voice note | Each arrives and opens; the PDF keeps its name and type; the voice note plays and shows its length |
+| 17 | `react_to_message` with 👍, then with an empty emoji, direct and in the group | The reaction shows, then disappears; `[reaction: 👍]` stored |
+| 18 | `download_media` for a photo, video, voice note and document sent from the phone | A path in `store/<chat>/`; the file opens and is readable by the owner only (`ls -l`); asking again gives the same path |
+| 19 | `download_media` on an old photo from history sync, with the phone online | The log says `asking the sender's phone to upload it again...`, then the download succeeds |
+
+Also: with `WHATSAPP_SEND_ALLOWLIST` set to one chat, sending to another is refused (403, the allowlist message); a file outside the media folder is refused (`Media path rejected`).
+
 ## Decided
 
 - **Re-linking:** whatsapp-rust keeps its session in its own format, so the Go bridge's link (`whatsapp.db`) cannot be carried over. The Rust bridge is linked once, with a QR code or `pair_phone`. Decided on 2026-11-05.
 - **Session file:** `store/session.db`, next to `messages.db`. `whatsapp.db` is the Go bridge's and is left alone, so going back to the Go bridge stays possible.
 - **Event delivery:** the bridge takes every event from whatsapp-rust as it is dispatched and stores them in order, in one task. The library's callback delivery drops the newest event when its queue (256) is full, which a large history sync can reach.
+- **Time of sent messages:** whatsapp-rust does not return the server's time for a sent message, so the bridge stores the local time of sending. The Go bridge stored whatsmeow's server time; the two differ by the time it takes to send.
+- **Voice note length:** read from the Ogg file as RFC 7845 describes (pre-skip from the Opus header, granule positions at 48 kHz). The Go bridge read the pre-skip and rate a few bytes too far on.
 - **Names in `messages.db`:** `serve` no longer depends on a library's private tables (see [plan, Contact names](plan.md#architecture)).
 
 ## Open
