@@ -8,6 +8,7 @@
 
 mod names;
 mod time;
+mod write;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -18,6 +19,10 @@ use serde::Serialize;
 
 pub use names::{Names, user_part};
 pub use time::{BadMoment, Timestamp, moment_for_sql};
+pub use write::{
+    ContactNames, MediaInfo, NewMessage, Writer, ensure_private_dir, ensure_private_file, go_time,
+    migrate,
+};
 
 pub type Error = rusqlite::Error;
 pub type Result<T> = std::result::Result<T, Error>;
@@ -87,7 +92,7 @@ impl Store {
     /// Opens `messages.db` read-only, with the contact names loaded and
     /// `display_name()` and `jid_matches()` available in SQL.
     pub fn open(&self) -> Result<Db> {
-        let names = Arc::new(Names::load(&self.whatsapp_db()));
+        let names = Arc::new(Names::load(&self.messages_db(), &self.whatsapp_db()));
         Db::open(&self.messages_db(), names)
     }
 }

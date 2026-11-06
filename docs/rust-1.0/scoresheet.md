@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-06 (phase 4 done: the Rust MCP server replaces the Python one in 0.9; the Go bridge stays until 1.0).
+Last updated: 2026-11-06 (phase 5, step 1: the Rust store writes `messages.db` as the Go bridge does).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
 | MCP interface | 20 | 0 | 0 | 19 | 0 | 1 |
 | Configuration | 12 | 0 | 6 | 6 | 0 | 0 |
-| Bridge: WhatsApp | 17 | 17 | 0 | 0 | 0 | 0 |
+| Bridge: WhatsApp | 17 | 16 | 1 | 0 | 0 | 0 |
 | Bridge: API and security | 7 | 7 | 0 | 0 | 0 | 0 |
-| Bridge: storage | 6 | 6 | 0 | 0 | 0 | 0 |
+| Bridge: storage | 6 | 0 | 1 | 5 | 0 | 0 |
 | Build, release, docs | 9 | 5 | 2 | 2 | 0 | 0 |
-| **Total** | **71** | **35** | **8** | **27** | **0** | **1** |
+| **Total** | **71** | **28** | **10** | **32** | **0** | **1** |
 
 ## MCP interface
 
@@ -95,7 +95,7 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | W07 | Captions stored as message text | tests | todo | |
 | W08 | Non-text messages stored as bracketed text (reactions, polls, votes, locations, contacts, stickers, edits, deletes) | tests | todo | |
 | W09 | Quoted message ID stored for replies | tests | todo | |
-| W10 | Contact names, push names, LID-to-phone map | tests, live | todo | Copied into `messages.db`; see plan. |
+| W10 | Contact names, push names, LID-to-phone map | tests, live | wip | Copied into `messages.db`; see plan. Phase 5, step 1: tables `contacts` and `lid_map` in `messages.db`, read by `serve` when they exist. The bridge fills them from step 3 on. |
 | W11 | Group names | live | todo | |
 | W12 | Sent messages and reactions stored, in the existing PN or LID chat | tests | todo | |
 | W13 | Send text with reply and mentions | live | todo | |
@@ -122,12 +122,12 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 
 | ID | Feature | Check | Status | Notes |
 |---|---|---|---|---|
-| S01 | Same `chats` and `messages` schema; opens an existing database without loss | tests | todo | Tested on a copy of a real database. |
-| S02 | Same migrations (e.g. `quoted_message_id`), safe to run repeatedly | tests | todo | |
-| S03 | FTS5 table and triggers | tests | todo | |
-| S04 | Indexes, including the `julianday()` time indexes | tests | todo | |
-| S05 | WAL mode | tests | todo | |
-| S06 | Last message per chat chosen by row, not timestamp | tests | todo | |
+| S01 | Same `chats` and `messages` schema; opens an existing database without loss | tests | wip | Tested on a copy of a real database. Phase 5, step 1: the Rust schema is the Go bridge's, byte for byte (`crates/store/tests/write.rs` compares it with `parity/fixture/schema.sql`). The test on a copy of a real database is still to do. |
+| S02 | Same migrations (e.g. `quoted_message_id`), safe to run repeatedly | tests | done | Phase 5, step 1: `quoted_message_id` added to older databases; opening twice changes nothing (tests). |
+| S03 | FTS5 table and triggers | tests | done | Phase 5, step 1: always created (bundled FTS5), rebuilt on open; leftover triggers do not break inserts (test ported from `fts_test.go`). |
+| S04 | Indexes, including the `julianday()` time indexes | tests | done | Phase 5, step 1: old time indexes replaced by `julianday()` ones (test ported from `moment_index_test.go`). |
+| S05 | WAL mode | tests | done | Phase 5, step 1: also foreign keys, normal sync and a 5 s busy wait, as Go (test). |
+| S06 | Last message per chat chosen by row, not timestamp | tests | done | The read queries join the latest message by rowid (phase 4); the parity harness checks it. |
 
 ## Build, release, docs
 
