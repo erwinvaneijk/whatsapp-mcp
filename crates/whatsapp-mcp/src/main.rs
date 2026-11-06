@@ -1,9 +1,9 @@
 //! `whatsapp-mcp`: the bridge and the MCP server in one binary.
 //!
 //! `serve` is the MCP server; `bridge` keeps the WhatsApp connection, stores
-//! messages and serves the local API (phase 5 of `docs/rust-1.0/plan.md`:
-//! receiving works, sending comes in step 4, so the Go bridge is still the
-//! one for daily use).
+//! messages, sends and serves the local API (phase 5 of
+//! `docs/rust-1.0/plan.md`; until it is done the Go bridge is still the one
+//! for daily use).
 
 use std::path::PathBuf;
 use std::process::ExitCode;

@@ -48,6 +48,13 @@ pub struct MediaInfo {
     pub file_length: u64,
 }
 
+/// Who sent a stored message, as stored.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredSender {
+    pub sender: Option<String>,
+    pub is_from_me: Option<bool>,
+}
+
 /// A contact's names, as whatsmeow keeps them.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ContactNames {
@@ -224,6 +231,36 @@ impl Writer {
         self.conn
             .query_row(sql, [user], |row| row.get::<_, String>(0))
             .optional()
+    }
+
+    /// A stored message's sender and whether it is from me, as stored
+    /// (either may be NULL in a damaged row); `None` when the message is not
+    /// stored in this chat.
+    pub fn message_sender(&self, id: &str, chat_jid: &str) -> Result<Option<StoredSender>> {
+        self.conn
+            .query_row(
+                "SELECT sender, is_from_me FROM messages WHERE id = ? AND chat_jid = ?",
+                params![id, chat_jid],
+                |row| {
+                    Ok(StoredSender {
+                        sender: row.get(0)?,
+                        is_from_me: row.get(1)?,
+                    })
+                },
+            )
+            .optional()
+    }
+
+    /// The file names of the other messages in a chat that have one. Names
+    /// are made from the receive time to the second, so two photos sent
+    /// together share one.
+    pub fn other_filenames(&self, chat_jid: &str, id: &str) -> Result<Vec<String>> {
+        let mut statement = self.conn.prepare(
+            "SELECT filename FROM messages WHERE chat_jid = ? AND id != ? AND filename IS NOT NULL AND filename != ''",
+        )?;
+        statement
+            .query_map(params![chat_jid, id], |row| row.get(0))?
+            .collect()
     }
 
     /// Stores a contact's names; empty names do not replace known ones.
