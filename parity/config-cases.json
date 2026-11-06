@@ -1,0 +1,140 @@
+{
+  "_about": "Configuration cases shared by the Go bridge, the Python server and the Rust config crate. Each implementation's tests read this file, so all three follow the same rules. See parity/README.md.",
+  "files": [
+    {
+      "name": "full example",
+      "yaml": "# Settings for the bridge and the MCP server\nbridge_token: \"0123456789abcdef0123456789abcdef\"\nmedia_dir: /home/me/whatsapp-outbox\nlog_content: no\npair_phone: 0612345678        # kept as written, not read as a number\nread_only:                    # empty: not set\nsend_allowlist:\n  - 31612345678               # Maria\n  - \"+31 6 8765 4321\"         # Tom\n  - 120363000000000000@g.us   # Book club\n",
+      "values": {
+        "WHATSAPP_BRIDGE_TOKEN": "0123456789abcdef0123456789abcdef",
+        "WHATSAPP_MEDIA_DIR": "/home/me/whatsapp-outbox",
+        "WHATSAPP_LOG_CONTENT": "no",
+        "WHATSAPP_PAIR_PHONE": "0612345678",
+        "WHATSAPP_SEND_ALLOWLIST": "31612345678, +31 6 8765 4321, 120363000000000000@g.us"
+      }
+    },
+    {
+      "name": "allowlist on one line",
+      "yaml": "send_allowlist: 316123, 316456",
+      "values": { "WHATSAPP_SEND_ALLOWLIST": "316123, 316456" }
+    },
+    {
+      "name": "allowlist as a flow list",
+      "yaml": "send_allowlist: [316123, \"+31 6 456\"]\n",
+      "values": { "WHATSAPP_SEND_ALLOWLIST": "316123, +31 6 456" }
+    },
+    {
+      "name": "empty allowlist",
+      "yaml": "send_allowlist: []\n",
+      "values": { "WHATSAPP_SEND_ALLOWLIST": "" }
+    },
+    {
+      "name": "only comments",
+      "yaml": "# only comments\n",
+      "values": {}
+    },
+    {
+      "name": "empty file",
+      "yaml": "",
+      "values": {}
+    },
+    {
+      "name": "values keep their exact text",
+      "yaml": "pair_phone: 0612345678\nmedia_dir: 1e3\nread_only: TRUE\nlog_content: off\n",
+      "values": {
+        "WHATSAPP_PAIR_PHONE": "0612345678",
+        "WHATSAPP_MEDIA_DIR": "1e3",
+        "WHATSAPP_MCP_READ_ONLY": "TRUE",
+        "WHATSAPP_LOG_CONTENT": "off"
+      }
+    },
+    {
+      "name": "null forms are not set",
+      "yaml": "pair_phone: ~\nmedia_dir: null\nlog_content:\nread_only: Null\n",
+      "values": {}
+    },
+    {
+      "name": "quoted empty value is set, but empty",
+      "yaml": "bridge_token: \"\"\n",
+      "values": { "WHATSAPP_BRIDGE_TOKEN": "" }
+    },
+    {
+      "name": "flow mapping",
+      "yaml": "{media_dir: /x, read_only: yes}\n",
+      "values": { "WHATSAPP_MEDIA_DIR": "/x", "WHATSAPP_MCP_READ_ONLY": "yes" }
+    },
+    {
+      "name": "Windows line endings",
+      "yaml": "media_dir: /x\r\nread_only: yes\r\n",
+      "values": { "WHATSAPP_MEDIA_DIR": "/x", "WHATSAPP_MCP_READ_ONLY": "yes" }
+    },
+    {
+      "name": "typo in a name",
+      "yaml": "bridge_tokn: x",
+      "error_contains": ["line 1", "bridge_tokn"]
+    },
+    {
+      "name": "unknown setting on line 2",
+      "yaml": "log_content: yes\nsend_alowlist: 1",
+      "error_contains": ["line 2", "send_alowlist"]
+    },
+    {
+      "name": "list for a single value",
+      "yaml": "media_dir: [a, b]",
+      "error_contains": ["line 1", "media_dir"]
+    },
+    {
+      "name": "mapping for a single value",
+      "yaml": "read_only: yes\nmedia_dir:\n  path: /x\n",
+      "error_contains": ["line 3", "media_dir"]
+    },
+    {
+      "name": "nested entry in a list",
+      "yaml": "send_allowlist:\n  - a: b",
+      "error_contains": ["line 2", "send_allowlist"]
+    },
+    {
+      "name": "a list instead of settings",
+      "yaml": "- just a list",
+      "error_contains": []
+    },
+    {
+      "name": "text instead of settings",
+      "yaml": "just some text",
+      "error_contains": []
+    },
+    {
+      "name": "invalid YAML",
+      "yaml": "bridge_token: [unclosed",
+      "error_contains": []
+    }
+  ],
+  "allowlists": [
+    { "value": "", "jids": null },
+    { "value": "  ", "jids": null },
+    { "value": " , ;", "jids": null },
+    {
+      "value": "+31 6-1234 5678, 120363000000000000@g.us;123456789012345@lid\n31687654321:3@s.whatsapp.net",
+      "jids": [
+        "120363000000000000@g.us",
+        "123456789012345@lid",
+        "31612345678@s.whatsapp.net",
+        "31687654321@s.whatsapp.net"
+      ]
+    },
+    {
+      "value": "31612345678\r\n31687654321\r\n",
+      "jids": ["31612345678@s.whatsapp.net", "31687654321@s.whatsapp.net"]
+    },
+    { "value": "(031) 6.1234\t31600000000", "jids": ["03161234@s.whatsapp.net", "31600000000@s.whatsapp.net"] },
+    { "value": "Maria", "error": true },
+    { "value": "0612abc", "error": true },
+    { "value": "status@broadcast", "error": true },
+    { "value": "@s.whatsapp.net", "error": true },
+    { "value": "31612345678, oops", "error": true },
+    { "value": "3161234:x@s.whatsapp.net", "error": true }
+  ],
+  "flags": {
+    "on": ["1", "true", "TRUE", " yes ", "on", "On"],
+    "off": ["", "0", "false", "no", "off", "2", "enabled", "y"]
+  }
+}

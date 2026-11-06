@@ -37,6 +37,12 @@ class ConfigError(Exception):
     pass
 
 
+def flag(value: str) -> bool:
+    """Whether a yes/no value means yes: 1, true, yes or on, in any case and
+    with spaces around it. Anything else, including an empty value, is no."""
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 def config_path() -> "tuple[Path | None, bool]":
     """The file to read, and whether it must exist (only when WHATSAPP_MCP_CONFIG names it)."""
     explicit = os.environ.get(CONFIG_PATH_ENV, "").strip()

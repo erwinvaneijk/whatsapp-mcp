@@ -4,6 +4,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
+from config import flag
 from whatsapp import (
     UNTRUSTED_NOTICE,
     UNTRUSTED_TAG,
@@ -45,12 +46,7 @@ mcp = MCPServer("whatsapp", instructions=SERVER_INSTRUCTIONS)
 
 # With WHATSAPP_MCP_READ_ONLY=1 (or read_only in the configuration file, which
 # importing whatsapp has applied) the tools that send messages are not exposed to the model
-READ_ONLY = os.environ.get("WHATSAPP_MCP_READ_ONLY", "").strip().lower() in (
-    "1",
-    "true",
-    "yes",
-    "on",
-)
+READ_ONLY = flag(os.environ.get("WHATSAPP_MCP_READ_ONLY", ""))
 
 
 # Tool annotations tell MCP clients what a tool does (#142). Read tools only
