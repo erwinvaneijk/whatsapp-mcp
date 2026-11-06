@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-06 (phase 5, step 1: the Rust store writes `messages.db` as the Go bridge does).
+Last updated: 2026-11-06 (phase 5, step 2: the bridge's local API, tested without a WhatsApp connection).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
 | MCP interface | 20 | 0 | 0 | 19 | 0 | 1 |
 | Configuration | 12 | 0 | 6 | 6 | 0 | 0 |
 | Bridge: WhatsApp | 17 | 16 | 1 | 0 | 0 | 0 |
-| Bridge: API and security | 7 | 7 | 0 | 0 | 0 | 0 |
+| Bridge: API and security | 7 | 0 | 5 | 2 | 0 | 0 |
 | Bridge: storage | 6 | 0 | 1 | 5 | 0 | 0 |
 | Build, release, docs | 9 | 5 | 2 | 2 | 0 | 0 |
-| **Total** | **71** | **28** | **10** | **32** | **0** | **1** |
+| **Total** | **71** | **21** | **15** | **34** | **0** | **1** |
 
 ## MCP interface
 
@@ -108,13 +108,13 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 
 | ID | Feature | Check | Status | Notes |
 |---|---|---|---|---|
-| A01 | API on `127.0.0.1:8080` only: `/api/send`, `/api/react`, `/api/download` with the same requests and responses | tests | todo | Internal, but kept so the Go bridge and Rust server mix during the switch. |
-| A02 | `X-Bridge-Token` required, compared in constant time | tests | todo | |
-| A03 | Files only sent from `media_dir`; downloads stay inside `store/` | tests | todo | |
-| A04 | Send allowlist by phone number or LID, refused with 403 | tests | todo | |
-| A05 | `store/` and its files readable by the user only | tests | todo | |
-| A06 | Message content out of logs unless `log_content`; media keys never logged | tests | todo | |
-| A07 | No `unsafe` in our crates; `cargo audit` and `cargo deny` in CI | CI | todo | New in Rust. |
+| A01 | API on `127.0.0.1:8080` only: `/api/send`, `/api/react`, `/api/download` with the same requests and responses | tests | wip | Internal, but kept so the Go bridge and Rust server mix during the switch. Phase 5, step 2: `crates/bridge/src/api.rs`, tested row by row against interface.md section 3 (`crates/bridge/tests/api.rs`, also over a real socket). The bridge serves it from step 3. |
+| A02 | `X-Bridge-Token` required, compared in constant time | tests | done | Phase 5, step 2: checked before anything else, compared in constant time (tests). |
+| A03 | Files only sent from `media_dir`; downloads stay inside `store/` | tests | wip | Phase 5, step 2: `allowed_media_path` with the Go bridge's rules and messages (tests, symlinks included). Downloads into `store/` come in step 4. |
+| A04 | Send allowlist by phone number or LID, refused with 403 | tests | wip | Phase 5, step 2: 403 before sending, matching by number or LID (tests ported from `allowlist_test.go`). The LID map behind it is filled in step 3. |
+| A05 | `store/` and its files readable by the user only | tests | wip | Phase 5, step 1: `messages.db`, its WAL files and the folder (tests). The session file and media follow. |
+| A06 | Message content out of logs unless `log_content`; media keys never logged | tests | wip | Phase 5, step 2: the API's log lines as in Go, content only with `log_content`, control characters removed (`log_test.go` ported). The rest of the bridge follows. |
+| A07 | No `unsafe` in our crates; `cargo audit` and `cargo deny` in CI | CI | done | New in Rust. Since phase 2: `unsafe_code = "forbid"`, and `cargo deny` (which covers the RustSec database `cargo audit` uses) in CI. |
 
 ## Bridge: storage
 
