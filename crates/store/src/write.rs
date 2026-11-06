@@ -226,6 +226,35 @@ impl Writer {
             .optional()
     }
 
+    /// A stored message's sender and whether it is from me; `None` when the
+    /// message is not stored in this chat.
+    pub fn message_sender(&self, id: &str, chat_jid: &str) -> Result<Option<(String, bool)>> {
+        self.conn
+            .query_row(
+                "SELECT sender, is_from_me FROM messages WHERE id = ? AND chat_jid = ?",
+                params![id, chat_jid],
+                |row| {
+                    Ok((
+                        row.get::<_, Option<String>>(0)?.unwrap_or_default(),
+                        row.get::<_, Option<bool>>(1)?.unwrap_or_default(),
+                    ))
+                },
+            )
+            .optional()
+    }
+
+    /// Whether another message in the chat has the same file name. Names
+    /// are made from the receive time to the second, so two photos sent
+    /// together share one.
+    pub fn filename_shared(&self, chat_jid: &str, filename: &str, id: &str) -> Result<bool> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM messages WHERE chat_jid = ? AND filename = ? AND id != ?",
+            params![chat_jid, filename, id],
+            |row| row.get(0),
+        )?;
+        Ok(count > 0)
+    }
+
     /// Stores a contact's names; empty names do not replace known ones.
     pub fn store_contact(&self, jid: &str, names: &ContactNames) -> Result<()> {
         self.conn.execute(

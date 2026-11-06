@@ -9,7 +9,7 @@
 
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use tokio::sync::mpsc;
@@ -21,16 +21,14 @@ use whatsapp_rust::pair_code::PairCodeOptions;
 use whatsapp_rust::prelude::*;
 use whatsapp_rust::wacore::types::events::{EventHandler, LazyHistorySync};
 
-use crate::api::{Api, Backend, Downloaded, SendRequest};
+use crate::api::Api;
 use crate::jid::{GROUP_SERVER, Jid as TextJid};
+use crate::live::Live;
 use crate::log;
 use crate::receive::{self, ChatName};
 
 /// Where the local API listens, as in the Go bridge.
 pub const API_ADDRESS: ([u8; 4], u16) = ([127, 0, 0, 1], 8080);
-
-/// The answer to sending, reacting and downloading until step 4 of phase 5.
-const NOT_YET: &str = "not supported by the Rust bridge yet; use the Go bridge to send (phase 5, step 4 of docs/rust-1.0)";
 
 /// What `bridge` needs to start.
 pub struct Options {
@@ -44,6 +42,7 @@ struct Settings {
     allowlist: Option<SendAllowlist>,
     log_content: bool,
     pair_phone: Option<String>,
+    media_dir: Option<String>,
 }
 
 impl Settings {
@@ -59,6 +58,7 @@ impl Settings {
             allowlist,
             log_content: config.log_content(),
             pair_phone,
+            media_dir: config.media_dir().map(str::to_string),
         })
     }
 }
@@ -129,6 +129,7 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
     let shared = Arc::new(Shared {
         writer: Mutex::new(writer),
         log_content: settings.log_content,
+        connected: AtomicBool::new(false),
     });
 
     // Bind before connecting: a second bridge (or the Go bridge) on the
@@ -183,6 +184,9 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
         log_content: settings.log_content,
         backend: Arc::new(Live {
             shared: Arc::clone(&shared),
+            client: Arc::clone(&client),
+            store_dir: store.clone(),
+            media_dir: settings.media_dir,
         }),
     });
     let mut server = tokio::spawn(crate::api::serve_on(api, listener));
@@ -294,47 +298,26 @@ impl Waiting {
 }
 
 /// The store and settings the event worker and the API share.
-struct Shared {
+pub(crate) struct Shared {
     writer: Mutex<Writer>,
-    log_content: bool,
+    pub(crate) log_content: bool,
+    /// Set by the event worker on connecting and disconnecting.
+    connected: AtomicBool,
 }
 
 impl Shared {
-    fn writer(&self) -> MutexGuard<'_, Writer> {
+    pub(crate) fn is_connected(&self) -> bool {
+        self.connected.load(Ordering::Relaxed)
+    }
+
+    fn set_connected(&self, connected: bool) {
+        self.connected.store(connected, Ordering::Relaxed);
+    }
+
+    pub(crate) fn writer(&self) -> MutexGuard<'_, Writer> {
         // A panic while storing leaves the database consistent (SQLite), so
         // carry on with it.
         self.writer.lock().unwrap_or_else(|e| e.into_inner())
-    }
-}
-
-/// The API's backend: sending comes in step 4; the allowlist's LID and
-/// phone-number matching works now, from `lid_map`.
-struct Live {
-    shared: Arc<Shared>,
-}
-
-impl Backend for Live {
-    async fn send(&self, _request: SendRequest) -> (bool, String) {
-        (false, NOT_YET.to_string())
-    }
-
-    async fn react(
-        &self,
-        _message_id: String,
-        _chat_jid: String,
-        _emoji: String,
-    ) -> (bool, String) {
-        (false, NOT_YET.to_string())
-    }
-
-    async fn download(&self, _message_id: String, _chat_jid: String) -> Result<Downloaded, String> {
-        Err(NOT_YET.to_string())
-    }
-
-    fn counterpart(&self, jid: &TextJid) -> Option<TextJid> {
-        receive::counterpart(&self.shared.writer(), jid)
-            .ok()
-            .flatten()
     }
 }
 
@@ -366,12 +349,22 @@ async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pair
         }
         Event::PairSuccess(_) => log::line("\nSuccessfully connected and authenticated!"),
         Event::PairError(e) => log::line(&format!("Linking failed: {}", log::clean(&e.error))),
-        Event::Connected(_) => log::line("✓ Connected to WhatsApp"),
-        Event::Disconnected(_) => log::line("Disconnected from WhatsApp; reconnecting..."),
-        Event::LoggedOut(_) => log::line(
-            "Device logged out: the phone unlinked this bridge. Start it again to link it.",
-        ),
+        Event::Connected(_) => {
+            shared.set_connected(true);
+            log::line("✓ Connected to WhatsApp");
+        }
+        Event::Disconnected(_) => {
+            shared.set_connected(false);
+            log::line("Disconnected from WhatsApp; reconnecting...");
+        }
+        Event::LoggedOut(_) => {
+            shared.set_connected(false);
+            log::line(
+                "Device logged out: the phone unlinked this bridge. Start it again to link it.",
+            );
+        }
         Event::StreamReplaced(_) => {
+            shared.set_connected(false);
             log::line("Another client took over this session (stream replaced).");
         }
         Event::ClientOutdated(_) => log::line(

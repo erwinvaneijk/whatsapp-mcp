@@ -17,12 +17,13 @@ hyper = { version = "1.12.0", features = ["server", "http1"] }
 hyper-util = { version = "0.1.21", features = ["tokio"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
-tokio = { version = "1.54.1", features = ["rt", "rt-multi-thread", "net", "macros", "time", "signal", "sync"] }
+tokio = { version = "1.54.1", features = ["rt", "rt-multi-thread", "net", "macros", "time", "signal", "sync", "fs"] }
 whatsapp-mcp-config.workspace = true
 whatsapp-mcp-store.workspace = true
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
 qrcode = { version = "0.14", default-features = false }
 env_logger = "0.11"
+mime_guess = "2.0.5"
 
 [lints]
 workspace = true

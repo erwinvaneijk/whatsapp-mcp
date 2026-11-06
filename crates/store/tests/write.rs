@@ -552,3 +552,48 @@ fn lookups_for_chat_names_and_the_lid_map() {
     );
     assert_eq!(writer.lid_counterpart("31600000002", false).unwrap(), None);
 }
+
+#[test]
+fn message_sender_and_shared_file_names() {
+    let dir = tempfile::tempdir().unwrap();
+    let writer = Writer::open(dir.path()).unwrap();
+    let chat = "120363000000000001@g.us";
+    writer
+        .store_chat(chat, "Book club", time("2026-11-04T22:00:52+01:00"))
+        .unwrap();
+    let photo = |id: &str, sender: &str, from_me: bool| NewMessage {
+        id: id.into(),
+        chat_jid: chat.into(),
+        sender: sender.into(),
+        timestamp: Some(time("2026-11-04T22:00:52+01:00")),
+        is_from_me: from_me,
+        media_type: "image".into(),
+        filename: "image_20261104_220052.jpg".into(),
+        ..Default::default()
+    };
+    writer
+        .store_message(&photo("A", "123456789012345", false))
+        .unwrap();
+    assert_eq!(
+        writer.message_sender("A", chat).unwrap(),
+        Some(("123456789012345".to_string(), false))
+    );
+    assert_eq!(writer.message_sender("A", "other@g.us").unwrap(), None);
+    assert!(
+        !writer
+            .filename_shared(chat, "image_20261104_220052.jpg", "A")
+            .unwrap()
+    );
+    writer
+        .store_message(&photo("B", "31600000009", true))
+        .unwrap();
+    assert_eq!(
+        writer.message_sender("B", chat).unwrap(),
+        Some(("31600000009".to_string(), true))
+    );
+    assert!(
+        writer
+            .filename_shared(chat, "image_20261104_220052.jpg", "A")
+            .unwrap()
+    );
+}

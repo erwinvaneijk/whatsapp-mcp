@@ -7,9 +7,11 @@
 pub mod api;
 pub mod convert;
 pub mod jid;
+mod live;
 pub mod log;
 pub mod receive;
 pub mod run;
+pub mod send;
 
 pub use api::{Api, Backend, Downloaded, SendRequest, allowed_media_path, allows};
 pub use jid::Jid;
