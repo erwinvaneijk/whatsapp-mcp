@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-06 (phase 5, step 2: the bridge's local API, tested without a WhatsApp connection).
+Last updated: 2026-11-06 (phase 5, step 3: linking, receiving and storing, live-tested with the test account).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
 | MCP interface | 20 | 0 | 0 | 19 | 0 | 1 |
 | Configuration | 12 | 0 | 6 | 6 | 0 | 0 |
-| Bridge: WhatsApp | 17 | 16 | 1 | 0 | 0 | 0 |
+| Bridge: WhatsApp | 17 | 6 | 0 | 0 | 11 | 0 |
 | Bridge: API and security | 7 | 0 | 5 | 2 | 0 | 0 |
 | Bridge: storage | 6 | 0 | 1 | 5 | 0 | 0 |
 | Build, release, docs | 9 | 5 | 2 | 2 | 0 | 0 |
-| **Total** | **71** | **21** | **15** | **34** | **0** | **1** |
+| **Total** | **71** | **11** | **14** | **34** | **11** | **1** |
 
 ## MCP interface
 
@@ -86,17 +86,17 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 
 | ID | Feature | Check | Status | Notes |
 |---|---|---|---|---|
-| W01 | Connect and stay connected; reconnect after network loss | live | todo | |
-| W02 | Link with a QR code in the terminal | live | todo | |
-| W03 | Link with a pairing code (`pair_phone`) | live | todo | |
-| W04 | Session kept across restarts | live | todo | Existing whatsmeow session probably cannot be carried over; see plan. |
-| W05 | Receive and store text messages, direct and group | tests, live | todo | |
-| W06 | History sync on first link | live | todo | |
-| W07 | Captions stored as message text | tests | todo | |
-| W08 | Non-text messages stored as bracketed text (reactions, polls, votes, locations, contacts, stickers, edits, deletes) | tests | todo | |
-| W09 | Quoted message ID stored for replies | tests | todo | |
-| W10 | Contact names, push names, LID-to-phone map | tests, live | wip | Copied into `messages.db`; see plan. Phase 5, step 1: tables `contacts` and `lid_map` in `messages.db`, read by `serve` when they exist. The bridge fills them from step 3 on. |
-| W11 | Group names | live | todo | |
+| W01 | Connect and stay connected; reconnect after network loss | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 4: reconnects after 2 minutes offline, the message sent meanwhile is stored. |
+| W02 | Link with a QR code in the terminal | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 1. |
+| W03 | Link with a pairing code (`pair_phone`) | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 2 (`WHATSAPP_PAIR_PHONE`). The number must include the country code; a leading 0 is refused. |
+| W04 | Session kept across restarts | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 3. The session is in `store/session.db`; the Go bridge's link cannot be carried over (re-linked once). |
+| W05 | Receive and store text messages, direct and group | tests, live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 6, also messages sent from the phone itself. Tests: `crates/bridge/tests/receive.rs`. |
+| W06 | History sync on first link | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 5. Go's rules (senders, skipped conversations and messages) tested in `receive.rs`. |
+| W07 | Captions stored as message text | tests, live | verified | Tests ported (`caption_test.go`). Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 7. |
+| W08 | Non-text messages stored as bracketed text (reactions, polls, votes, locations, contacts, stickers, edits, deletes) | tests, live | verified | Tests ported (`reaction_test.go`, content parts of `main_test.go`). Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 8. |
+| W09 | Quoted message ID stored for replies | tests, live | verified | Tests ported (`quoted_test.go`). Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 9. |
+| W10 | Contact names, push names, LID-to-phone map | tests, live | verified | Stored in `contacts` and `lid_map` in `messages.db` (see plan), read by `serve`. Live test passed with the test account (user, 2026-11-06), phase 5 step 3, checks 10–11. |
+| W11 | Group names | live | verified | Live test passed with the test account (user, 2026-11-06), phase 5 step 3, check 12: the group's subject, asked from WhatsApp when the history sync has no name. |
 | W12 | Sent messages and reactions stored, in the existing PN or LID chat | tests | todo | |
 | W13 | Send text with reply and mentions | live | todo | |
 | W14 | Send image, video, document (type and name), voice note | live | todo | |
@@ -111,7 +111,7 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | A01 | API on `127.0.0.1:8080` only: `/api/send`, `/api/react`, `/api/download` with the same requests and responses | tests | wip | Internal, but kept so the Go bridge and Rust server mix during the switch. Phase 5, step 2: `crates/bridge/src/api.rs`, tested row by row against interface.md section 3 (`crates/bridge/tests/api.rs`, also over a real socket). The bridge serves it from step 3. |
 | A02 | `X-Bridge-Token` required, compared in constant time | tests | done | Phase 5, step 2: checked before anything else, compared in constant time (tests). |
 | A03 | Files only sent from `media_dir`; downloads stay inside `store/` | tests | wip | Phase 5, step 2: `allowed_media_path` with the Go bridge's rules and messages (tests, symlinks included). Downloads into `store/` come in step 4. |
-| A04 | Send allowlist by phone number or LID, refused with 403 | tests | wip | Phase 5, step 2: 403 before sending, matching by number or LID (tests ported from `allowlist_test.go`). The LID map behind it is filled in step 3. |
+| A04 | Send allowlist by phone number or LID, refused with 403 | tests | wip | Phase 5, step 2: 403 before sending, matching by number or LID (tests ported from `allowlist_test.go`). The bridge fills the LID map since step 3; sending comes in step 4. |
 | A05 | `store/` and its files readable by the user only | tests | wip | Phase 5, step 1: `messages.db`, its WAL files and the folder (tests). The session file and media follow. |
 | A06 | Message content out of logs unless `log_content`; media keys never logged | tests | wip | Phase 5, step 2: the API's log lines as in Go, content only with `log_content`, control characters removed (`log_test.go` ported). The rest of the bridge follows. |
 | A07 | No `unsafe` in our crates; `cargo audit` and `cargo deny` in CI | CI | done | New in Rust. Since phase 2: `unsafe_code = "forbid"`, and `cargo deny` (which covers the RustSec database `cargo audit` uses) in CI. |
