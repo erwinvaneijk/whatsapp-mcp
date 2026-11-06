@@ -67,9 +67,9 @@
         "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "Hello from the parity test"}},
         "send_message-reply-mentions": {"tool": "send_message", "args": {"recipient": "120363000000000001@g.us", "message": "@31600000001 agreed", "reply_to_message_id": "3EB0D0000000000000000001", "reply_to_sender_jid": "31600000001@s.whatsapp.net", "mentions": ["31600000001"]}},
         "send_message-no-recipient": {"tool": "send_message", "args": {"recipient": "", "message": "nobody"}},
-        "send_message-refused": {"tool": "send_message", "args": {"recipient": "31699999999", "message": "not allowed"}, "bridge": {"status": 403, "json": {"success": false, "message": "This chat is not in WHATSAPP_SEND_ALLOWLIST, so the bridge will not send to it."}}},
-        "send_message-bridge-failure": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "fails"}, "bridge": {"status": 500, "json": {"success": false, "message": "Error sending message: not connected"}}},
-        "send_message-bridge-not-json": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "garbled"}, "bridge": {"status": 200, "body": "not json"}},
+        "send_message-refused": {"tool": "send_message", "args": {"recipient": "31699999999", "message": "not allowed"}, "bridge": {"status": 403, "json": {"success": false, "message": "This chat is not in WHATSAPP_SEND_ALLOWLIST, so the bridge will not send to it."}}, "rust_differs": "the error says what was wrong (interface.md, section 5)"},
+        "send_message-bridge-failure": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "fails"}, "bridge": {"status": 500, "json": {"success": false, "message": "Error sending message: not connected"}}, "rust_differs": "the error says what was wrong (interface.md, section 5)"},
+        "send_message-bridge-not-json": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "garbled"}, "bridge": {"status": 200, "body": "not json"}, "rust_differs": "the error says what was wrong (interface.md, section 5)"},
 
         "send_file-photo-caption": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "<MEDIA>/photo.jpg", "caption": "Our holiday"}},
         "send_file-outside-media-dir": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "<WORKSPACE>/outside.txt"}},
@@ -82,8 +82,8 @@
         "send_audio_message-outside-media-dir": {"tool": "send_audio_message", "args": {"recipient": "31600000001", "media_path": "<WORKSPACE>/outside.txt"}},
 
         "download_media-ok": {"tool": "download_media", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net"}, "bridge": {"status": 200, "json": {"success": true, "message": "Successfully downloaded image media", "filename": "IMG-20261104-0001.jpg", "path": "<STORE>/31600000001@s.whatsapp.net/IMG-20261104-0001.jpg"}}},
-        "download_media-failed": {"tool": "download_media", "args": {"message_id": "3EB0A0000000000000000001", "chat_jid": "31600000001@s.whatsapp.net"}, "bridge": {"status": 500, "json": {"success": false, "message": "Failed to download media: message has no media"}}},
-        "download_media-no-id": {"tool": "download_media", "args": {"message_id": "", "chat_jid": "31600000001@s.whatsapp.net"}, "bridge": {"status": 400, "body": "Message ID and Chat JID are required\n"}},
+        "download_media-failed": {"tool": "download_media", "args": {"message_id": "3EB0A0000000000000000001", "chat_jid": "31600000001@s.whatsapp.net"}, "bridge": {"status": 500, "json": {"success": false, "message": "Failed to download media: message has no media"}}, "rust_differs": "the error says what was wrong (interface.md, section 5)"},
+        "download_media-no-id": {"tool": "download_media", "args": {"message_id": "", "chat_jid": "31600000001@s.whatsapp.net"}, "bridge": {"status": 400, "body": "Message ID and Chat JID are required\n"}, "rust_differs": "the error says what was wrong (interface.md, section 5)"},
 
         "react_to_message-add": {"tool": "react_to_message", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net", "emoji": "❤️"}},
         "react_to_message-remove": {"tool": "react_to_message", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net", "emoji": ""}},
@@ -129,7 +129,7 @@
       "cases": {
         "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "lost"}},
         "react_to_message-add": {"tool": "react_to_message", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net", "emoji": "👍"}},
-        "download_media-ok": {"tool": "download_media", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net"}}
+        "download_media-ok": {"tool": "download_media", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net"}, "rust_differs": "the error says what was wrong (interface.md, section 5)"}
       }
     },
     "unconfigured": {

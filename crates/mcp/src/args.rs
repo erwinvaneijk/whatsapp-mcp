@@ -87,7 +87,6 @@ impl<'a> Args<'a> {
     }
 
     /// An optional list of text; `null` or absent is `None`.
-    #[allow(dead_code)] // for send_message's mentions (phase 4, step 3)
     pub fn opt_string_list(&self, name: &str) -> Result<Option<Vec<String>>, BadArgument> {
         match self.get(name) {
             None | Some(Value::Null) => Ok(None),

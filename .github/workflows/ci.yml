@@ -96,6 +96,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: cargo fmt --all --check
 
+      # So the voice-note conversion test runs instead of skipping.
+      - name: Install ffmpeg
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+
       - name: Lint
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
@@ -152,8 +157,8 @@ jobs:
       - name: Compare with golden files
         run: uv run --locked python run.py
 
-      # The Rust server (phase 4) must match the same golden files. It is
-      # checked for what it implements so far; the list grows with each step.
+      # The Rust server (phase 4) must match the same golden files, except
+      # the cases marked rust_differs, which have <case>.rust.json files.
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
 
@@ -163,4 +168,4 @@ jobs:
         run: cargo build --locked --package whatsapp-mcp
 
       - name: Compare the Rust server with golden files
-        run: uv run --locked python run.py --server rust --only _server --only 'search_*' --only 'list_*' --only 'get_*'
+        run: uv run --locked python run.py --server rust

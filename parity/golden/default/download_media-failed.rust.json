@@ -1,0 +1,33 @@
+{
+  "args": {
+    "chat_jid": "31600000001@s.whatsapp.net",
+    "message_id": "3EB0A0000000000000000001"
+  },
+  "bridge_requests": [
+    {
+      "content_type": "application/json",
+      "json": {
+        "chat_jid": "31600000001@s.whatsapp.net",
+        "message_id": "3EB0A0000000000000000001"
+      },
+      "method": "POST",
+      "path": "/api/download",
+      "token": "ok"
+    }
+  ],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"success\": false,\n  \"message\": \"Failed to download media: message has no media\"\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "message": "Failed to download media: message has no media",
+      "success": false
+    }
+  },
+  "tool": "download_media"
+}
