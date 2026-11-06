@@ -66,15 +66,19 @@ jobs:
     name: Rust (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    # An optional platform shows its own result but cannot fail the run.
+    continue-on-error: ${{ matrix.optional == true }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - { name: Linux x86_64, os: ubuntu-latest }
           - { name: Linux arm64, os: ubuntu-24.04-arm }
-          # Pinned images: macos-latest (macOS 26) often waits for a runner
-          # long enough for the job to be cancelled.
-          - { name: macOS arm64, os: macos-15 }
+          # Optional: GitHub is short of macOS arm64 runners, and a job that
+          # gets none is cancelled after 15 minutes in the queue ("not
+          # acquired by Runner of type hosted"). macOS x86_64 still has to
+          # pass; the arm64 release binary (phase 6) is built separately.
+          - { name: macOS arm64 (optional), os: macos-15, optional: true }
           - { name: macOS x86_64, os: macos-15-intel }
           - { name: Windows x86_64, os: windows-latest }
     defaults:
