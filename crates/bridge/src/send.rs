@@ -365,13 +365,20 @@ pub fn original_sender(
     message_id: &str,
     chat_jid: &str,
 ) -> Result<Option<Jid>, SenderError> {
-    match writer.message_sender(message_id, chat_jid) {
-        Ok(Some((_, true))) => Ok(None),
-        Ok(Some((sender, false))) => stored_sender(writer, &sender)
+    let stored = match writer.message_sender(message_id, chat_jid) {
+        Ok(Some(stored)) => stored,
+        Ok(None) => return Err(SenderError::NotFound),
+        Err(e) => return Err(SenderError::Store(e.to_string())),
+    };
+    match stored.is_from_me {
+        Some(true) => Ok(None),
+        Some(false) => stored_sender(writer, stored.sender.as_deref().unwrap_or_default())
             .map(Some)
             .map_err(SenderError::Sender),
-        Ok(None) => Err(SenderError::NotFound),
-        Err(e) => Err(SenderError::Store(e.to_string())),
+        // A damaged row: whether to name a sender cannot be told.
+        None => Err(SenderError::Store(
+            "the stored message does not say whether it is from me".into(),
+        )),
     }
 }
 
@@ -421,26 +428,30 @@ pub fn safe_chat_dir(jid: &str) -> String {
     dir
 }
 
-/// The file name a download is saved under: the stored name, with the
-/// message ID added when another message in the chat has the same name,
-/// so the second download does not return the first one's file.
+/// The file name a download is saved under: the stored name made safe,
+/// with the message ID added when another message in the chat has a name
+/// that is made safe to the same one (`a/b.txt` and `c/b.txt` both become
+/// `b.txt`), so the second download does not return the first one's file.
 pub fn download_name(
     writer: &Writer,
     chat_jid: &str,
     filename: &str,
     message_id: &str,
 ) -> StoreResult<String> {
-    let mut name = filename.to_string();
-    if writer.filename_shared(chat_jid, filename, message_id)? {
-        name = match filename.rfind('.').filter(|&dot| {
-            // Go's filepath.Ext: the dot must be in the last path element.
-            !filename[dot..].contains('/')
-        }) {
-            Some(dot) => format!("{}_{message_id}{}", &filename[..dot], &filename[dot..]),
-            None => format!("{filename}_{message_id}"),
-        };
+    let name = safe_name(filename);
+    let shared = writer
+        .other_filenames(chat_jid, message_id)?
+        .iter()
+        .any(|other| safe_name(other) == name);
+    if !shared {
+        return Ok(name);
     }
-    Ok(safe_name(&name))
+    // The ID comes from the sender too: keep only safe characters.
+    let id = safe_chat_dir(message_id);
+    Ok(match name.rfind('.').filter(|&dot| dot > 0) {
+        Some(dot) => format!("{}_{id}{}", &name[..dot], &name[dot..]),
+        None => format!("{name}_{id}"),
+    })
 }
 
 /// The path WhatsApp's media servers need from a stored media URL: the path

@@ -318,6 +318,27 @@ fn the_original_sender_of_a_stored_message() {
         Err(SenderError::NotFound),
         "another chat"
     );
+
+    // A damaged row is a store problem, not a sender from someone else.
+    writer
+        .connection()
+        .execute("UPDATE messages SET is_from_me = NULL WHERE id = 'G1'", [])
+        .unwrap();
+    assert!(matches!(
+        original_sender(&writer, "G1", group),
+        Err(SenderError::Store(_))
+    ));
+    writer
+        .connection()
+        .execute(
+            "UPDATE messages SET is_from_me = 0, sender = NULL WHERE id = 'G1'",
+            [],
+        )
+        .unwrap();
+    assert_eq!(
+        original_sender(&writer, "G1", group),
+        Err(SenderError::Sender("message has no sender".into()))
+    );
 }
 
 // media_url_test.go and media_download_test.go
@@ -612,9 +633,39 @@ fn download_names_are_safe_and_distinct() {
             ..photo("D")
         })
         .unwrap();
-    assert_eq!(download_name(&writer, chat, "notes", "../C").unwrap(), "C");
+    // An ID with unsafe characters is made safe, not cut down to its end.
+    assert_eq!(
+        download_name(&writer, chat, "notes", "../C").unwrap(),
+        "notes_.._C"
+    );
     assert_eq!(
         download_name(&writer, chat, "notes", "D").unwrap(),
         "notes_D"
+    );
+    // Names that are made safe to the same name count as shared.
+    writer
+        .store_message(&NewMessage {
+            filename: "a/b.txt".into(),
+            ..photo("E")
+        })
+        .unwrap();
+    assert_eq!(
+        download_name(&writer, chat, "a/b.txt", "E").unwrap(),
+        "b.txt",
+        "alone"
+    );
+    writer
+        .store_message(&NewMessage {
+            filename: "c\\b.txt".into(),
+            ..photo("F")
+        })
+        .unwrap();
+    assert_eq!(
+        download_name(&writer, chat, "a/b.txt", "E").unwrap(),
+        "b_E.txt"
+    );
+    assert_eq!(
+        download_name(&writer, chat, "c\\b.txt", "F").unwrap(),
+        "b_F.txt"
     );
 }

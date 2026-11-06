@@ -6,7 +6,7 @@
 use chrono::{DateTime, FixedOffset, TimeZone};
 use rusqlite::Connection;
 use whatsapp_mcp_store::{
-    ContactNames, MediaInfo, MessageFilter, NewMessage, Store, Writer, go_time,
+    ContactNames, MediaInfo, MessageFilter, NewMessage, Store, StoredSender, Writer, go_time,
 };
 
 fn time(text: &str) -> DateTime<FixedOffset> {
@@ -576,24 +576,41 @@ fn message_sender_and_shared_file_names() {
         .unwrap();
     assert_eq!(
         writer.message_sender("A", chat).unwrap(),
-        Some(("123456789012345".to_string(), false))
+        Some(StoredSender {
+            sender: Some("123456789012345".into()),
+            is_from_me: Some(false)
+        })
     );
     assert_eq!(writer.message_sender("A", "other@g.us").unwrap(), None);
-    assert!(
-        !writer
-            .filename_shared(chat, "image_20261104_220052.jpg", "A")
-            .unwrap()
-    );
+    assert!(writer.other_filenames(chat, "A").unwrap().is_empty());
     writer
         .store_message(&photo("B", "31600000009", true))
         .unwrap();
     assert_eq!(
         writer.message_sender("B", chat).unwrap(),
-        Some(("31600000009".to_string(), true))
+        Some(StoredSender {
+            sender: Some("31600000009".into()),
+            is_from_me: Some(true)
+        })
     );
-    assert!(
-        writer
-            .filename_shared(chat, "image_20261104_220052.jpg", "A")
-            .unwrap()
+    assert_eq!(
+        writer.other_filenames(chat, "A").unwrap(),
+        vec!["image_20261104_220052.jpg".to_string()]
+    );
+
+    // A damaged row: NULLs are reported as they are.
+    writer
+        .connection()
+        .execute(
+            "UPDATE messages SET sender = NULL, is_from_me = NULL WHERE id = 'A'",
+            [],
+        )
+        .unwrap();
+    assert_eq!(
+        writer.message_sender("A", chat).unwrap(),
+        Some(StoredSender {
+            sender: None,
+            is_from_me: None
+        })
     );
 }
