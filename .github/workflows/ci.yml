@@ -163,4 +163,4 @@ jobs:
         run: cargo build --locked --package whatsapp-mcp
 
       - name: Compare the Rust server with golden files
-        run: uv run --locked python run.py --server rust --only _server
+        run: uv run --locked python run.py --server rust --only _server --only 'search_*' --only 'list_*' --only 'get_*'

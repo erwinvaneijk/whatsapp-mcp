@@ -1,0 +1,17 @@
+{
+  "args": {
+    "limit": -1
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "'limit' must be 0 or greater, got -1",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "list_messages"
+}

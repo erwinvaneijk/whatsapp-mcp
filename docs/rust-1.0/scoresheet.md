@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-06 (phase 4, step 1: the Rust server publishes the same name, instructions and tools; the tools themselves follow).
+Last updated: 2026-11-06 (phase 4, step 2: the Rust server's read tools match the Python server; the send tools follow).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
-| MCP interface | 20 | 16 | 0 | 4 | 0 | 0 |
+| MCP interface | 20 | 5 | 2 | 13 | 0 | 0 |
 | Configuration | 12 | 0 | 6 | 6 | 0 | 0 |
 | Bridge: WhatsApp | 17 | 17 | 0 | 0 | 0 | 0 |
 | Bridge: API and security | 7 | 7 | 0 | 0 | 0 | 0 |
 | Bridge: storage | 6 | 6 | 0 | 0 | 0 | 0 |
 | Build, release, docs | 9 | 7 | 0 | 2 | 0 | 0 |
-| **Total** | **71** | **53** | **6** | **12** | **0** | **0** |
+| **Total** | **71** | **42** | **8** | **21** | **0** | **0** |
 
 ## MCP interface
 
@@ -44,22 +44,22 @@ What Claude and other MCP clients see. Today: `whatsapp-mcp-server/main.py` and 
 | M02 | Tool list: names, titles, descriptions, parameter schemas and defaults | harness | done | Definitions are data (`crates/mcp/src/tools.json`); `crates/mcp/tests/definitions.rs` keeps them equal to the golden file. |
 | M03 | Tool annotations (read-only, destructive, idempotent, open-world) | harness | done | Part of the definitions; checked as M02. |
 | M04 | Read-only mode hides the send tools | harness | done | `read_only` / `WHATSAPP_MCP_READ_ONLY` Harness profiles `read_only_env` and `read_only_config`; `definitions.rs` checks exactly the four send tools are hidden. |
-| M05 | `search_contacts` | harness | todo | Names and LID-to-phone map; see plan, "Contact names". |
-| M06 | `list_messages`: filters (time, sender, chat), paging, sorting | harness | todo | |
-| M07 | `list_messages`: text search, FTS5 and the fallback scan | harness | todo | Rust always has FTS5; the fallback is still needed for a database without the index. |
-| M08 | `list_messages`: context around each match | harness | todo | |
-| M09 | `list_chats`: search, paging, sort, with and without last message | harness | todo | |
-| M10 | `get_chat`, `get_direct_chat_by_contact`, `get_contact_chats` | harness | todo | |
-| M11 | `get_last_interaction`, `get_message_context` | harness | todo | |
+| M05 | `search_contacts` | harness | done | Names and LID-to-phone map; see plan, "Contact names". Harness: Rust matches the golden files (phase 4, step 2). |
+| M06 | `list_messages`: filters (time, sender, chat), paging, sorting | harness | done | Harness: Rust matches the golden files (phase 4, step 2). Time filters also in Amsterdam and New York, and across the DST change. |
+| M07 | `list_messages`: text search, FTS5 and the fallback scan | harness | done | Rust always has FTS5; the fallback is still needed for a database without the index. Harness: Rust matches the golden files (phase 4, step 2). Both with the FTS5 index (`default`) and without (`no_fts`). |
+| M08 | `list_messages`: context around each match | harness | done | Harness: Rust matches the golden files (phase 4, step 2). |
+| M09 | `list_chats`: search, paging, sort, with and without last message | harness | done | Harness: Rust matches the golden files (phase 4, step 2). |
+| M10 | `get_chat`, `get_direct_chat_by_contact`, `get_contact_chats` | harness | done | Harness: Rust matches the golden files (phase 4, step 2). |
+| M11 | `get_last_interaction`, `get_message_context` | harness | done | Harness: Rust matches the golden files (phase 4, step 2). |
 | M12 | `send_message`: text, reply, mentions | harness | todo | Against a fake bridge that records requests. |
 | M13 | `send_file`: caption, only from `media_dir` | harness | todo | |
 | M14 | `send_audio_message`: ffmpeg conversion, temp file cleanup | harness, tests | todo | |
 | M15 | `download_media`: returns the file path | harness | todo | |
 | M16 | `react_to_message`, including removing a reaction | harness | todo | |
-| M17 | Structured output: same JSON fields and types as today | harness | todo | The Python MCP SDK (`mcp` 2.x) validates return types against the declared output schema; the Rust server must declare and return the same schemas. |
-| M18 | Messages from others marked as data (`<message_content>`, tag neutralising, names on one line, read-tool notice) | harness, tests | todo | |
-| M19 | Times shown with UTC offset; `after`/`before` accept ISO-8601, naive times are local | harness, tests | todo | |
-| M20 | Error texts for bad input and an unreachable bridge | harness | todo | Decided: today's quirks get better behaviour in Rust, so this row becomes `changed` when done; see [interface.md, section 5](interface.md#5-behaviour-that-improves-in-10). |
+| M17 | Structured output: same JSON fields and types as today | harness | wip | The Python MCP SDK (`mcp` 2.x) validates return types against the declared output schema; the Rust server must declare and return the same schemas. Read tools match, text and structured content (step 2); send tools follow in step 3. |
+| M18 | Messages from others marked as data (`<message_content>`, tag neutralising, names on one line, read-tool notice) | harness, tests | done | Harness: Rust matches the golden files (phase 4, step 2). Unit tests in `crates/mcp/src/untrusted.rs`. |
+| M19 | Times shown with UTC offset; `after`/`before` accept ISO-8601, naive times are local | harness, tests | done | Harness: Rust matches the golden files (phase 4, step 2). Unit tests in `crates/store/src/time.rs`. |
+| M20 | Error texts for bad input and an unreachable bridge | harness | wip | Decided: today's quirks get better behaviour in Rust, so this row becomes `changed` when done; see [interface.md, section 5](interface.md#5-behaviour-that-improves-in-10). Bad input done: five cases have Rust-specific golden files (`*.rust.json`) with the reason in the message. The bridge errors follow in step 3. |
 
 ## Configuration
 

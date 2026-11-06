@@ -9,7 +9,13 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+rusqlite = { version = "0.41.1", features = ["bundled", "functions"] }
+serde = { version = "1.0.229", features = ["derive"] }
 
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+tempfile = "3.27.0"
