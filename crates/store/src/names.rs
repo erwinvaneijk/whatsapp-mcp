@@ -71,17 +71,18 @@ impl Names {
         })
     }
 
-    /// `messages.db`, when it has the Rust bridge's names tables.
+    /// `messages.db`, when it has both of the Rust bridge's names tables.
+    /// With only one (a migration cut short), whatsapp.db is used instead.
     fn own_tables(messages_db: &Path) -> Option<Connection> {
         let conn = open_read_only(messages_db).ok()?;
-        let exists = conn
+        let tables: i64 = conn
             .query_row(
-                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'contacts'",
+                "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name IN ('contacts', 'lid_map')",
                 [],
-                |_| Ok(()),
+                |row| row.get(0),
             )
-            .is_ok();
-        exists.then_some(conn)
+            .ok()?;
+        (tables == 2).then_some(conn)
     }
 
     fn from_tables(conn: &Connection, tables: &Tables) -> rusqlite::Result<Names> {

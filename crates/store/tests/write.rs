@@ -3,8 +3,6 @@
 //! MCP server's queries. Ported from whatsapp-bridge/fts_test.go,
 //! moment_index_test.go, quoted_test.go and parity_schema_test.go.
 
-use std::path::Path;
-
 use chrono::{DateTime, FixedOffset, TimeZone};
 use rusqlite::Connection;
 use whatsapp_mcp_store::{
@@ -77,9 +75,28 @@ fn store_folder_and_database_are_private() {
     let dir = tempfile::tempdir().unwrap();
     let store = dir.path().join("store");
     Writer::open(&store).unwrap();
-    let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+    let mode = |p: &std::path::Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
     assert_eq!(mode(&store), 0o700);
     assert_eq!(mode(&store.join("messages.db")), 0o600);
+}
+
+/// From fsperm_test.go: SQLite gives the WAL files the database file's mode,
+/// so creating messages.db as 0600 first keeps them private too.
+#[cfg(unix)]
+#[test]
+fn wal_files_are_private() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let writer = Writer::open(dir.path()).unwrap();
+    writer
+        .store_chat("c@s.whatsapp.net", "C", time("2026-11-04T22:00:52+01:00"))
+        .unwrap();
+    for name in ["messages.db", "messages.db-wal", "messages.db-shm"] {
+        let path = dir.path().join(name);
+        assert!(path.exists(), "{name} exists while the database is open");
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "{name}");
+    }
 }
 
 /// From moment_index_test.go: indexes on the raw time text are replaced by
@@ -405,4 +422,64 @@ fn database_is_in_wal_mode() {
         .query_row("PRAGMA journal_mode", [], |r| r.get(0))
         .unwrap();
     assert_eq!(mode, "wal");
+}
+
+#[test]
+fn file_sizes_that_do_not_fit_are_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    let writer = Writer::open(dir.path()).unwrap();
+    let now = time("2026-11-04T22:00:52+01:00");
+    writer.store_chat("c@s.whatsapp.net", "C", now).unwrap();
+    let message = NewMessage {
+        id: "big".into(),
+        chat_jid: "c@s.whatsapp.net".into(),
+        media_type: "document".into(),
+        file_length: u64::MAX,
+        timestamp: Some(now),
+        ..Default::default()
+    };
+    assert!(writer.store_message(&message).is_err());
+    // A damaged row with a negative size is an error, not a huge size.
+    writer
+        .connection()
+        .execute(
+            "INSERT INTO messages (id, chat_jid, media_type, file_length) VALUES ('neg', 'c@s.whatsapp.net', 'image', -1)",
+            [],
+        )
+        .unwrap();
+    assert!(writer.media_info("neg", "c@s.whatsapp.net").is_err());
+}
+
+#[test]
+fn names_need_both_tables_in_messages_db() {
+    let dir = tempfile::tempdir().unwrap();
+    let writer = Writer::open(dir.path()).unwrap();
+    writer
+        .store_contact(
+            "31600000001@s.whatsapp.net",
+            &ContactNames {
+                full_name: "Maria Jansen".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    writer
+        .connection()
+        .execute_batch("DROP TABLE lid_map")
+        .unwrap();
+    drop(writer);
+    // whatsapp.db (the Go bridge's) has a name of its own for the contact.
+    let whatsmeow = Connection::open(dir.path().join("whatsapp.db")).unwrap();
+    whatsmeow
+        .execute_batch(
+            "CREATE TABLE whatsmeow_contacts (our_jid TEXT, their_jid TEXT, first_name TEXT, full_name TEXT, push_name TEXT, business_name TEXT, redacted_phone TEXT);
+             CREATE TABLE whatsmeow_lid_map (lid TEXT PRIMARY KEY, pn TEXT UNIQUE NOT NULL);
+             INSERT INTO whatsmeow_contacts VALUES ('me', '31600000001@s.whatsapp.net', NULL, 'Maria from whatsapp.db', NULL, NULL, NULL);",
+        )
+        .unwrap();
+    drop(whatsmeow);
+    // Only contacts in messages.db, no lid_map: whatsapp.db is used instead,
+    // rather than failing on the missing table and showing no names at all.
+    let db = Store::new(dir.path()).open().unwrap();
+    assert_eq!(db.sender_name("31600000001"), "Maria from whatsapp.db");
 }

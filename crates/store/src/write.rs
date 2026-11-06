@@ -131,7 +131,7 @@ impl Writer {
                 m.media_key,
                 m.file_sha256,
                 m.file_enc_sha256,
-                m.file_length as i64,
+                sql_length(m.file_length)?,
                 quoted,
             ],
         )?;
@@ -147,7 +147,7 @@ impl Writer {
                 info.media_key,
                 info.file_sha256,
                 info.file_enc_sha256,
-                info.file_length as i64,
+                sql_length(info.file_length)?,
                 id,
                 chat_jid,
             ],
@@ -169,7 +169,7 @@ impl Writer {
                         media_key: row.get::<_, Option<Vec<u8>>>(3)?.unwrap_or_default(),
                         file_sha256: row.get::<_, Option<Vec<u8>>>(4)?.unwrap_or_default(),
                         file_enc_sha256: row.get::<_, Option<Vec<u8>>>(5)?.unwrap_or_default(),
-                        file_length: row.get::<_, Option<i64>>(6)?.unwrap_or_default() as u64,
+                        file_length: stored_length(row.get::<_, Option<i64>>(6)?)?,
                     })
                 },
             )
@@ -252,6 +252,20 @@ pub fn go_time(moment: &DateTime<FixedOffset>) -> String {
     }
     text.push_str(&moment.format("%:z").to_string());
     text
+}
+
+/// A file size for SQLite, which stores signed 64-bit integers. A size that
+/// does not fit is refused rather than stored as a negative number.
+fn sql_length(length: u64) -> Result<i64> {
+    i64::try_from(length).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))
+}
+
+/// A stored file size; a negative one means the row is damaged.
+fn stored_length(length: Option<i64>) -> rusqlite::Result<u64> {
+    let length = length.unwrap_or_default();
+    u64::try_from(length).map_err(|e| {
+        rusqlite::Error::FromSqlConversionFailure(6, rusqlite::types::Type::Integer, Box::new(e))
+    })
 }
 
 fn io_error(e: std::io::Error) -> rusqlite::Error {
