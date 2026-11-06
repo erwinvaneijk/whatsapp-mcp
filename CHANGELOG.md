@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **`whatsapp-mcp bridge` (preview, test accounts only):** the Rust bridge links (QR code or `WHATSAPP_PAIR_PHONE`), keeps its session in `store/session.db`, and stores incoming messages, history sync, chat and group names, contacts and the LID map in `messages.db`. It cannot send yet: keep using the Go bridge. See [phase 5](docs/rust-1.0/phase5.md#step-3-live-test).
+
 ## 0.9.0
 
 The MCP server is now a Rust program, `whatsapp-mcp serve`, instead of the Python server. The Go bridge stays as it is until 1.0. See the [1.0 plan](docs/rust-1.0/plan.md).

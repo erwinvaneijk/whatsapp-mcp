@@ -1,16 +1,16 @@
 //! `whatsapp-mcp`: the bridge and the MCP server in one binary.
 //!
-//! `serve` is the MCP server (phase 4 of `docs/rust-1.0/plan.md`, in
-//! progress); `bridge` is a placeholder until phase 5. Until then, use the Go
-//! bridge.
+//! `serve` is the MCP server; `bridge` keeps the WhatsApp connection, stores
+//! messages and serves the local API (phase 5 of `docs/rust-1.0/plan.md`:
+//! receiving works, sending comes in step 4, so the Go bridge is still the
+//! one for daily use).
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-// Linked now so the workspace builds as one program; used from phase 5 on.
-use whatsapp_mcp_bridge as _;
+// Linked so the workspace builds as one program.
 use whatsapp_mcp_store as _;
 
 #[derive(Debug, Parser)]
@@ -23,7 +23,12 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Keep the WhatsApp connection, store messages and serve the local API.
-    Bridge,
+    Bridge {
+        /// The store folder: messages.db, and the WhatsApp session in
+        /// session.db. Created when missing.
+        #[arg(long, value_name = "DIR", default_value = "whatsapp-bridge/store")]
+        store: PathBuf,
+    },
     /// Serve the MCP tools over stdio, for an MCP client such as Claude Desktop.
     Serve {
         /// The bridge's store folder, with messages.db and whatsapp.db.
@@ -35,27 +40,28 @@ enum Command {
     },
 }
 
-/// Exit code for a command that does not exist yet.
-const NOT_IMPLEMENTED: u8 = 2;
-
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    // stderr only: stdout carries the MCP protocol.
+    // Errors on stderr: for serve, stdout carries the MCP protocol.
+    let config = match whatsapp_mcp_config::Config::load() {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("whatsapp-mcp: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
     match cli.command {
-        Command::Bridge => {
-            eprintln!(
-                "whatsapp-mcp bridge: not implemented yet (phase 5 of docs/rust-1.0/plan.md). Use the Go bridge in whatsapp-bridge/."
-            );
-            ExitCode::from(NOT_IMPLEMENTED)
+        Command::Bridge { store } => {
+            let options = whatsapp_mcp_bridge::Options { store_dir: store };
+            match whatsapp_mcp_bridge::run_blocking(&config, options) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("whatsapp-mcp bridge: {e}");
+                    ExitCode::FAILURE
+                }
+            }
         }
         Command::Serve { store, bridge_url } => {
-            let config = match whatsapp_mcp_config::Config::load() {
-                Ok(config) => config,
-                Err(e) => {
-                    eprintln!("whatsapp-mcp: {e}");
-                    return ExitCode::FAILURE;
-                }
-            };
             // Keep serving: the bridge may create it later. But say so now,
             // instead of leaving every tool to fail with a database error.
             if !store.join("messages.db").is_file() {
@@ -93,6 +99,7 @@ mod tests {
     fn commands_parse() {
         for args in [
             &["whatsapp-mcp", "bridge"][..],
+            &["whatsapp-mcp", "bridge", "--store", "/x"],
             &["whatsapp-mcp", "serve"],
             &[
                 "whatsapp-mcp",
