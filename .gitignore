@@ -17,3 +17,8 @@ whatsapp-bridge/store/
 
 # Rust build output
 /target/
+
+# Python leftovers (the parity harness runs Python; the old server left these)
+__pycache__/
+*.pyc
+.venv/
