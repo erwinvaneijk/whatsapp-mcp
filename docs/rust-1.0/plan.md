@@ -1,6 +1,6 @@
 # 1.0: rewrite in Rust
 
-Status: phase 0 done; phase 1 done, decision **go** ([checklist and results](phase1.md)); phase 2 done (workspace and CI, see [crates/README.md](../../crates/README.md)); phase 3 done (config crate; shared cases in [`parity/config-cases.json`](../../parity/config-cases.json)); phase 4 done: `serve` matches the Python server on every parity case (or improves on it, as decided), and replaces it in version 0.9; phase 5 next. Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
+Status: phase 0 done; phase 1 done, decision **go** ([checklist and results](phase1.md)); phase 2 done (workspace and CI, see [crates/README.md](../../crates/README.md)); phase 3 done (config crate; shared cases in [`parity/config-cases.json`](../../parity/config-cases.json)); phase 4 done: `serve` matches the Python server on every parity case (or improves on it, as decided), and replaces it in version 0.9; phase 5 in progress ([steps](phase5.md)). Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
 
 ## Goal
 
@@ -70,7 +70,7 @@ Each phase ends in something that works, and nothing is removed until the replac
 | 2. Workspace and CI — **done** | Cargo workspace, `rustfmt`, `clippy -D warnings`, tests, `cargo deny` (vulnerabilities, licenses, sources), `#![forbid(unsafe_code)]`, builds for macOS (arm64, x86_64), Linux and Windows. | CI green on all targets. |
 | 3. Config — **done** | `config` crate, with the Go and Python config tests ported. | Config parity tests pass. |
 | 4. Rust MCP server — **done** (0.9) | Four steps: (1) `serve` with the same name, instructions and tool definitions; (2) the read tools; (3) the send tools through the Go bridge; (4) release 0.9. `serve`: all read tools on `messages.db`; send tools through the existing Go bridge's API. Contact names read from whatsmeow's `whatsapp.db`, as the Python server does today. | Parity harness passes. The Python server can be switched off. **Release 0.9**: Rust server + Go bridge. |
-| 5. Rust bridge | `bridge`: connection, pairing, storing (same schema and migrations), history sync, outgoing messages, media, retry, allowlist, API, file permissions, log privacy. | Bridge tests ported and passing; runs for a week alongside daily use without problems. |
+| 5. Rust bridge — **in progress** ([steps](phase5.md)) | `bridge`: connection, pairing, storing (same schema and migrations), history sync, outgoing messages, media, retry, allowlist, API, file permissions, log privacy. | Bridge tests ported and passing; runs for a week alongside daily use without problems. |
 | 6. Migration and packaging | Migration guide (Claude Desktop config, re-pairing if needed), release binaries with checksums, README rewrite. | Fresh install and upgrade both tested from the guide. |
 | 7. Release 1.0 | Remove Go and Python code, merge `dev-main` into `main`, tag `v1.0.0`. | All score sheet rows "verified". |
 

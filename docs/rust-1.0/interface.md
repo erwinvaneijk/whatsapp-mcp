@@ -99,7 +99,8 @@ All in `whatsapp-bridge/store/`. The folder and its files are readable by the us
 | File | Contents | Kept in 1.0 |
 |---|---|---|
 | `messages.db` | Chats and messages. Exact schema: [`parity/fixture/schema.sql`](../../parity/fixture/schema.sql), checked against the bridge in CI. Times are stored as text with their UTC offset. Opened in WAL mode. | Yes, used as is. |
-| `whatsapp.db` | whatsmeow's session and contact store. The MCP server reads `whatsmeow_contacts` and `whatsmeow_lid_map` from it for names ([`parity/fixture/whatsmeow.sql`](../../parity/fixture/whatsmeow.sql)). | No: whatsapp-rust has its own store. The Rust bridge copies names and the LID map into `messages.db` (see the plan). |
+| `whatsapp.db` | whatsmeow's session and contact store. The MCP server reads `whatsmeow_contacts` and `whatsmeow_lid_map` from it for names ([`parity/fixture/whatsmeow.sql`](../../parity/fixture/whatsmeow.sql)), unless `messages.db` has the tables below. | No: whatsapp-rust has its own store, `session.db`. The Go bridge's file is left alone. |
+| `messages.db`: `contacts`, `lid_map` | New in 1.0, written by the Rust bridge: contact names and the LID-to-phone map, with the same columns and meaning as whatsmeow's two tables ([`crates/store/src/schema/names.sql`](../../crates/store/src/schema/names.sql)). The MCP server reads names from here when the tables exist. | New. |
 | `<chat>/<file>` | Downloaded media. The chat folder is the chat JID with every character other than letters, digits, `@ . - _` replaced by `_`. When two messages in a chat share a file name, the file gets `_<message id>` before its extension. | Yes. |
 
 ## 5. Behaviour that improves in 1.0

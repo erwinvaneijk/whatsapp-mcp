@@ -10,6 +10,34 @@ use std::path::Path;
 
 use rusqlite::{Connection, OpenFlags};
 
+/// Where the names are: table and column names.
+struct Tables {
+    contacts: &'static str,
+    jid_column: &'static str,
+    lid_map: &'static str,
+}
+
+/// The Rust bridge's tables in `messages.db`.
+const OWN_TABLES: Tables = Tables {
+    contacts: "contacts",
+    jid_column: "jid",
+    lid_map: "lid_map",
+};
+
+/// whatsmeow's tables in `whatsapp.db` (the Go bridge).
+const WHATSMEOW_TABLES: Tables = Tables {
+    contacts: "whatsmeow_contacts",
+    jid_column: "their_jid",
+    lid_map: "whatsmeow_lid_map",
+};
+
+fn open_read_only(path: &Path) -> rusqlite::Result<Connection> {
+    Connection::open_with_flags(
+        path,
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+}
+
 /// Names and number mappings, keyed by the user part of a JID (before `@`).
 #[derive(Debug, Default, Clone)]
 pub struct Names {
@@ -27,27 +55,41 @@ pub fn user_part(jid: &str) -> &str {
 }
 
 impl Names {
-    /// Reads `whatsapp.db`. Any problem (no file, no tables) gives no names,
-    /// with a note on stderr, as in the Python server.
-    pub fn load(whatsapp_db: &Path) -> Names {
-        match Names::try_load(whatsapp_db) {
-            Ok(names) => names,
-            Err(e) => {
-                eprintln!("Database error while loading contact names: {e}");
-                Names::default()
-            }
-        }
+    /// Reads the names. With the Rust bridge they are in `messages.db`
+    /// (tables `contacts` and `lid_map`); with the Go bridge they are only in
+    /// whatsmeow's `whatsapp.db`. Any problem (no file, no tables) gives no
+    /// names, with a note on stderr, as in the Python server.
+    pub fn load(messages_db: &Path, whatsapp_db: &Path) -> Names {
+        let result = match Names::own_tables(messages_db) {
+            Some(conn) => Names::from_tables(&conn, &OWN_TABLES),
+            None => open_read_only(whatsapp_db)
+                .and_then(|conn| Names::from_tables(&conn, &WHATSMEOW_TABLES)),
+        };
+        result.unwrap_or_else(|e| {
+            eprintln!("Database error while loading contact names: {e}");
+            Names::default()
+        })
     }
 
-    fn try_load(whatsapp_db: &Path) -> rusqlite::Result<Names> {
-        let conn = Connection::open_with_flags(
-            whatsapp_db,
-            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
-        )?;
+    /// `messages.db`, when it has the Rust bridge's names tables.
+    fn own_tables(messages_db: &Path) -> Option<Connection> {
+        let conn = open_read_only(messages_db).ok()?;
+        let exists = conn
+            .query_row(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'contacts'",
+                [],
+                |_| Ok(()),
+            )
+            .is_ok();
+        exists.then_some(conn)
+    }
+
+    fn from_tables(conn: &Connection, tables: &Tables) -> rusqlite::Result<Names> {
         let mut names = Names::default();
-        let mut contacts = conn.prepare(
-            "SELECT their_jid, first_name, full_name, push_name, business_name FROM whatsmeow_contacts",
-        )?;
+        let mut contacts = conn.prepare(&format!(
+            "SELECT {}, first_name, full_name, push_name, business_name FROM {}",
+            tables.jid_column, tables.contacts
+        ))?;
         let rows = contacts.query_map([], |row| {
             Ok((
                 row.get::<_, Option<String>>(0)?,
@@ -71,7 +113,7 @@ impl Names {
                     .or_insert_with(|| name.to_string());
             }
         }
-        let mut map = conn.prepare("SELECT lid, pn FROM whatsmeow_lid_map")?;
+        let mut map = conn.prepare(&format!("SELECT lid, pn FROM {}", tables.lid_map))?;
         let rows = map.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })?;
