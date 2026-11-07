@@ -76,7 +76,7 @@ Also: with `WHATSAPP_SEND_ALLOWLIST` set to one chat, sending to another is refu
 
 ## Step 5: startup log
 
-On start, `whatsapp-mcp serve` and `whatsapp-mcp bridge` log the settings and paths they run with. A wrong store folder, read-only mode switched on by accident, or an unset media folder then shows in the log. Today `serve` logs nothing on start, and `bridge` logs only the configuration file and the allowlist size.
+On start, `whatsapp-mcp serve` and `whatsapp-mcp bridge` log the settings and paths they run with. A wrong store folder, read-only mode switched on by accident, or an unset media folder then shows in the log. Today `serve` only warns when there is no `messages.db` in the store folder. `bridge` logs the configuration file, the allowlist size, `Starting WhatsApp client...` and the address of its API, but not the store path, the other settings, or whether it is linked.
 
 One short block, for both commands:
 
@@ -89,9 +89,9 @@ One short block, for both commands:
 | `send_allowlist` | The number of chats, or "not set (all chats)" |
 | `log_content` | On or off |
 | `pair_phone` | `bridge` only: set or not set |
-| Store | The full path of the store folder, and whether `messages.db` exists |
+| Store | The full path of the store folder, and whether `messages.db` exists (for `serve`, this replaces today's warning) |
 | Names | `serve` only: from the `contacts` and `lid_map` tables, or from the Go bridge's `whatsapp.db` |
-| Bridge | `serve` only: the address it sends to (`http://127.0.0.1:8080`) |
+| Bridge | `serve` only: the bridge address it sends to (`--bridge-url`, by default `http://127.0.0.1:8080`) |
 | Session | `bridge` only: the path of `session.db`, and whether it is linked or will show a QR or pairing code |
 
 Each setting also says where its value comes from: the environment, the configuration file, or the default.
