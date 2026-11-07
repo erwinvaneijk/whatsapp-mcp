@@ -13,6 +13,15 @@
       }
     },
     {
+      "name": "logging settings (Rust only; the Go bridge accepts and ignores them)",
+      "yaml": "log_output: ~/logs/whatsapp-mcp.log\nlog_format: json\nlog_level: debug\n",
+      "values": {
+        "WHATSAPP_LOG_OUTPUT": "~/logs/whatsapp-mcp.log",
+        "WHATSAPP_LOG_FORMAT": "json",
+        "WHATSAPP_LOG_LEVEL": "debug"
+      }
+    },
+    {
       "name": "allowlist on one line",
       "yaml": "send_allowlist: 316123, 316456",
       "values": { "WHATSAPP_SEND_ALLOWLIST": "316123, 316456" }

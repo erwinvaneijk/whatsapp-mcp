@@ -200,8 +200,8 @@ impl Live {
         let chat_jid = match send::outgoing_chat_jid(&writer, recipient) {
             Ok(chat_jid) => chat_jid,
             Err(e) => {
-                log::line(&format!(
-                    "Warning: failed to store sent message: {}",
+                log::warning(&format!(
+                    "Failed to store sent message: {}",
                     log::clean(&e.to_string())
                 ));
                 return;
@@ -216,15 +216,15 @@ impl Live {
             now,
         );
         if let Err(e) = writer.store_chat(&chat_jid, "", now.fixed_offset()) {
-            log::line(&format!(
-                "Warning: failed to store chat for sent message: {}",
+            log::warning(&format!(
+                "Failed to store chat for sent message: {}",
                 log::clean(&e.to_string())
             ));
             return;
         }
         if let Err(e) = writer.store_message(&row) {
-            log::line(&format!(
-                "Warning: failed to store sent message: {}",
+            log::warning(&format!(
+                "Failed to store sent message: {}",
                 log::clean(&e.to_string())
             ));
         }
@@ -299,7 +299,7 @@ impl Live {
             Ok(data) => data,
             Err(ClientDownloadError::ReferenceRejected(e)) => {
                 // Expired on WhatsApp's servers: ask the sender's phone.
-                log::line(&format!(
+                log::warning(&format!(
                     "Media download failed ({}); asking the sender's phone to upload it again...",
                     log::clean(&e.to_string())
                 ));

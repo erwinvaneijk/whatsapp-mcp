@@ -256,7 +256,7 @@ impl<B: Backend> Api<B> {
         if allows(self.allowlist.as_ref(), self.backend.as_ref(), chat) {
             return None;
         }
-        log::line("Refused to send: chat is not in WHATSAPP_SEND_ALLOWLIST");
+        log::warning("Refused to send: chat is not in WHATSAPP_SEND_ALLOWLIST");
         Some(json(
             StatusCode::FORBIDDEN,
             &Status {
@@ -327,7 +327,7 @@ pub async fn serve_on<B: Backend>(
                 .serve_connection(io, service)
                 .await
             {
-                log::line(&format!(
+                log::warning(&format!(
                     "REST API connection error: {}",
                     log::clean(&e.to_string())
                 ));

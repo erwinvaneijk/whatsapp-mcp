@@ -92,11 +92,9 @@ fn display_os() -> &'static str {
     }
 }
 
-/// [`run`] on its own runtime, with the library's warnings on stderr
-/// (`RUST_LOG` changes the level).
+/// [`run`] on its own runtime. Logging is set up by the caller
+/// (`whatsapp-mcp-logging`), before the startup block.
 pub fn run_blocking(config: &Config, options: Options) -> Result<(), String> {
-    let _ = env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn"))
-        .try_init();
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -203,7 +201,7 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
     server.abort();
     let report = handle.shutdown().await;
     if let Err(e) = report.shutdown.device {
-        log::line(&format!(
+        log::warning(&format!(
             "Failed to save the WhatsApp session: {}",
             log::clean(&e.to_string())
         ));
@@ -224,6 +222,9 @@ pub fn startup_lines(config: &Config, store: &Path) -> Vec<String> {
         Setting::SendAllowlist,
         Setting::LogContent,
         Setting::PairPhone,
+        Setting::LogOutput,
+        Setting::LogFormat,
+        Setting::LogLevel,
     ]));
     let shown = log::clean(
         &std::path::absolute(store)
@@ -324,7 +325,7 @@ impl Waiting {
                 .compare_exchange(warned, next, Ordering::Relaxed, Ordering::Relaxed)
                 .is_ok()
         {
-            log::line(&format!(
+            log::warning(&format!(
                 "{count} WhatsApp events are waiting to be stored; storing is falling behind"
             ));
         }
@@ -378,41 +379,45 @@ async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pair
                 print_qr(&qr.code);
             }
         }
-        Event::PairingCode(code) => log::line(&format!(
-            "\nOn your phone open WhatsApp > Linked devices > Link a device > Link with phone number instead, and enter: {}",
-            code.code
-        )),
-        Event::PairingCodeError(e) => log::line(&format!(
+        Event::PairingCode(code) => {
+            // On the terminal only: the code links a device to the account.
+            log::terminal(&format!(
+                "\nOn your phone open WhatsApp > Linked devices > Link a device > Link with phone number instead, and enter: {}\n",
+                log::clean(&code.code)
+            ));
+            log::line("Pairing code shown on the terminal; enter it on the phone to link");
+        }
+        Event::PairingCodeError(e) => log::warning(&format!(
             "Failed to request pairing code: {}",
             log::clean(&format!("{:?}", e.rejection))
         )),
         Event::PairingQrCodesExhausted(_) => {
-            log::line("Timeout waiting for QR code scan; start the bridge again to link.");
+            log::warning("Timeout waiting for QR code scan; start the bridge again to link.");
         }
-        Event::PairSuccess(_) => log::line("\nSuccessfully connected and authenticated!"),
-        Event::PairError(e) => log::line(&format!("Linking failed: {}", log::clean(&e.error))),
+        Event::PairSuccess(_) => log::line("Successfully connected and authenticated!"),
+        Event::PairError(e) => log::warning(&format!("Linking failed: {}", log::clean(&e.error))),
         Event::Connected(_) => {
             shared.set_connected(true);
             log::line("✓ Connected to WhatsApp");
         }
         Event::Disconnected(_) => {
             shared.set_connected(false);
-            log::line("Disconnected from WhatsApp; reconnecting...");
+            log::warning("Disconnected from WhatsApp; reconnecting...");
         }
         Event::LoggedOut(_) => {
             shared.set_connected(false);
-            log::line(
+            log::warning(
                 "Device logged out: the phone unlinked this bridge. Start it again to link it.",
             );
         }
         Event::StreamReplaced(_) => {
             shared.set_connected(false);
-            log::line("Another client took over this session (stream replaced).");
+            log::warning("Another client took over this session (stream replaced).");
         }
-        Event::ClientOutdated(_) => log::line(
+        Event::ClientOutdated(_) => log::warning(
             "WhatsApp says this client is outdated (405); a newer whatsapp-rust is needed.",
         ),
-        Event::TemporaryBan(ban) => log::line(&format!(
+        Event::TemporaryBan(ban) => log::warning(&format!(
             "WhatsApp banned this account temporarily: {}",
             log::clean(&format!("{ban:?}"))
         )),
@@ -443,7 +448,7 @@ async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pair
             }
         }
         Event::UndecryptableMessage(u) => {
-            log::line(&format!(
+            log::warning(&format!(
                 "Could not decrypt message {}",
                 log::clean(&u.info.id)
             ));
@@ -492,7 +497,7 @@ async fn store_live(shared: &Shared, client: &Arc<Client>, info: &MessageInfo, m
     if row.content.is_empty() && row.media_type.is_empty() {
         // Where unhandled message types disappear: say so, so they can be
         // found and added.
-        log::line(&format!(
+        log::warning(&format!(
             "Dropping message {} in {}: no text or media extracted",
             log::clean(&info.id),
             log::clean(&chat_jid)
@@ -500,7 +505,7 @@ async fn store_live(shared: &Shared, client: &Arc<Client>, info: &MessageInfo, m
         return;
     }
     if let Err(e) = writer.store_message(&row) {
-        log::line(&format!(
+        log::warning(&format!(
             "Failed to store message: {}",
             log::clean(&e.to_string())
         ));
@@ -565,7 +570,7 @@ async fn resolve_chat_name(
             .await
             .unwrap_or_else(|| receive::group_fallback(chat)),
         Err(e) => {
-            log::line(&format!(
+            log::warning(&format!(
                 "Failed to read chat name: {}",
                 log::clean(&e.to_string())
             ));
@@ -588,7 +593,7 @@ async fn group_subject(client: &Arc<Client>, chat_jid: &str) -> Option<String> {
 /// from the same payload.
 async fn store_history(shared: &Shared, client: &Arc<Client>, lazy: &LazyHistorySync) {
     let Some(sync) = lazy.get() else {
-        log::line("Received a history sync chunk that could not be decoded");
+        log::warning("Received a history sync chunk that could not be decoded");
         return;
     };
     log::line(&format!(
@@ -636,7 +641,7 @@ async fn store_history(shared: &Shared, client: &Arc<Client>, lazy: &LazyHistory
             continue;
         }
         let Ok(chat) = TextJid::parse(&conversation.id) else {
-            log::line(&format!(
+            log::warning(&format!(
                 "Failed to parse JID {}",
                 log::clean(&conversation.id)
             ));
@@ -664,7 +669,7 @@ async fn store_history(shared: &Shared, client: &Arc<Client>, lazy: &LazyHistory
         for row in &history.messages {
             match writer.store_message(row) {
                 Ok(()) => stored += 1,
-                Err(e) => log::line(&format!(
+                Err(e) => log::warning(&format!(
                     "Failed to store history message: {}",
                     log::clean(&e.to_string())
                 )),
@@ -676,7 +681,7 @@ async fn store_history(shared: &Shared, client: &Arc<Client>, lazy: &LazyHistory
 
 fn warn_on_error(what: &str, result: whatsapp_mcp_store::Result<()>) {
     if let Err(e) = result {
-        log::line(&format!("Failed to {what}: {}", log::clean(&e.to_string())));
+        log::warning(&format!("Failed to {what}: {}", log::clean(&e.to_string())));
     }
 }
 
@@ -688,15 +693,19 @@ fn print_qr(code: &str) {
                 .dark_color(qrcode::render::unicode::Dense1x2::Light)
                 .light_color(qrcode::render::unicode::Dense1x2::Dark)
                 .build();
-            log::line(&format!(
+            // On the terminal only, as it is: it links a device to the account.
+            log::terminal(&format!(
                 "\nScan this QR code with your WhatsApp app:\n{text}\n"
             ));
+            log::line("QR code shown on the terminal; scan it with WhatsApp to link");
         }
-        Err(e) => log::line(&format!(
-            "QR code (could not render: {}): {}",
-            log::clean(&e.to_string()),
-            log::clean(code)
-        )),
+        Err(e) => {
+            log::terminal(&format!("QR code: {}", log::clean(code)));
+            log::warning(&format!(
+                "Could not draw the QR code ({}); its text is shown on the terminal",
+                log::clean(&e.to_string())
+            ));
+        }
     }
 }
 
@@ -766,7 +775,7 @@ mod tests {
             format!("whatsapp-mcp {} bridge", env!("CARGO_PKG_VERSION"))
         );
         assert_eq!(
-            &lines[1..7],
+            &lines[1..10],
             [
                 "Configuration file: none",
                 "  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)",
@@ -774,16 +783,24 @@ mod tests {
                 "  send_allowlist: 1 chat (from WHATSAPP_SEND_ALLOWLIST)",
                 "  log_content: off (default)",
                 "  pair_phone: set (from WHATSAPP_PAIR_PHONE)",
+                "  log_output: stderr (default)",
+                "  log_format: text (default)",
+                "  log_level: info (default)",
             ]
         );
-        assert!(
-            lines[7].starts_with("Store: ") && lines[7].ends_with("(messages.db will be created)")
-        );
+        let store = |lines: &[String]| {
+            lines
+                .iter()
+                .find(|l| l.starts_with("Store: "))
+                .cloned()
+                .unwrap()
+        };
+        assert!(store(&lines).ends_with("(messages.db will be created)"));
         let all = lines.join("\n");
         assert!(!all.contains("s3cr3t") && !all.contains("31612345678"));
 
         drop(Writer::open(dir.path()).unwrap());
-        assert!(startup_lines(&config, dir.path())[7].ends_with("(messages.db found)"));
+        assert!(store(&startup_lines(&config, dir.path())).ends_with("(messages.db found)"));
 
         let session = dir.path().join("session.db");
         assert!(session_line(&session, true, true).ends_with("session.db (linked)"));

@@ -133,7 +133,7 @@ fn download_media(ctx: &SendContext<'_>, args: &Args<'_>) -> Result<Output, Tool
     let payload = json!({ "message_id": message_id, "chat_jid": chat_jid });
     match download_result(ctx.bridge.post("download", &payload)) {
         Ok(path) => {
-            eprintln!("Media downloaded successfully: {path}");
+            log::info!("Media downloaded successfully: {path}");
             Output::object(&json!({
                 "success": true,
                 "message": "Media downloaded successfully",
@@ -141,7 +141,7 @@ fn download_media(ctx: &SendContext<'_>, args: &Args<'_>) -> Result<Output, Tool
             }))
         }
         Err(reason) => {
-            eprintln!("Download failed: {reason}");
+            log::warn!("Download failed: {reason}");
             let message = if reason.starts_with("Failed to download media") {
                 reason
             } else {

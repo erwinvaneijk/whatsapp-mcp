@@ -2,7 +2,7 @@
 //! where it comes from, so a wrong setup shows in the log. Never the bridge
 //! token or the pairing phone number, only whether they are set.
 
-use crate::{Config, MIN_BRIDGE_TOKEN_LEN, SendAllowlist, Setting};
+use crate::{Config, LogFormat, LogOutput, MIN_BRIDGE_TOKEN_LEN, SendAllowlist, Setting};
 
 /// Where a setting's value comes from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,6 +72,22 @@ impl Config {
                 Ok(Some(list)) => format!("{} chats", list.len()),
                 Ok(None) => "not set (all chats)".into(),
                 Err(e) => format!("invalid: {}", clean(&e.to_string())),
+            },
+            Setting::LogOutput => match self.log_output() {
+                Ok(LogOutput::Stderr) => "stderr".into(),
+                Ok(LogOutput::Stdout) => "stdout".into(),
+                Ok(LogOutput::Syslog) => "syslog".into(),
+                Ok(LogOutput::File(path)) => clean(&path.display().to_string()),
+                Err(_) => "invalid".into(),
+            },
+            Setting::LogFormat => match self.log_format() {
+                Ok(LogFormat::Text) => "text".into(),
+                Ok(LogFormat::Json) => "json".into(),
+                Err(_) => "invalid".into(),
+            },
+            Setting::LogLevel => match self.log_level() {
+                Ok(level) => format!("{level:?}").to_ascii_lowercase(),
+                Err(_) => "invalid".into(),
             },
         }
     }

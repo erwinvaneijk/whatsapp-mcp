@@ -10,6 +10,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 use whatsapp_mcp_config::{Config, Setting};
+use whatsapp_mcp_logging::Program;
 use whatsapp_mcp_store::{NamesSource, Store};
 
 #[derive(Debug, Parser)]
@@ -49,20 +50,29 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let program = match cli.command {
+        Command::Bridge { .. } => Program::Bridge,
+        Command::Serve { .. } => Program::Serve,
+    };
+    // Before anything is logged; a bad log setting stops here, on stderr.
+    if let Err(e) = whatsapp_mcp_logging::init(program, &config) {
+        eprintln!("whatsapp-mcp {}: {e}", program.name());
+        return ExitCode::FAILURE;
+    }
     match cli.command {
         Command::Bridge { store } => {
             let options = whatsapp_mcp_bridge::Options { store_dir: store };
             match whatsapp_mcp_bridge::run_blocking(&config, options) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(e) => {
-                    eprintln!("whatsapp-mcp bridge: {e}");
+                    log::error!("{e}");
                     ExitCode::FAILURE
                 }
             }
         }
         Command::Serve { store, bridge_url } => {
             for line in serve_startup_lines(&config, &store, &bridge_url) {
-                eprintln!("{line}");
+                log::info!("{line}");
             }
             let options = whatsapp_mcp_server::ServeOptions {
                 store_dir: store,
@@ -71,7 +81,7 @@ fn main() -> ExitCode {
             match whatsapp_mcp_server::serve_stdio(&config, options) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(e) => {
-                    eprintln!("whatsapp-mcp: {e}");
+                    log::error!("{e}");
                     ExitCode::FAILURE
                 }
             }
@@ -91,6 +101,9 @@ fn serve_startup_lines(config: &Config, store: &Path, bridge_url: &str) -> Vec<S
         Setting::MediaDir,
         Setting::SendAllowlist,
         Setting::LogContent,
+        Setting::LogOutput,
+        Setting::LogFormat,
+        Setting::LogLevel,
     ]));
     let shown = clean(
         &std::path::absolute(store)

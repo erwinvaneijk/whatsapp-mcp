@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-08 (phase 5, step 6 planned: logging; C13–C15 and A08 added).
+Last updated: 2026-11-08 (phase 5, step 6: logging built).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
 | MCP interface | 20 | 0 | 0 | 19 | 0 | 1 |
-| Configuration | 15 | 3 | 0 | 12 | 0 | 0 |
+| Configuration | 15 | 0 | 0 | 15 | 0 | 0 |
 | Bridge: WhatsApp | 17 | 0 | 1 | 1 | 15 | 0 |
-| Bridge: API and security | 8 | 1 | 0 | 5 | 2 | 0 |
+| Bridge: API and security | 8 | 0 | 0 | 6 | 2 | 0 |
 | Bridge: storage | 6 | 0 | 1 | 5 | 0 | 0 |
 | Build, release, docs | 9 | 5 | 2 | 2 | 0 | 0 |
-| **Total** | **75** | **9** | **4** | **44** | **17** | **1** |
+| **Total** | **75** | **5** | **4** | **48** | **17** | **1** |
 
 ## MCP interface
 
@@ -79,9 +79,9 @@ Same file, same environment variables, same rules. Today: `whatsapp-bridge/confi
 | C10 | `read_only` / `WHATSAPP_MCP_READ_ONLY` | tests | done | `Config::read_only`, used by `serve` since phase 4. Phase 5, step 5: shown in the startup block of `serve`. |
 | C11 | `log_content` / `WHATSAPP_LOG_CONTENT` | tests | done | `Config::log_content`, used by the bridge since phase 5, step 2. Phase 5, step 5: shown in the startup block of both commands. |
 | C12 | `pair_phone` / `WHATSAPP_PAIR_PHONE` | tests | done | `Config::pair_phone`, used by the bridge since phase 5, step 3 (verified live). Phase 5, step 5: shown in the startup block of the bridge, as set or not set only. |
-| C13 | `log_output` / `WHATSAPP_LOG_OUTPUT`: `stderr`, `stdout`, `syslog` or a file; never stdout for `serve` | tests | todo | New in Rust; phase 5, step 6. The Go bridge accepts and ignores it. |
-| C14 | `log_format` / `WHATSAPP_LOG_FORMAT`: `text` or `json` | tests | todo | New in Rust; phase 5, step 6. |
-| C15 | `log_level` / `WHATSAPP_LOG_LEVEL`: `error`, `warn`, `info`, `debug` | tests | todo | New in Rust; phase 5, step 6. `RUST_LOG` still overrides it per module. |
+| C13 | `log_output` / `WHATSAPP_LOG_OUTPUT`: `stderr`, `stdout`, `syslog` or a file; never stdout for `serve` | tests | done | New in Rust; phase 5, step 6: `Config::log_output`, `whatsapp-mcp-logging` (tests for stderr, a file and a syslog socket; `serve` refuses stdout). The Go bridge accepts and ignores it (shared case in `parity/config-cases.json`). |
+| C14 | `log_format` / `WHATSAPP_LOG_FORMAT`: `text` or `json` | tests | done | New in Rust; phase 5, step 6: `Config::log_format`; text and JSON lines tested. |
+| C15 | `log_level` / `WHATSAPP_LOG_LEVEL`: `error`, `warn`, `info`, `debug` | tests | done | New in Rust; phase 5, step 6: `Config::log_level`; our crates from the level, libraries from `warn`, `RUST_LOG` on top per module (tests). |
 
 ## Bridge: WhatsApp
 
@@ -118,7 +118,7 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | A05 | `store/` and its files readable by the user only | tests | done | Phase 5: `messages.db` and its WAL files (step 1), the session in `session.db` with its WAL files (step 3), chat folders for downloads `0700` and downloaded files `0600` (step 4); step 5 ports the rest of `fsperm_test.go` (an existing world-readable folder or file is made private and keeps its content) and tests the session and downloads. |
 | A06 | Message content out of logs unless `log_content`; media keys never logged | tests | done | Phase 5: the API's log lines as in Go, content only with `log_content` (`log_test.go` ported, step 2). Step 5: a review of every log line; control characters are removed from every value and error text, and from each whole line; upload results and media keys are never logged, and the library's own media errors carry only status codes. The library's warnings (stderr) name message IDs and JIDs, not content; `RUST_LOG=debug` logs more and is not for shared logs. |
 | A07 | No `unsafe` in our crates; `cargo audit` and `cargo deny` in CI | CI | done | New in Rust. Since phase 2: `unsafe_code = "forbid"`, and `cargo deny` (which covers the RustSec database `cargo audit` uses) in CI. |
-| A08 | Every log line has a time (local, with offset), a level and its source, for `serve`, `bridge` and the library | tests | todo | New in Rust; phase 5, step 6. QR and pairing codes stay on the terminal. |
+| A08 | Every log line has a time (local, with offset), a level and its source, for `serve`, `bridge` and the library | tests | done | New in Rust; phase 5, step 6: every line through the `log` facade and `whatsapp-mcp-logging` (replaces `env_logger`), with local time, offset and milliseconds, level and source; control characters removed from each line. QR and pairing codes only on the terminal. |
 
 ## Bridge: storage
 

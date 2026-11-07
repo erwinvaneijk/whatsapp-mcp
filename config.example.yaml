@@ -43,3 +43,17 @@ log_content: no
 # code. Only used when the bridge is not linked yet.
 # WHATSAPP_PAIR_PHONE
 pair_phone:
+
+# Where the whatsapp-mcp programs (serve and bridge) write their log lines:
+# stderr, stdout (not for serve), syslog (not on Windows), or a file path,
+# absolute or starting with ~/. The Go bridge ignores the three log settings.
+# WHATSAPP_LOG_OUTPUT
+log_output: stderr
+
+# text, or json for one JSON object per line.
+# WHATSAPP_LOG_FORMAT
+log_format: text
+
+# error, warn, info or debug. The WhatsApp library's own lines start at warn.
+# WHATSAPP_LOG_LEVEL
+log_level: info

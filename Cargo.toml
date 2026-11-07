@@ -17,6 +17,7 @@ whatsapp-mcp-config = { path = "crates/config" }
 whatsapp-mcp-store = { path = "crates/store" }
 whatsapp-mcp-bridge = { path = "crates/bridge" }
 whatsapp-mcp-server = { path = "crates/mcp" }
+whatsapp-mcp-logging = { path = "crates/logging" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

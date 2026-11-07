@@ -1,0 +1,23 @@
+[package]
+name = "whatsapp-mcp-logging"
+description = "Timestamped log lines for serve and bridge, to stderr, stdout, a file or syslog."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+env_filter = "2.0.0"
+log = { version = "0.4.35", features = ["std"] }
+serde_json = "1.0.154"
+whatsapp-mcp-config.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile = "3.27.0"
+serde_json = "1.0.154"
