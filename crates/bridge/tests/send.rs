@@ -669,3 +669,28 @@ fn download_names_are_safe_and_distinct() {
         "b_F.txt"
     );
 }
+
+/// Downloads are readable by the owner only, in a private chat folder, and
+/// appear under their name only when complete.
+#[cfg(unix)]
+#[test]
+fn downloads_are_private() {
+    use std::os::unix::fs::PermissionsExt;
+    use whatsapp_mcp_bridge::send::save_private;
+    use whatsapp_mcp_store::ensure_private_dir;
+    let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+    let store = tempfile::tempdir().unwrap();
+    let chat_dir = store
+        .path()
+        .join(safe_chat_dir("31612345678@s.whatsapp.net"));
+    ensure_private_dir(&chat_dir).unwrap();
+    assert_eq!(mode(&chat_dir), 0o700);
+
+    let file = chat_dir.join("image_20261104_220052.jpg");
+    // A part left by an interrupted download is replaced, not appended to.
+    std::fs::write(chat_dir.join("image_20261104_220052.jpg.part"), "stale").unwrap();
+    save_private(&file, b"photo").unwrap();
+    assert_eq!(std::fs::read(&file).unwrap(), b"photo");
+    assert_eq!(mode(&file), 0o600);
+    assert!(!chat_dir.join("image_20261104_220052.jpg.part").exists());
+}

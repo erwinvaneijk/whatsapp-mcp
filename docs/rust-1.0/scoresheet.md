@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-07 (phase 5, step 4: live test passed except re-requesting expired media).
+Last updated: 2026-11-08 (phase 5, step 5: permissions, the log review and the startup block).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
 | MCP interface | 20 | 0 | 0 | 19 | 0 | 1 |
-| Configuration | 12 | 0 | 6 | 6 | 0 | 0 |
+| Configuration | 12 | 0 | 0 | 12 | 0 | 0 |
 | Bridge: WhatsApp | 17 | 0 | 1 | 1 | 15 | 0 |
-| Bridge: API and security | 7 | 0 | 2 | 3 | 2 | 0 |
+| Bridge: API and security | 7 | 0 | 0 | 5 | 2 | 0 |
 | Bridge: storage | 6 | 0 | 1 | 5 | 0 | 0 |
 | Build, release, docs | 9 | 5 | 2 | 2 | 0 | 0 |
-| **Total** | **71** | **5** | **12** | **36** | **17** | **1** |
+| **Total** | **71** | **5** | **4** | **44** | **17** | **1** |
 
 ## MCP interface
 
@@ -73,12 +73,12 @@ Same file, same environment variables, same rules. Today: `whatsapp-bridge/confi
 | C04 | `send_allowlist` as a YAML list or a separated string | tests | done | Shared cases: block list, flow list, empty list, one line. |
 | C05 | Unknown setting or wrong type is an error with the line number | tests | done | Shared cases check the line number and the name. Stricter than today: a setting given twice, several YAML documents, and YAML aliases are errors too. |
 | C06 | Refuse a file others can read or change (not on Windows) | tests | done | `load.rs`: modes 644, 620 and 604 are refused; not checked on Windows. |
-| C07 | `bridge_token` / `WHATSAPP_BRIDGE_TOKEN`: bridge refuses to start without one (32+ characters) | tests | wip | `Config::bridge_token` refuses fewer than 32 characters. The bridge uses it from phase 5. |
-| C08 | `media_dir` / `WHATSAPP_MEDIA_DIR` | tests | wip | `Config::media_dir`. Used from phase 4. |
-| C09 | `send_allowlist` / `WHATSAPP_SEND_ALLOWLIST`: a bad entry stops the bridge | tests | wip | `SendAllowlist::parse`, with the bridge's rules; shared cases run against Go and Rust. Matching a LID to its phone number stays in the bridge (phase 5). |
-| C10 | `read_only` / `WHATSAPP_MCP_READ_ONLY` | tests | wip | `Config::read_only`. Used by `serve` from phase 4. |
-| C11 | `log_content` / `WHATSAPP_LOG_CONTENT` | tests | wip | `Config::log_content`. Used by the bridge from phase 5. |
-| C12 | `pair_phone` / `WHATSAPP_PAIR_PHONE` | tests | wip | `Config::pair_phone`. Used by the bridge from phase 5. |
+| C07 | `bridge_token` / `WHATSAPP_BRIDGE_TOKEN`: bridge refuses to start without one (32+ characters) | tests | done | `Config::bridge_token` refuses fewer than 32 characters; the bridge stops with that message, after its startup block shows `too short`. Phase 5, step 5: shown in the startup block of both commands, never the token itself (tests). |
+| C08 | `media_dir` / `WHATSAPP_MEDIA_DIR` | tests | done | `Config::media_dir`: `send_file` in `serve` and sending in the bridge (phase 5, step 4). Phase 5, step 5: shown in the startup block of both commands. |
+| C09 | `send_allowlist` / `WHATSAPP_SEND_ALLOWLIST`: a bad entry stops the bridge | tests | done | `SendAllowlist::parse`, with the bridge's rules; shared cases run against Go and Rust. A bad entry stops the bridge; a LID matches its phone number through `lid_map` (phase 5, step 2). Phase 5, step 5: shown in the startup block of both commands, as a count. |
+| C10 | `read_only` / `WHATSAPP_MCP_READ_ONLY` | tests | done | `Config::read_only`, used by `serve` since phase 4. Phase 5, step 5: shown in the startup block of `serve`. |
+| C11 | `log_content` / `WHATSAPP_LOG_CONTENT` | tests | done | `Config::log_content`, used by the bridge since phase 5, step 2. Phase 5, step 5: shown in the startup block of both commands. |
+| C12 | `pair_phone` / `WHATSAPP_PAIR_PHONE` | tests | done | `Config::pair_phone`, used by the bridge since phase 5, step 3 (verified live). Phase 5, step 5: shown in the startup block of the bridge, as set or not set only. |
 
 ## Bridge: WhatsApp
 
@@ -112,8 +112,8 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | A02 | `X-Bridge-Token` required, compared in constant time | tests | done | Phase 5, step 2: checked before anything else, compared in constant time (tests). |
 | A03 | Files only sent from `media_dir`; downloads stay inside `store/` | tests | verified | Phase 5, step 2: `allowed_media_path` with the Go bridge's rules and messages (tests, symlinks included). Downloads into `store/` come in step 4. Phase 5, step 4: downloads go into `<store>/<chat>/` with the chat and file names reduced to one safe path component (tests). Live test passed with the test account (user, 2026-11-07), phase 5 step 4: a file outside the media folder was refused; downloads landed in `store/<chat>/`. |
 | A04 | Send allowlist by phone number or LID, refused with 403 | tests | verified | Phase 5, step 2: 403 before sending, matching by number or LID (tests ported from `allowlist_test.go`). The bridge fills the LID map since step 3; sending comes in step 4. Phase 5, step 4: checked before every send and reaction. Live test passed with the test account (user, 2026-11-07), phase 5 step 4: a chat outside the allowlist was refused, and the MCP client showed the reason and what to change. |
-| A05 | `store/` and its files readable by the user only | tests | wip | Phase 5, step 1: `messages.db`, its WAL files and the folder (tests). The session file and media follow. Phase 5, step 4: chat folders for downloads `0700`, downloaded files `0600`. |
-| A06 | Message content out of logs unless `log_content`; media keys never logged | tests | wip | Phase 5, step 2: the API's log lines as in Go, content only with `log_content`, control characters removed (`log_test.go` ported). The rest of the bridge follows. |
+| A05 | `store/` and its files readable by the user only | tests | done | Phase 5: `messages.db` and its WAL files (step 1), the session in `session.db` with its WAL files (step 3), chat folders for downloads `0700` and downloaded files `0600` (step 4); step 5 ports the rest of `fsperm_test.go` (an existing world-readable folder or file is made private and keeps its content) and tests the session and downloads. |
+| A06 | Message content out of logs unless `log_content`; media keys never logged | tests | done | Phase 5: the API's log lines as in Go, content only with `log_content` (`log_test.go` ported, step 2). Step 5: a review of every log line; control characters are removed from every value and error text, and from each whole line; upload results and media keys are never logged, and the library's own media errors carry only status codes. The library's warnings (stderr) name message IDs and JIDs, not content; `RUST_LOG=debug` logs more and is not for shared logs. |
 | A07 | No `unsafe` in our crates; `cargo audit` and `cargo deny` in CI | CI | done | New in Rust. Since phase 2: `unsafe_code = "forbid"`, and `cargo deny` (which covers the RustSec database `cargo audit` uses) in CI. |
 
 ## Bridge: storage

@@ -3,11 +3,11 @@
 //! from `sendWhatsAppMessage`, `sendReaction`, `downloadMedia` and
 //! `media_retry.go`; the plain parts are in [`crate::send`].
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use whatsapp_mcp_store::{ensure_private_dir, ensure_private_file};
+use whatsapp_mcp_store::ensure_private_dir;
 use whatsapp_rust::download::{ClientDownloadError, DownloadLimits, DownloadParams, MediaType};
 use whatsapp_rust::prelude::*;
 use whatsapp_rust::{
@@ -200,7 +200,10 @@ impl Live {
         let chat_jid = match send::outgoing_chat_jid(&writer, recipient) {
             Ok(chat_jid) => chat_jid,
             Err(e) => {
-                log::line(&format!("Warning: failed to store sent message: {e}"));
+                log::line(&format!(
+                    "Warning: failed to store sent message: {}",
+                    log::clean(&e.to_string())
+                ));
                 return;
             }
         };
@@ -214,12 +217,16 @@ impl Live {
         );
         if let Err(e) = writer.store_chat(&chat_jid, "", now.fixed_offset()) {
             log::line(&format!(
-                "Warning: failed to store chat for sent message: {e}"
+                "Warning: failed to store chat for sent message: {}",
+                log::clean(&e.to_string())
             ));
             return;
         }
         if let Err(e) = writer.store_message(&row) {
-            log::line(&format!("Warning: failed to store sent message: {e}"));
+            log::line(&format!(
+                "Warning: failed to store sent message: {}",
+                log::clean(&e.to_string())
+            ));
         }
     }
 
@@ -313,7 +320,7 @@ impl Live {
             Err(e) => return Err(format!("failed to download media: {e}")),
         };
 
-        save_private(&path, &data).map_err(|e| format!("failed to save media file: {e}"))?;
+        send::save_private(&path, &data).map_err(|e| format!("failed to save media file: {e}"))?;
         if self.shared.log_content {
             log::line(&format!(
                 "Successfully downloaded {} media to {} ({} bytes)",
@@ -388,15 +395,4 @@ impl Live {
 /// whatsapp-rust's JID for one of the bridge's.
 fn library_jid(jid: &TextJid) -> Result<Jid, String> {
     jid.to_string().parse::<Jid>().map_err(|e| e.to_string())
-}
-
-/// Writes a downloaded file readable by the owner only. It appears under
-/// its name only when complete: a file that is there counts as downloaded.
-fn save_private(path: &Path, data: &[u8]) -> std::io::Result<()> {
-    let mut partial = path.as_os_str().to_owned();
-    partial.push(".part");
-    let partial = PathBuf::from(partial);
-    ensure_private_file(&partial)?;
-    std::fs::write(&partial, data)?;
-    std::fs::rename(&partial, path)
 }

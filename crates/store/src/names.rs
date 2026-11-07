@@ -38,6 +38,35 @@ fn open_read_only(path: &Path) -> rusqlite::Result<Connection> {
     )
 }
 
+/// Where contact names come from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NamesSource {
+    /// The Rust bridge's tables `contacts` and `lid_map` in `messages.db`.
+    MessagesDb,
+    /// whatsmeow's tables in the Go bridge's `whatsapp.db`.
+    WhatsappDb,
+    /// Neither: chats and senders show as numbers.
+    None,
+}
+
+/// Where [`Names::load`] reads the names from, by the same rule.
+pub fn names_source(messages_db: &Path, whatsapp_db: &Path) -> NamesSource {
+    if Names::own_tables(messages_db).is_some() {
+        NamesSource::MessagesDb
+    } else if open_read_only(whatsapp_db).is_ok_and(|conn| {
+        conn.query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
+            [WHATSMEOW_TABLES.contacts],
+            |row| row.get::<_, i64>(0),
+        )
+        .is_ok_and(|n| n == 1)
+    }) {
+        NamesSource::WhatsappDb
+    } else {
+        NamesSource::None
+    }
+}
+
 /// Names and number mappings, keyed by the user part of a JID (before `@`).
 #[derive(Debug, Default, Clone)]
 pub struct Names {

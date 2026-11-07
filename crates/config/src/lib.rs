@@ -20,13 +20,15 @@
 mod allowlist;
 mod error;
 mod parse;
+mod startup;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
 pub use allowlist::SendAllowlist;
 pub use error::ConfigError;
+pub use startup::Source;
 
 /// The environment variable that names the configuration file.
 pub const CONFIG_PATH_ENV: &str = "WHATSAPP_MCP_CONFIG";
@@ -113,7 +115,11 @@ pub fn parse_config(text: &str) -> Result<BTreeMap<&'static str, String>, Config
 #[derive(Clone, Default)]
 pub struct Config {
     file: Option<PathBuf>,
+    /// The file that was looked for, also when it was not there.
+    looked_for: Option<PathBuf>,
     values: BTreeMap<Setting, String>,
+    /// The settings whose value comes from the environment.
+    from_env: BTreeSet<Setting>,
 }
 
 impl Config {
@@ -133,22 +139,41 @@ impl Config {
         env: impl Fn(&'static str) -> Result<Option<String>, ConfigError>,
         home: Option<&Path>,
     ) -> Result<Config, ConfigError> {
-        let (file, file_values) = match config_path(&env, home)? {
-            Some((path, required)) => match read_file(&path, required)? {
-                Some(values) => (Some(path), values),
+        let looked_for = config_path(&env, home)?;
+        let (file, file_values) = match &looked_for {
+            Some((path, required)) => match read_file(path, *required)? {
+                Some(values) => (Some(path.clone()), values),
                 None => (None, BTreeMap::new()),
             },
             None => (None, BTreeMap::new()),
         };
 
         let mut values = file_values;
+        let mut from_env = BTreeSet::new();
         for setting in Setting::ALL {
             // A set environment variable wins; an empty one counts as unset.
             if let Some(value) = env(setting.env())?.filter(|v| !v.is_empty()) {
                 values.insert(setting, value);
+                from_env.insert(setting);
             }
         }
-        Ok(Config { file, values })
+        Ok(Config {
+            file,
+            looked_for: looked_for.map(|(path, _)| path),
+            values,
+            from_env,
+        })
+    }
+
+    /// Where a setting's value comes from.
+    pub fn source(&self, setting: Setting) -> Source {
+        if self.get(setting).is_none() {
+            Source::Default
+        } else if self.from_env.contains(&setting) {
+            Source::Environment
+        } else {
+            Source::File
+        }
     }
 
     /// The configuration file that was read, if any.

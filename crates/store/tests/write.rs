@@ -614,3 +614,69 @@ fn message_sender_and_shared_file_names() {
         })
     );
 }
+
+#[test]
+fn where_names_come_from() {
+    use whatsapp_mcp_store::NamesSource;
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::new(dir.path());
+    assert_eq!(store.names_source(), NamesSource::None, "nothing yet");
+
+    let whatsmeow = Connection::open(dir.path().join("whatsapp.db")).unwrap();
+    whatsmeow
+        .execute_batch(
+            "CREATE TABLE whatsmeow_contacts (our_jid TEXT, their_jid TEXT, first_name TEXT, full_name TEXT, push_name TEXT, business_name TEXT, redacted_phone TEXT);",
+        )
+        .unwrap();
+    drop(whatsmeow);
+    assert_eq!(store.names_source(), NamesSource::WhatsappDb, "Go bridge");
+
+    drop(Writer::open(dir.path()).unwrap());
+    assert_eq!(store.names_source(), NamesSource::MessagesDb, "Rust bridge");
+}
+
+/// From fsperm_test.go: an existing folder or file that others can read is
+/// made private, and a file keeps its content.
+#[cfg(unix)]
+#[test]
+fn existing_folders_and_files_are_made_private() {
+    use std::os::unix::fs::PermissionsExt;
+    use whatsapp_mcp_store::{ensure_private_dir, ensure_private_file};
+    let mode = |p: &std::path::Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+    let set = |p: &std::path::Path, m: u32| {
+        std::fs::set_permissions(p, std::fs::Permissions::from_mode(m)).unwrap();
+    };
+    let base = tempfile::tempdir().unwrap();
+
+    let created = base.path().join("store").join("chat");
+    ensure_private_dir(&created).unwrap();
+    assert_eq!(mode(&created), 0o700);
+    let existing = base.path().join("legacy");
+    std::fs::create_dir(&existing).unwrap();
+    set(&existing, 0o755);
+    ensure_private_dir(&existing).unwrap();
+    assert_eq!(mode(&existing), 0o700);
+
+    let new_file = base.path().join("new.db");
+    ensure_private_file(&new_file).unwrap();
+    assert_eq!(mode(&new_file), 0o600);
+    let old_file = base.path().join("old.db");
+    std::fs::write(&old_file, "keep me").unwrap();
+    set(&old_file, 0o644);
+    ensure_private_file(&old_file).unwrap();
+    assert_eq!(mode(&old_file), 0o600);
+    assert_eq!(std::fs::read_to_string(&old_file).unwrap(), "keep me");
+
+    // The real store in a world-readable folder, as an older setup left it.
+    let store = base.path().join("open-store");
+    std::fs::create_dir(&store).unwrap();
+    set(&store, 0o755);
+    let writer = Writer::open(&store).unwrap();
+    writer
+        .store_chat("c@s.whatsapp.net", "C", time("2026-11-04T22:00:52+01:00"))
+        .unwrap();
+    assert_eq!(mode(&store), 0o700);
+    for name in ["messages.db", "messages.db-wal", "messages.db-shm"] {
+        assert_eq!(mode(&store.join(name)), 0o600, "{name}");
+    }
+}

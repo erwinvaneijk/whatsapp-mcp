@@ -17,7 +17,7 @@ use rusqlite::functions::FunctionFlags;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Row, params_from_iter};
 use serde::Serialize;
 
-pub use names::{Names, user_part};
+pub use names::{Names, NamesSource, names_source, user_part};
 pub use time::{BadMoment, Timestamp, moment_for_sql};
 pub use write::{
     ContactNames, MediaInfo, NewMessage, StoredSender, Writer, ensure_private_dir,
@@ -87,6 +87,11 @@ impl Store {
 
     pub fn whatsapp_db(&self) -> PathBuf {
         self.dir.join("whatsapp.db")
+    }
+
+    /// Where contact names come from.
+    pub fn names_source(&self) -> NamesSource {
+        names_source(&self.messages_db(), &self.whatsapp_db())
     }
 
     /// Opens `messages.db` read-only, with the contact names loaded and
