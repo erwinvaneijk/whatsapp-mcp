@@ -8,6 +8,9 @@ Can [whatsapp-rust](https://github.com/oxidezap/whatsapp-rust) do everything the
 
 ## Setup
 
+The test program has since been removed: `crates/bridge` replaces it (phase 5). It is kept in the history, [at its last commit](https://github.com/erwinvaneijk/whatsapp-mcp/tree/e29387f7ca8106c89bb2fba0aff694f6c47472dd/spike/whatsapp-rust); the commands below run there.
+
+
 - **Test account only.** Use the spare number. Never link your own account: whatsapp-rust is an unofficial client, and Meta may suspend accounts that use one.
 - **Second phone or account.** Many tests need someone to talk to, such as your own number on your own phone, sending to and receiving from the test account. A group with both numbers covers the group tests.
 - **Library version:** whatsapp-rust at commit `52fb6643` (2026-11-05), pinned in `spike/whatsapp-rust/Cargo.toml`.

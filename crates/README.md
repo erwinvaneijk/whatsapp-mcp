@@ -35,4 +35,3 @@ cargo deny check               # cargo install cargo-deny first
 - **`cargo deny check`** checks the dependencies for known vulnerabilities (the RustSec database), licenses, duplicates and where they come from. The rules are in [`deny.toml`](../deny.toml).
 - **No `unsafe`:** every crate forbids `unsafe` code (`[workspace.lints]` in [`Cargo.toml`](../Cargo.toml)).
 - **No stray output on stdout:** clippy warns about `println!`, because `serve` speaks MCP over stdout and any other output there breaks the protocol.
-- **The phase 1 test program** in [`spike/whatsapp-rust/`](../spike/whatsapp-rust/) is not part of the workspace. It has its own lock file.

@@ -14,7 +14,7 @@ use whatsapp_rust::prelude::wa::message::{
     AudioMessage, DocumentMessage, ExtendedTextMessage, ImageMessage, VideoMessage,
 };
 
-use crate::jid::{GROUP_SERVER, Jid, LID_SERVER, USER_SERVER};
+use crate::jid::{Jid, LID_SERVER, USER_SERVER};
 use crate::{log, receive};
 
 /// Mentions as JIDs: a leading `@` and spaces removed, a bare number taken
@@ -388,11 +388,6 @@ pub enum SenderError {
     NotFound,
     Store(String),
     Sender(String),
-}
-
-/// Whether a chat is a group, where a message's sender must be named.
-pub fn is_group(chat: &Jid) -> bool {
-    chat.server == GROUP_SERVER
 }
 
 /// A sender-supplied file name as one plain path component.

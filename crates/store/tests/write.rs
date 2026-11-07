@@ -298,17 +298,6 @@ fn media_info_round_trip() {
     let writer = Writer::open(dir.path()).unwrap();
     let now = time("2026-11-04T22:00:52+01:00");
     writer.store_chat("c@s.whatsapp.net", "C", now).unwrap();
-    writer
-        .store_message(&NewMessage {
-            id: "img".into(),
-            chat_jid: "c@s.whatsapp.net".into(),
-            sender: "1".into(),
-            timestamp: Some(now),
-            media_type: "image".into(),
-            filename: "IMG.jpg".into(),
-            ..Default::default()
-        })
-        .unwrap();
     let info = MediaInfo {
         media_type: "image".into(),
         filename: "IMG.jpg".into(),
@@ -319,7 +308,20 @@ fn media_info_round_trip() {
         file_length: 1234,
     };
     writer
-        .store_media_info("img", "c@s.whatsapp.net", &info)
+        .store_message(&NewMessage {
+            id: "img".into(),
+            chat_jid: "c@s.whatsapp.net".into(),
+            sender: "1".into(),
+            timestamp: Some(now),
+            media_type: info.media_type.clone(),
+            filename: info.filename.clone(),
+            url: info.url.clone(),
+            media_key: info.media_key.clone(),
+            file_sha256: info.file_sha256.clone(),
+            file_enc_sha256: info.file_enc_sha256.clone(),
+            file_length: info.file_length,
+            ..Default::default()
+        })
         .unwrap();
     assert_eq!(
         writer.media_info("img", "c@s.whatsapp.net").unwrap(),
