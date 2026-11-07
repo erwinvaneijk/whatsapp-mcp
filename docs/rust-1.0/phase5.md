@@ -14,7 +14,7 @@ Each step is one pull request and ends with something that works and is tested. 
 | 2. Local API — **done** | The HTTP API on `127.0.0.1:8080`, exactly as [interface.md, section 3](interface.md#3-bridge-api) describes: token (constant-time), JSON only, 1 MiB, the status codes and texts, the send allowlist (with LID and phone number matching through `lid_map`), media paths only inside `media_dir`. WhatsApp sits behind a trait, so all of this is tested without a connection. | API tests ported from Go (`main_test.go`, `allowlist_test.go`, the API parts of the others) pass, plus new ones for every row of section 3. |
 | 3. Connection and receiving — **done** | `whatsapp-mcp bridge`: pairing with a QR code or `pair_phone`, the session in its own file (`store/session.db`), reconnecting. Storing incoming messages: text, captions, non-text messages as bracketed text, quoted IDs, media details, edits and deletes; history sync; chat and group names; contacts, push names and the LID map into `contacts` and `lid_map`. | Message-conversion tests ported (`caption_test.go`, `reaction_test.go`, `quoted_test.go` and the parts of `main_test.go` on content). Live: phase 1 checklist items 1–12 against the test account. |
 | 4. Sending and media — **built; live test open** | Text with reply and mentions, files (image, video, document, voice note with Ogg duration and waveform), reactions; sent messages stored in the existing phone-number or LID chat; downloads into `<store>/<chat>/<file>`, with re-requesting expired media. | Tests ported (`outgoing_test.go`, `send_context_test.go`, `media_*_test.go`). Live: phase 1 checklist items 13–19, and the MCP tools end to end. |
-| 5. Security and operation | Folder `0700` and files `0600`; logs without message content unless `log_content`, and without control characters; a token shorter than 32 characters stops the bridge; clear messages on start (store, link status, allowlist size). | `fsperm_test.go` and `log_test.go` ported; a review of everything the bridge logs. |
+| 5. Security and operation | Folder `0700` and files `0600`; logs without message content unless `log_content`, and without control characters; a token shorter than 32 characters stops the bridge; `serve` and `bridge` log the settings and paths they run with on start (see [Step 5: startup log](#step-5-startup-log)). | `fsperm_test.go` and `log_test.go` ported; a review of everything the bridge logs; the startup block tested for both commands, including that it never shows the token. |
 | 6. Week of use | The Rust bridge replaces the Go bridge in daily use for a week; problems are fixed as they come. | A week without problems; the score sheet's `W`, `A` and `S` rows are `verified`. Then phase 6 (packaging) and 7 (release 1.0). |
 
 ## Step 3: live test
@@ -73,6 +73,38 @@ Put a photo, a short video (MP4), a PDF and a voice note (`.ogg`, or any audio f
 | 19 | `download_media` on an old photo from history sync, with the phone online | The log says `asking the sender's phone to upload it again...`, then the download succeeds |
 
 Also: with `WHATSAPP_SEND_ALLOWLIST` set to one chat, sending to another is refused (403, the allowlist message); a file outside the media folder is refused (`Media path rejected`).
+
+## Step 5: startup log
+
+On start, `whatsapp-mcp serve` and `whatsapp-mcp bridge` log the settings and paths they run with. A wrong store folder, read-only mode switched on by accident, or an unset media folder then shows in the log. Today `serve` only warns when there is no `messages.db` in the store folder. `bridge` logs the configuration file, the allowlist size, `Starting WhatsApp client...` and the address of its API, but not the store path, the other settings, or whether it is linked.
+
+One short block, for both commands:
+
+| Line | Shows |
+|---|---|
+| Version | `whatsapp-mcp <version>` and the command (`serve` or `bridge`) |
+| Configuration file | Its path, or that none was found. Environment variables take precedence over it. |
+| `read_only` | On or off |
+| `media_dir` | The resolved path, or "not set (sending files is disabled)" |
+| `send_allowlist` | The number of chats, or "not set (all chats)" |
+| `log_content` | On or off |
+| `pair_phone` | `bridge` only: set or not set |
+| Store | The full path of the store folder, and whether `messages.db` exists (for `serve`, this replaces today's warning) |
+| Names | `serve` only: from the `contacts` and `lid_map` tables, or from the Go bridge's `whatsapp.db` |
+| Bridge | `serve` only: the bridge address it sends to (`--bridge-url`, by default `http://127.0.0.1:8080`) |
+| Session | `bridge` only: the path of `session.db`, and whether it is linked or will show a QR or pairing code |
+
+Each setting also says where its value comes from: the environment, the configuration file, or the default.
+
+Rules:
+
+- **No secrets:** the bridge token is never logged, not even in part. The log only says whether it is set and long enough.
+- **No message content:** paths and settings only.
+- **Control characters removed:** values from the environment or the configuration file are cleaned like every other log line.
+- **`serve` logs to stderr only:** stdout carries the MCP protocol.
+- **Short:** a handful of lines, so the MCP client's log is not flooded.
+
+Where: `crates/config` learns where each value came from; the `serve` block goes in `crates/mcp` or `crates/whatsapp-mcp`, the `bridge` block in `crates/bridge/src/run.rs`.
 
 ## Decided
 
