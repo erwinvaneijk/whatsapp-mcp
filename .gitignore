@@ -22,3 +22,7 @@ whatsapp-bridge/store/
 __pycache__/
 *.pyc
 .venv/
+
+# The phase 1 test program, removed from git; a local copy may still hold
+# a test account's WhatsApp session.
+spike/

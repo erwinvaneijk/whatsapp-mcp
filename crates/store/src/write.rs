@@ -145,23 +145,6 @@ impl Writer {
         Ok(())
     }
 
-    /// Updates a stored message's media details.
-    pub fn store_media_info(&self, id: &str, chat_jid: &str, info: &MediaInfo) -> Result<()> {
-        self.conn.execute(
-            "UPDATE messages SET url = ?, media_key = ?, file_sha256 = ?, file_enc_sha256 = ?, file_length = ? WHERE id = ? AND chat_jid = ?",
-            params![
-                info.url,
-                info.media_key,
-                info.file_sha256,
-                info.file_enc_sha256,
-                sql_length(info.file_length)?,
-                id,
-                chat_jid,
-            ],
-        )?;
-        Ok(())
-    }
-
     /// A message's media details, or `None` when the message is not stored.
     pub fn media_info(&self, id: &str, chat_jid: &str) -> Result<Option<MediaInfo>> {
         self.conn

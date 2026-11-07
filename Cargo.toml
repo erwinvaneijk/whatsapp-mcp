@@ -3,8 +3,6 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
-# The phase 1 test program has its own lock file and toolchain.
-exclude = ["spike"]
 
 [workspace.package]
 version = "0.9.0"
