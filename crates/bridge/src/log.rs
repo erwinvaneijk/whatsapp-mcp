@@ -2,11 +2,24 @@
 //! (text, emoji, file names, error texts that may contain them) is only
 //! logged with `log_content`, and control characters are always removed, so
 //! a message cannot inject terminal escape codes.
+//!
+//! [`clean`] removes them from values (also line breaks, so a value cannot
+//! start a line that looks like the bridge's own). [`line`] removes them
+//! again from the whole line, keeping only the line breaks the bridge's own
+//! text has (the QR code): a safety net for error texts from the library,
+//! the store or the network that are logged as they are.
 
 /// Writes one log line.
 #[allow(clippy::print_stdout)] // the bridge's log; stdout carries no protocol here
 pub fn line(text: &str) {
-    println!("{text}");
+    println!("{}", printable(text));
+}
+
+/// The text without control characters other than line breaks.
+fn printable(text: &str) -> String {
+    text.chars()
+        .filter(|&c| c == '\n' || !c.is_control())
+        .collect()
 }
 
 /// Removes control characters (Go's `unicode.IsControl`: C0, DEL and C1).
@@ -56,5 +69,13 @@ mod tests {
     fn control_characters_are_removed() {
         assert_eq!(clean("a\u{1b}[31mb\nc\u{7f}d\u{85}e"), "a[31mbcde");
         assert_eq!(clean("Noor 👍 café"), "Noor 👍 café");
+    }
+
+    #[test]
+    fn whole_lines_keep_only_line_breaks() {
+        assert_eq!(
+            printable("\nScan this:\n▀▄\u{1b}]0;title\u{7}\r\n"),
+            "\nScan this:\n▀▄]0;title\n"
+        );
     }
 }

@@ -249,3 +249,92 @@ fn rust_refuses_ambiguous_files() {
         assert!(err.contains(fragment), "{text:?}: {err}");
     }
 }
+
+#[test]
+fn where_each_value_comes_from() {
+    use whatsapp_mcp_config::Source;
+    let dir = tempfile::tempdir().unwrap();
+    let path = write_config(dir.path(), "media_dir: /from/file\nread_only: yes\n", 0o600);
+    let config = Config::load_from(
+        env(&[
+            (CONFIG_PATH_ENV, path.to_str().unwrap()),
+            ("WHATSAPP_MEDIA_DIR", "/from/env"),
+            ("WHATSAPP_LOG_CONTENT", ""),
+        ]),
+        None,
+    )
+    .unwrap();
+    assert_eq!(config.source(Setting::MediaDir), Source::Environment);
+    assert_eq!(config.source(Setting::ReadOnly), Source::File);
+    assert_eq!(config.source(Setting::LogContent), Source::Default, "empty");
+    assert_eq!(config.source(Setting::PairPhone), Source::Default);
+}
+
+#[test]
+fn startup_lines_show_settings_but_no_secrets() {
+    let token = "s3cr3t-token-that-is-long-enough-1234";
+    let dir = tempfile::tempdir().unwrap();
+    let path = write_config(
+        dir.path(),
+        "send_allowlist:\n  - 31600000001\n  - 120363000000000001@g.us\nlog_content: on\n",
+        0o600,
+    );
+    let config = Config::load_from(
+        env(&[
+            (CONFIG_PATH_ENV, path.to_str().unwrap()),
+            ("WHATSAPP_BRIDGE_TOKEN", token),
+            ("WHATSAPP_PAIR_PHONE", "31612345678"),
+            ("WHATSAPP_MEDIA_DIR", "/media\u{1b}[31m/out"),
+        ]),
+        None,
+    )
+    .unwrap();
+    let lines = config.startup_lines(&Setting::ALL);
+    assert_eq!(
+        lines,
+        vec![
+            format!(
+                "Configuration file: {} (environment variables take precedence)",
+                path.display()
+            ),
+            "  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)".to_string(),
+            "  media_dir: /media[31m/out (from WHATSAPP_MEDIA_DIR)".to_string(),
+            "  send_allowlist: 2 chats (from the configuration file)".to_string(),
+            "  read_only: off (default)".to_string(),
+            "  log_content: on (from the configuration file)".to_string(),
+            "  pair_phone: set (from WHATSAPP_PAIR_PHONE)".to_string(),
+        ]
+    );
+    let all = lines.join("\n");
+    assert!(!all.contains("s3cr3t") && !all.contains("31612345678"));
+    assert!(!all.contains('\u{1b}'), "control characters removed");
+
+    // Defaults, a short token, and the default file that is not there.
+    let home = tempfile::tempdir().unwrap();
+    let config = Config::load_from(
+        env(&[("WHATSAPP_BRIDGE_TOKEN", "short")]),
+        Some(home.path()),
+    )
+    .unwrap();
+    let lines = config.startup_lines(&[
+        Setting::BridgeToken,
+        Setting::MediaDir,
+        Setting::SendAllowlist,
+        Setting::PairPhone,
+    ]);
+    assert!(
+        lines[0].starts_with("Configuration file: none ("),
+        "{}",
+        lines[0]
+    );
+    assert!(lines[0].ends_with("config.yaml not found)"), "{}", lines[0]);
+    assert_eq!(
+        &lines[1..],
+        [
+            "  bridge_token: too short (needs 32 characters or more) (from WHATSAPP_BRIDGE_TOKEN)",
+            "  media_dir: not set (sending files is disabled) (default)",
+            "  send_allowlist: not set (all chats) (default)",
+            "  pair_phone: not set (default)",
+        ]
+    );
+}

@@ -2807,6 +2807,7 @@ name = "whatsapp-mcp"
 version = "0.9.0"
 dependencies = [
  "clap",
+ "tempfile",
  "whatsapp-mcp-bridge",
  "whatsapp-mcp-config",
  "whatsapp-mcp-server",

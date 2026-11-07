@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use tokio::sync::mpsc;
-use whatsapp_mcp_config::{Config, SendAllowlist};
+use whatsapp_mcp_config::{Config, SendAllowlist, Setting};
 use whatsapp_mcp_store::{
     ContactNames, NewMessage, Writer, ensure_private_dir, ensure_private_file,
 };
@@ -107,22 +107,13 @@ pub fn run_blocking(config: &Config, options: Options) -> Result<(), String> {
 /// Runs the bridge until Ctrl+C (or SIGTERM), or until the connection ends
 /// for good (logged out, replaced by another client).
 pub async fn run(config: &Config, options: Options) -> Result<(), String> {
+    let store = options.store_dir;
+    for line in startup_lines(config, &store) {
+        log::line(&line);
+    }
     let settings = Settings::from_config(config)?;
-    if let Some(file) = config.file() {
-        log::line(&format!(
-            "Read settings from {} (environment variables take precedence)",
-            file.display()
-        ));
-    }
-    if let Some(list) = &settings.allowlist {
-        log::line(&format!(
-            "Sending is limited to {} chat(s) in WHATSAPP_SEND_ALLOWLIST",
-            list.len()
-        ));
-    }
     log::line("Starting WhatsApp client...");
 
-    let store = options.store_dir;
     ensure_private_dir(&store).map_err(|e| format!("Failed to create store directory: {e}"))?;
     let writer =
         Writer::open(&store).map_err(|e| format!("Failed to initialize message store: {e}"))?;
@@ -166,6 +157,11 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
         .await
         .map_err(|e| format!("Failed to create WhatsApp client: {e}"))?;
     let client = bot.client();
+    log::line(&session_line(
+        Path::new(&session),
+        client.pn().is_some(),
+        pairing,
+    ));
 
     let worker = {
         let shared = Arc::clone(&shared);
@@ -207,11 +203,57 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
     server.abort();
     let report = handle.shutdown().await;
     if let Err(e) = report.shutdown.device {
-        log::line(&format!("Failed to save the WhatsApp session: {e}"));
+        log::line(&format!(
+            "Failed to save the WhatsApp session: {}",
+            log::clean(&e.to_string())
+        ));
     }
     // Store what was already received before exiting.
     let _ = tokio::time::timeout(std::time::Duration::from_secs(5), worker).await;
     outcome
+}
+
+/// What `bridge` logs on start: the version, the settings and where each
+/// comes from, and the store. Logged before the settings are checked, so a
+/// refused setting shows next to the others.
+pub fn startup_lines(config: &Config, store: &Path) -> Vec<String> {
+    let mut lines = vec![format!("whatsapp-mcp {} bridge", env!("CARGO_PKG_VERSION"))];
+    lines.extend(config.startup_lines(&[
+        Setting::BridgeToken,
+        Setting::MediaDir,
+        Setting::SendAllowlist,
+        Setting::LogContent,
+        Setting::PairPhone,
+    ]));
+    let shown = log::clean(
+        &std::path::absolute(store)
+            .unwrap_or_else(|_| store.to_path_buf())
+            .display()
+            .to_string(),
+    );
+    let state = if store.join("messages.db").is_file() {
+        "messages.db found"
+    } else {
+        "messages.db will be created"
+    };
+    lines.push(format!("Store: {shown} ({state})"));
+    lines
+}
+
+/// The session line: whether the bridge is linked, or how it will link.
+pub fn session_line(session: &Path, linked: bool, pairing: bool) -> String {
+    let shown = log::clean(
+        &std::path::absolute(session)
+            .unwrap_or_else(|_| session.to_path_buf())
+            .display()
+            .to_string(),
+    );
+    let state = match (linked, pairing) {
+        (true, _) => "linked",
+        (false, true) => "not linked yet: a pairing code follows",
+        (false, false) => "not linked yet: a QR code follows",
+    };
+    format!("Session: {shown} ({state})")
 }
 
 /// `<store>/session.db`, created readable by the owner only.
@@ -341,8 +383,8 @@ async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pair
             code.code
         )),
         Event::PairingCodeError(e) => log::line(&format!(
-            "Failed to request pairing code: {:?}",
-            e.rejection
+            "Failed to request pairing code: {}",
+            log::clean(&format!("{:?}", e.rejection))
         )),
         Event::PairingQrCodesExhausted(_) => {
             log::line("Timeout waiting for QR code scan; start the bridge again to link.");
@@ -371,7 +413,8 @@ async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pair
             "WhatsApp says this client is outdated (405); a newer whatsapp-rust is needed.",
         ),
         Event::TemporaryBan(ban) => log::line(&format!(
-            "WhatsApp banned this account temporarily: {ban:?}"
+            "WhatsApp banned this account temporarily: {}",
+            log::clean(&format!("{ban:?}"))
         )),
         Event::Messages(batch) => {
             for inbound in batch.messages.iter() {
@@ -457,7 +500,10 @@ async fn store_live(shared: &Shared, client: &Arc<Client>, info: &MessageInfo, m
         return;
     }
     if let Err(e) = writer.store_message(&row) {
-        log::line(&format!("Failed to store message: {e}"));
+        log::line(&format!(
+            "Failed to store message: {}",
+            log::clean(&e.to_string())
+        ));
         return;
     }
     let timestamp = receive::local(info.timestamp).format("%Y-%m-%d %H:%M:%S");
@@ -519,7 +565,10 @@ async fn resolve_chat_name(
             .await
             .unwrap_or_else(|| receive::group_fallback(chat)),
         Err(e) => {
-            log::line(&format!("Failed to read chat name: {e}"));
+            log::line(&format!(
+                "Failed to read chat name: {}",
+                log::clean(&e.to_string())
+            ));
             if chat.server == GROUP_SERVER {
                 receive::group_fallback(chat)
             } else {
@@ -615,7 +664,10 @@ async fn store_history(shared: &Shared, client: &Arc<Client>, lazy: &LazyHistory
         for row in &history.messages {
             match writer.store_message(row) {
                 Ok(()) => stored += 1,
-                Err(e) => log::line(&format!("Failed to store history message: {e}")),
+                Err(e) => log::line(&format!(
+                    "Failed to store history message: {}",
+                    log::clean(&e.to_string())
+                )),
             }
         }
     }
@@ -624,7 +676,7 @@ async fn store_history(shared: &Shared, client: &Arc<Client>, lazy: &LazyHistory
 
 fn warn_on_error(what: &str, result: whatsapp_mcp_store::Result<()>) {
     if let Err(e) = result {
-        log::line(&format!("Failed to {what}: {e}"));
+        log::line(&format!("Failed to {what}: {}", log::clean(&e.to_string())));
     }
 }
 
@@ -640,7 +692,11 @@ fn print_qr(code: &str) {
                 "\nScan this QR code with your WhatsApp app:\n{text}\n"
             ));
         }
-        Err(e) => log::line(&format!("QR code (could not render: {e}): {code}")),
+        Err(e) => log::line(&format!(
+            "QR code (could not render: {}): {}",
+            log::clean(&e.to_string()),
+            log::clean(code)
+        )),
     }
 }
 
@@ -686,5 +742,85 @@ mod tests {
         );
         assert!(pair_phone("31x6").is_err());
         assert!(pair_phone("+").is_err());
+    }
+
+    #[test]
+    fn bridge_says_what_it_runs_with() {
+        let token = "s3cr3t-token-that-is-long-enough-1234";
+        let config = Config::load_from(
+            |name| {
+                Ok(match name {
+                    "WHATSAPP_BRIDGE_TOKEN" => Some(token.to_string()),
+                    "WHATSAPP_PAIR_PHONE" => Some("31612345678".to_string()),
+                    "WHATSAPP_SEND_ALLOWLIST" => Some("31600000001".to_string()),
+                    _ => None,
+                })
+            },
+            None,
+        )
+        .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let lines = startup_lines(&config, dir.path());
+        assert_eq!(
+            lines[0],
+            format!("whatsapp-mcp {} bridge", env!("CARGO_PKG_VERSION"))
+        );
+        assert_eq!(
+            &lines[1..7],
+            [
+                "Configuration file: none",
+                "  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)",
+                "  media_dir: not set (sending files is disabled) (default)",
+                "  send_allowlist: 1 chat (from WHATSAPP_SEND_ALLOWLIST)",
+                "  log_content: off (default)",
+                "  pair_phone: set (from WHATSAPP_PAIR_PHONE)",
+            ]
+        );
+        assert!(
+            lines[7].starts_with("Store: ") && lines[7].ends_with("(messages.db will be created)")
+        );
+        let all = lines.join("\n");
+        assert!(!all.contains("s3cr3t") && !all.contains("31612345678"));
+
+        drop(Writer::open(dir.path()).unwrap());
+        assert!(startup_lines(&config, dir.path())[7].ends_with("(messages.db found)"));
+
+        let session = dir.path().join("session.db");
+        assert!(session_line(&session, true, true).ends_with("session.db (linked)"));
+        assert!(
+            session_line(&session, false, true)
+                .ends_with("(not linked yet: a pairing code follows)")
+        );
+        assert!(
+            session_line(&session, false, false).ends_with("(not linked yet: a QR code follows)")
+        );
+    }
+
+    /// The session holds the WhatsApp keys: it and the files SQLite keeps
+    /// next to it are readable by the owner only.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_session_is_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let session = session_path(dir.path()).unwrap();
+        let store = SqliteStore::open(&session).await.unwrap();
+        let mut seen = 0;
+        for name in [
+            "session.db",
+            "session.db-wal",
+            "session.db-shm",
+            "session.db-journal",
+        ] {
+            let path = dir.path().join(name);
+            if path.exists() {
+                seen += 1;
+                let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+                assert_eq!(mode, 0o600, "{name}");
+            }
+        }
+        // The database and its WAL files, as whatsapp-rust opens it today.
+        assert!(seen >= 3, "only {seen} session files found");
+        drop(store);
     }
 }

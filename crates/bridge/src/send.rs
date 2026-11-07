@@ -5,10 +5,10 @@
 //! `downloadMedia`. Plain functions, so they are tested without a
 //! connection; `run` calls them around whatsapp-rust.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Local};
-use whatsapp_mcp_store::{NewMessage, Result as StoreResult, Writer};
+use whatsapp_mcp_store::{NewMessage, Result as StoreResult, Writer, ensure_private_file};
 use whatsapp_rust::prelude::wa;
 use whatsapp_rust::prelude::wa::message::{
     AudioMessage, DocumentMessage, ExtendedTextMessage, ImageMessage, VideoMessage,
@@ -474,4 +474,15 @@ pub fn direct_path_from_url(url: &str) -> String {
         return url.to_string();
     }
     path_and_query.to_string()
+}
+
+/// Writes a downloaded file readable by the owner only. It appears under
+/// its name only when complete: a file that is there counts as downloaded.
+pub fn save_private(path: &Path, data: &[u8]) -> std::io::Result<()> {
+    let mut partial = path.as_os_str().to_owned();
+    partial.push(".part");
+    let partial = PathBuf::from(partial);
+    ensure_private_file(&partial)?;
+    std::fs::write(&partial, data)?;
+    std::fs::rename(&partial, path)
 }

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **`whatsapp-mcp bridge` (preview, test accounts only):** the Rust bridge links (QR code or `WHATSAPP_PAIR_PHONE`), keeps its session in `store/session.db`, and stores incoming messages, history sync, chat and group names, contacts and the LID map in `messages.db`. It sends text, replies, mentions, files and voice notes, reacts, and downloads media (asking the sender's phone again for expired media), with the same local API as the Go bridge. Keep using the Go bridge for your own account until 1.0. See [phase 5](docs/rust-1.0/phase5.md#step-4-live-test).
+- **Startup log:** `whatsapp-mcp serve` and `whatsapp-mcp bridge` start by logging the version, the configuration file, each setting and where its value comes from (environment, file or default), and the store folder. `serve` also logs where contact names come from and the bridge address; `bridge` logs its session file and whether it is linked. The token and the pairing number are only shown as set or not set. See [phase 5, step 5](docs/rust-1.0/phase5.md#step-5-startup-log).
 
 ## 0.9.0
 

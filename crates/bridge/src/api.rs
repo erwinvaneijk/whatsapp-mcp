@@ -327,7 +327,10 @@ pub async fn serve_on<B: Backend>(
                 .serve_connection(io, service)
                 .await
             {
-                log::line(&format!("REST API connection error: {e}"));
+                log::line(&format!(
+                    "REST API connection error: {}",
+                    log::clean(&e.to_string())
+                ));
             }
         });
     }
