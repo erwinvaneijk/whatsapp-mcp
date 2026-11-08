@@ -6,7 +6,7 @@
 
 ## Steps
 
-Each step is one pull request and ends with something that works and is tested. The Go bridge stays in use until step 6.
+Each step is one pull request and ends with something that works and is tested. The Go bridge stays in use until step 7.
 
 | Step | Work | Done when |
 |---|---|---|
@@ -15,7 +15,8 @@ Each step is one pull request and ends with something that works and is tested. 
 | 3. Connection and receiving — **done** | `whatsapp-mcp bridge`: pairing with a QR code or `pair_phone`, the session in its own file (`store/session.db`), reconnecting. Storing incoming messages: text, captions, non-text messages as bracketed text, quoted IDs, media details, edits and deletes; history sync; chat and group names; contacts, push names and the LID map into `contacts` and `lid_map`. | Message-conversion tests ported (`caption_test.go`, `reaction_test.go`, `quoted_test.go` and the parts of `main_test.go` on content). Live: phase 1 checklist items 1–12 against the test account. |
 | 4. Sending and media — **done, except check 19** | Text with reply and mentions, files (image, video, document, voice note with Ogg duration and waveform), reactions; sent messages stored in the existing phone-number or LID chat; downloads into `<store>/<chat>/<file>`, with re-requesting expired media. | Tests ported (`outgoing_test.go`, `send_context_test.go`, `media_*_test.go`). Live: phase 1 checklist items 13–19, and the MCP tools end to end. |
 | 5. Security and operation — **done** | Folder `0700` and files `0600`; logs without message content unless `log_content`, and without control characters; a token shorter than 32 characters stops the bridge; `serve` and `bridge` log the settings and paths they run with on start (see [Step 5: startup log](#step-5-startup-log)). | `fsperm_test.go` and `log_test.go` ported; a review of everything the bridge logs; the startup block tested for both commands, including that it never shows the token. |
-| 6. Week of use | The Rust bridge replaces the Go bridge in daily use for a week; problems are fixed as they come. | A week without problems; the score sheet's `W`, `A` and `S` rows are `verified`. Then phase 6 (packaging) and 7 (release 1.0). |
+| 6. Logging | Every log line has a time, a level and its source, the same for `serve`, `bridge` and the library. Where logs go (`stderr`, `stdout`, a file or syslog), their format (text or JSON) and the level are settings. See [Step 6: logging](#step-6-logging). | Tests for each output, format and level, the setting rules (shared with the Go bridge, which accepts and ignores the new settings), and that `serve` never logs to stdout; tried on macOS and Linux with syslog. |
+| 7. Week of use | The Rust bridge replaces the Go bridge in daily use for a week; problems are fixed as they come. | A week without problems; the score sheet's `W`, `A` and `S` rows are `verified`. Then phase 6 (packaging) and 7 (release 1.0). |
 
 ## Step 3: live test
 
@@ -122,6 +123,45 @@ Every line the bridge logs was checked:
 - **Control characters:** removed from every value and error text, and again from each whole line, keeping only the line breaks of the bridge's own text (the QR code).
 - **The library's own log** (stderr, warnings and errors only by default): it names message IDs, JIDs and error kinds, not message content. `RUST_LOG=debug` logs much more and is for debugging, not for logs that are shared.
 
+## Step 6: logging
+
+Today only the library's warnings have a time. The bridge's own lines go to stdout without one, and `serve`'s go to stderr without one. After this step every line looks the same, like syslog:
+
+```
+2026-11-08T14:03:12.345+01:00 INFO  bridge: ✓ Connected to WhatsApp
+2026-11-08T14:03:13.020+01:00 WARN  whatsapp-rust: Failed processing group plaintext (batch): …
+```
+
+That is the local time with its UTC offset and milliseconds, the level, the source (`serve`, `bridge` or `whatsapp-rust`) and the text. Control characters stay removed, and `log_content` keeps its meaning: the format changes, what is logged does not.
+
+### Settings
+
+Three new settings, with the usual rules: the configuration file or the environment, and the environment wins. All three are shown in the startup block.
+
+| Setting | Environment variable | Values | Default |
+|---|---|---|---|
+| `log_output` | `WHATSAPP_LOG_OUTPUT` | `stderr`, `stdout`, `syslog`, or a file path | `stderr` |
+| `log_format` | `WHATSAPP_LOG_FORMAT` | `text` (above) or `json`, one object per line with `time`, `level`, `source` and `message` | `text` |
+| `log_level` | `WHATSAPP_LOG_LEVEL` | `error`, `warn`, `info` or `debug` | `info`; the library's own lines from `warn` |
+
+- **A file** is appended to, and created readable by the owner only (`0600`), as the store is. `~/` means the home folder. Rotation is left to `logrotate` or `newsyslog`.
+- **syslog** is the local one: `/dev/log` on Linux, `/var/run/syslog` on macOS. Lines are tagged `whatsapp-mcp` with the process ID and the facility `user`, and syslog adds its own time. Not available on Windows; asking for it there is an error at start.
+- **An unknown value** in any of the three is an error at start that names the setting, as for the other settings.
+- **`RUST_LOG`** keeps working for debugging and overrides `log_level` per module.
+
+### Rules
+
+- **`serve` never logs to stdout**, which carries the MCP protocol. `log_output: stdout` is refused when `serve` starts.
+- **QR and pairing codes go to the terminal**, whatever `log_output` says, since they are needed to link the bridge. The log gets a line saying one is waiting.
+- **The bridge moves from stdout to stderr** by default, like `serve`. Changelog: scripts that read the bridge's stdout must read stderr, or set `log_output: stdout`.
+- **The Go bridge** reads the same configuration file and refuses settings it does not know. It learns the three names and ignores them, so one file keeps working for both until 1.0. The shared cases in `parity/config-cases.json` gain them.
+
+### How
+
+All logging goes through Rust's `log` facade (`log::info!` and so on), including what is now `log::line` and `eprintln!`. A small logger of our own does the format and the output and replaces `env_logger`, so the library's lines get the same format. The settings go in `crates/config`, the logger in a small shared module used by both commands.
+
+Docs: interface.md section 2 (the settings), the README (Logs, Configuration), `config.example.yaml`, the score sheet (C13–C15, A08) and the changelog.
+
 ## Decided
 
 - **Re-linking:** whatsapp-rust keeps its session in its own format, so the Go bridge's link (`whatsapp.db`) cannot be carried over. The Rust bridge is linked once, with a QR code or `pair_phone`. Decided on 2026-11-05.
@@ -133,4 +173,4 @@ Every line the bridge logs was checked:
 
 ## Open
 
-- **Daily use with a real account (step 6).** Phase 1 and steps 3–4 use the test account, because whatsapp-rust is an unofficial client and Meta may restrict accounts that use one. The whatsmeow-based Go bridge has the same risk, and this project already accepts it. Step 6 needs the account that is used every day; this needs a decision before step 6 starts.
+- **Daily use with a real account (step 7).** Phase 1 and steps 3–4 use the test account, because whatsapp-rust is an unofficial client and Meta may restrict accounts that use one. The whatsmeow-based Go bridge has the same risk, and this project already accepts it. Step 6 needs the account that is used every day; this needs a decision before step 6 starts.
