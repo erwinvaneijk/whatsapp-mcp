@@ -95,7 +95,7 @@ impl Names {
                 .and_then(|conn| Names::from_tables(&conn, &WHATSMEOW_TABLES)),
         };
         result.unwrap_or_else(|e| {
-            eprintln!("Database error while loading contact names: {e}");
+            log::warn!("Database error while loading contact names: {e}");
             Names::default()
         })
     }

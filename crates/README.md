@@ -10,6 +10,7 @@ The Rust rewrite of the bridge and the MCP server, as described in the [1.0 plan
 | `store/` | `whatsapp-mcp-store` | `messages.db`: the read queries, contact names, times; schema and migrations follow in phase 5 | phase 4: queries done |
 | `mcp/` | `whatsapp-mcp-server` | The MCP tools, over stdio | phase 4: done; the parity harness matches |
 | `bridge/` | `whatsapp-mcp-bridge` | The WhatsApp connection, storing messages, the local API | phase 5 |
+| `logging/` | `whatsapp-mcp-logging` | Timestamped log lines for both commands, to stderr, stdout, a file or syslog | phase 5, step 6 |
 | `whatsapp-mcp/` | `whatsapp-mcp` | The binary: `whatsapp-mcp bridge` and `whatsapp-mcp serve [--store DIR] [--bridge-url URL]` | each phase |
 
 ## Building

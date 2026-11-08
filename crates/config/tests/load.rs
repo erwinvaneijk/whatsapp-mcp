@@ -227,6 +227,9 @@ fn settings_match_the_documented_names() {
             ("read_only", "WHATSAPP_MCP_READ_ONLY"),
             ("log_content", "WHATSAPP_LOG_CONTENT"),
             ("pair_phone", "WHATSAPP_PAIR_PHONE"),
+            ("log_output", "WHATSAPP_LOG_OUTPUT"),
+            ("log_format", "WHATSAPP_LOG_FORMAT"),
+            ("log_level", "WHATSAPP_LOG_LEVEL"),
         ]
     );
 }
@@ -303,6 +306,9 @@ fn startup_lines_show_settings_but_no_secrets() {
             "  read_only: off (default)".to_string(),
             "  log_content: on (from the configuration file)".to_string(),
             "  pair_phone: set (from WHATSAPP_PAIR_PHONE)".to_string(),
+            "  log_output: stderr (default)".to_string(),
+            "  log_format: text (default)".to_string(),
+            "  log_level: info (default)".to_string(),
         ]
     );
     let all = lines.join("\n");
@@ -336,5 +342,78 @@ fn startup_lines_show_settings_but_no_secrets() {
             "  send_allowlist: not set (all chats) (default)",
             "  pair_phone: not set (default)",
         ]
+    );
+}
+
+#[test]
+fn logging_settings() {
+    use whatsapp_mcp_config::{LogFormat, LogLevel, LogOutput};
+    // A real folder, so it is absolute on Windows too (a drive letter).
+    let home_dir = tempfile::tempdir().unwrap();
+    let home = home_dir.path();
+    let load = |vars: &[(&str, &str)]| Config::load_from(env(vars), Some(home)).unwrap();
+
+    let config = load(&[]);
+    assert_eq!(config.log_output().unwrap(), LogOutput::Stderr);
+    assert_eq!(config.log_format().unwrap(), LogFormat::Text);
+    assert_eq!(config.log_level().unwrap(), LogLevel::Info);
+
+    let config = load(&[
+        ("WHATSAPP_LOG_OUTPUT", " SysLog "),
+        ("WHATSAPP_LOG_FORMAT", "JSON"),
+        ("WHATSAPP_LOG_LEVEL", "warning"),
+    ]);
+    assert_eq!(config.log_output().unwrap(), LogOutput::Syslog);
+    assert_eq!(config.log_format().unwrap(), LogFormat::Json);
+    assert_eq!(config.log_level().unwrap(), LogLevel::Warn);
+
+    for (value, want) in [
+        ("stdout", LogOutput::Stdout),
+        (
+            "~/logs/whatsapp.log",
+            LogOutput::File(home.join("logs/whatsapp.log")),
+        ),
+        (
+            "/var/log/whatsapp-mcp.log",
+            LogOutput::File(PathBuf::from("/var/log/whatsapp-mcp.log")),
+        ),
+    ] {
+        if !cfg!(windows) || !value.starts_with('/') {
+            assert_eq!(
+                load(&[("WHATSAPP_LOG_OUTPUT", value)])
+                    .log_output()
+                    .unwrap(),
+                want,
+                "{value}"
+            );
+        }
+    }
+
+    // Unknown values name the setting and say what is allowed.
+    let error = load(&[("WHATSAPP_LOG_OUTPUT", "logs/app.log")])
+        .log_output()
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.starts_with(
+            "WHATSAPP_LOG_OUTPUT (or log_output in the configuration file) is \"logs/app.log\""
+        ),
+        "{error}"
+    );
+    let error = load(&[("WHATSAPP_LOG_FORMAT", "xml")])
+        .log_format()
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("log_format") && error.ends_with("use text or json"),
+        "{error}"
+    );
+    let error = load(&[("WHATSAPP_LOG_LEVEL", "trace")])
+        .log_level()
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("log_level") && error.ends_with("use error, warn, info or debug"),
+        "{error}"
     );
 }

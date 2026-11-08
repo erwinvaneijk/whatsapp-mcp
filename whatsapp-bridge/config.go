@@ -31,6 +31,10 @@ var configSettings = map[string]string{
 	"pair_phone":     "WHATSAPP_PAIR_PHONE",
 	"send_allowlist": "WHATSAPP_SEND_ALLOWLIST",
 	"read_only":      "WHATSAPP_MCP_READ_ONLY", // used by the MCP server
+	// Used by the Rust programs only; accepted here so one file serves both.
+	"log_output": "WHATSAPP_LOG_OUTPUT",
+	"log_format": "WHATSAPP_LOG_FORMAT",
+	"log_level":  "WHATSAPP_LOG_LEVEL",
 }
 
 // listSettings may be a YAML list; its entries are joined with ", ".

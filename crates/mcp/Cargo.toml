@@ -9,6 +9,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+log = "0.4.35"
 regex = "1.13.1"
 rmcp = { version = "3.9.0", default-features = false, features = ["server", "transport-io"] }
 serde = "1.0.229"

@@ -35,7 +35,7 @@ pub fn call(store: &Store, name: &str, args: &Args<'_>) -> Option<Result<Output,
 /// A database error in a tool that, like its Python original, answers with
 /// an empty result instead of failing.
 fn log_db_error(e: &whatsapp_mcp_store::Error) {
-    eprintln!("Database error: {e}");
+    log::warn!("Database error: {e}");
 }
 
 fn search_contacts(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
@@ -210,7 +210,7 @@ fn not_found(message_id: &str) -> ToolError {
 }
 
 fn database_error(e: &whatsapp_mcp_store::Error) -> String {
-    eprintln!("Database error: {e}");
+    log::warn!("Database error: {e}");
     format!("Database error: {e}")
 }
 

@@ -1,25 +1,25 @@
-//! The bridge's log lines, on stdout as in the Go bridge. Message content
-//! (text, emoji, file names, error texts that may contain them) is only
-//! logged with `log_content`, and control characters are always removed, so
-//! a message cannot inject terminal escape codes.
-//!
-//! [`clean`] removes them from values (also line breaks, so a value cannot
-//! start a line that looks like the bridge's own). [`line`] removes them
-//! again from the whole line, keeping only the line breaks the bridge's own
-//! text has (the QR code): a safety net for error texts from the library,
-//! the store or the network that are logged as they are.
+//! The bridge's log lines, through the shared logger (`whatsapp-mcp-logging`):
+//! each gets a time, a level and the source `bridge`, and goes where
+//! `log_output` says. Message content (text, emoji, file names, error texts
+//! that may contain them) is only logged with `log_content`, and control
+//! characters are removed: [`clean`] here from values, and the logger again
+//! from each whole line.
 
-/// Writes one log line.
-#[allow(clippy::print_stdout)] // the bridge's log; stdout carries no protocol here
+/// Logs one line at INFO.
 pub fn line(text: &str) {
-    println!("{}", printable(text));
+    ::log::info!("{text}");
 }
 
-/// The text without control characters other than line breaks.
-fn printable(text: &str) -> String {
-    text.chars()
-        .filter(|&c| c == '\n' || !c.is_control())
-        .collect()
+/// Logs one line at WARN: something failed, and the bridge carries on.
+pub fn warning(text: &str) {
+    ::log::warn!("{text}");
+}
+
+/// Shows text on the terminal (stderr) as it is, whatever `log_output`
+/// says: QR and pairing codes, which are needed to link the bridge.
+#[allow(clippy::print_stderr)]
+pub fn terminal(text: &str) {
+    eprintln!("{text}");
 }
 
 /// Removes control characters (Go's `unicode.IsControl`: C0, DEL and C1).
@@ -69,13 +69,5 @@ mod tests {
     fn control_characters_are_removed() {
         assert_eq!(clean("a\u{1b}[31mb\nc\u{7f}d\u{85}e"), "a[31mbcde");
         assert_eq!(clean("Noor 👍 café"), "Noor 👍 café");
-    }
-
-    #[test]
-    fn whole_lines_keep_only_line_breaks() {
-        assert_eq!(
-            printable("\nScan this:\n▀▄\u{1b}]0;title\u{7}\r\n"),
-            "\nScan this:\n▀▄]0;title\n"
-        );
     }
 }

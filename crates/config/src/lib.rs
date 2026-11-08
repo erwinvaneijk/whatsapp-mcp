@@ -19,6 +19,7 @@
 
 mod allowlist;
 mod error;
+mod logging;
 mod parse;
 mod startup;
 
@@ -28,6 +29,7 @@ use std::path::{Path, PathBuf};
 
 pub use allowlist::SendAllowlist;
 pub use error::ConfigError;
+pub use logging::{LogFormat, LogLevel, LogOutput};
 pub use startup::Source;
 
 /// The environment variable that names the configuration file.
@@ -45,16 +47,22 @@ pub enum Setting {
     ReadOnly,
     LogContent,
     PairPhone,
+    LogOutput,
+    LogFormat,
+    LogLevel,
 }
 
 impl Setting {
-    pub const ALL: [Setting; 6] = [
+    pub const ALL: [Setting; 9] = [
         Setting::BridgeToken,
         Setting::MediaDir,
         Setting::SendAllowlist,
         Setting::ReadOnly,
         Setting::LogContent,
         Setting::PairPhone,
+        Setting::LogOutput,
+        Setting::LogFormat,
+        Setting::LogLevel,
     ];
 
     /// The name in the configuration file.
@@ -66,6 +74,9 @@ impl Setting {
             Setting::ReadOnly => "read_only",
             Setting::LogContent => "log_content",
             Setting::PairPhone => "pair_phone",
+            Setting::LogOutput => "log_output",
+            Setting::LogFormat => "log_format",
+            Setting::LogLevel => "log_level",
         }
     }
 
@@ -78,6 +89,9 @@ impl Setting {
             Setting::ReadOnly => "WHATSAPP_MCP_READ_ONLY",
             Setting::LogContent => "WHATSAPP_LOG_CONTENT",
             Setting::PairPhone => "WHATSAPP_PAIR_PHONE",
+            Setting::LogOutput => "WHATSAPP_LOG_OUTPUT",
+            Setting::LogFormat => "WHATSAPP_LOG_FORMAT",
+            Setting::LogLevel => "WHATSAPP_LOG_LEVEL",
         }
     }
 
@@ -120,6 +134,8 @@ pub struct Config {
     values: BTreeMap<Setting, String>,
     /// The settings whose value comes from the environment.
     from_env: BTreeSet<Setting>,
+    /// The home folder, for `~/` in `log_output`.
+    home: Option<PathBuf>,
 }
 
 impl Config {
@@ -162,6 +178,7 @@ impl Config {
             looked_for: looked_for.map(|(path, _)| path),
             values,
             from_env,
+            home: home.map(Path::to_path_buf),
         })
     }
 

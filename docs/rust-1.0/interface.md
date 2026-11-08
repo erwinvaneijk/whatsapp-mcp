@@ -56,6 +56,9 @@ Shared by the bridge and the MCP server. The exact rules are in `whatsapp-bridge
 | `read_only` | `WHATSAPP_MCP_READ_ONLY` | MCP server |
 | `log_content` | `WHATSAPP_LOG_CONTENT` | bridge |
 | `pair_phone` | `WHATSAPP_PAIR_PHONE` | bridge |
+| `log_output` | `WHATSAPP_LOG_OUTPUT` | both Rust programs (new in phase 5, step 6); the Go bridge accepts and ignores it |
+| `log_format` | `WHATSAPP_LOG_FORMAT` | both Rust programs (new); ignored by the Go bridge |
+| `log_level` | `WHATSAPP_LOG_LEVEL` | both Rust programs (new); ignored by the Go bridge |
 
 Yes/no settings accept `1`, `true`, `yes` and `on`, in any case; anything else means no.
 

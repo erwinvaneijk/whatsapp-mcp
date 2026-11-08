@@ -425,7 +425,7 @@ impl Db {
     /// JID itself. A database error gives the JID too, as in Python.
     pub fn sender_name(&self, sender: &str) -> String {
         let stored = self.stored_sender_name(sender).unwrap_or_else(|e| {
-            eprintln!("Database error while getting sender name: {e}");
+            log::warn!("Database error while getting sender name: {e}");
             None
         });
         self.names

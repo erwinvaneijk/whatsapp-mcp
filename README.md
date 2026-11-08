@@ -194,6 +194,9 @@ The bridge and the MCP server read their settings from environment variables, or
 | `read_only` | `WHATSAPP_MCP_READ_ONLY` | MCP server | Hide the tools that send. See [Read-only mode](#read-only-mode). |
 | `log_content` | `WHATSAPP_LOG_CONTENT` | bridge | Write message content to the logs. See [Logs](#logs). |
 | `pair_phone` | `WHATSAPP_PAIR_PHONE` | bridge | Link with a pairing code instead of a QR code. |
+| `log_output` | `WHATSAPP_LOG_OUTPUT` | `whatsapp-mcp` | Where log lines go: `stderr` (default), `stdout` (not for `serve`), `syslog`, or a file. See [Logs](#logs). |
+| `log_format` | `WHATSAPP_LOG_FORMAT` | `whatsapp-mcp` | `text` (default) or `json`. |
+| `log_level` | `WHATSAPP_LOG_LEVEL` | `whatsapp-mcp` | `error`, `warn`, `info` (default) or `debug`. |
 
 - The file holds the token, so both programs refuse it when other users can read or change it (`chmod 600` fixes that). This check is skipped on Windows.
 - An unknown setting stops both programs with the line number, so a typo cannot go unnoticed.
@@ -275,6 +278,19 @@ export WHATSAPP_SEND_ALLOWLIST="31612345678, 31687654321, 120363000000000000@g.u
 By default the bridge keeps message content out of its output: it logs that a message was stored, but not the sender, the text, captions, file names or the emoji of a reaction. This matters when the bridge runs in a container or as a service, where logs are kept. The decryption keys of media you send are never logged.
 
 To see message content in the logs while debugging, start the bridge with `WHATSAPP_LOG_CONTENT=1`.
+
+`whatsapp-mcp serve` and `whatsapp-mcp bridge` (the Rust programs; the Go bridge ignores these settings) give every log line a time, a level and its source, the same for their own lines and for the WhatsApp library:
+
+```
+2026-11-08T14:03:12.345+01:00 INFO  bridge: ✓ Connected to WhatsApp
+2026-11-08T14:03:13.020+01:00 WARN  whatsapp-rust: Failed processing group plaintext (batch): …
+```
+
+- **Where:** `log_output` is `stderr` (the default), `stdout`, `syslog` (the local syslog; not on Windows), or a file path, absolute or starting with `~/`. A file is appended to and readable by you only; rotate it with `logrotate` or `newsyslog`. `serve` refuses `stdout`, which carries the MCP protocol.
+- **Format:** `log_format: json` writes one JSON object per line, with `time`, `level`, `source` and `message`.
+- **Level:** `log_level` sets the level of the programs' own lines (default `info`); the library's lines are shown from `warn`. `RUST_LOG` (such as `RUST_LOG=whatsapp_rust=debug`) goes on top, per module, for debugging; debug output is not meant for logs you share.
+- **Linking:** the QR code and the pairing code always appear on the terminal (stderr), whatever `log_output` says; the log only notes that one was shown.
+- Both programs start by logging the settings they run with and where each comes from (the token only as set or not set).
 
 ## Architecture Overview
 
