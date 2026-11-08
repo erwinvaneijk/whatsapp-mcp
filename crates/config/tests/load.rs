@@ -348,7 +348,9 @@ fn startup_lines_show_settings_but_no_secrets() {
 #[test]
 fn logging_settings() {
     use whatsapp_mcp_config::{LogFormat, LogLevel, LogOutput};
-    let home = Path::new("/home/me");
+    // A real folder, so it is absolute on Windows too (a drive letter).
+    let home_dir = tempfile::tempdir().unwrap();
+    let home = home_dir.path();
     let load = |vars: &[(&str, &str)]| Config::load_from(env(vars), Some(home)).unwrap();
 
     let config = load(&[]);
