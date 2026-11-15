@@ -1,3 +1,7 @@
 # SQL is stored in the database as written (sqlite_master keeps each
 # CREATE statement's text), so it must not get CRLF line endings on Windows.
 *.sql text eol=lf
+# The plugin's launcher runs in bash, also on Windows, and reads SHA256SUMS
+# line by line: keep both LF, whatever core.autocrlf says.
+plugin/scripts/launch.sh text eol=lf
+plugin/scripts/SHA256SUMS text eol=lf
