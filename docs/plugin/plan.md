@@ -1,0 +1,105 @@
+# Claude Code plugin
+
+Make whatsapp-mcp installable as a Claude Code plugin, from a marketplace in this repository:
+
+```sh
+claude plugin marketplace add erwinvaneijk/whatsapp-mcp
+claude plugin install <plugin>@<marketplace>
+```
+
+Starts after [release 1.0](../rust-1.0/plan.md), when one `whatsapp-mcp` binary is both the bridge and the MCP server, and Go is no longer needed.
+
+## Decisions
+
+Made on 2026-11-14:
+
+- **Self-hosted marketplace first.** The marketplace lives in this repository. A listing in Anthropic's plugin directory may follow later; see [Directory listing](#directory-listing-later).
+- **After 1.0.** The plugin is built on the 1.0 release binaries, not on 0.9 with the Go bridge.
+- **Read-only by default.** The plugin starts the MCP server in [read-only mode](../../README.md#read-only-mode). Users turn on sending themselves, knowing the prompt-injection risk.
+
+## What a plugin can and cannot do
+
+Checked against the Claude Code plugin docs on 2026-11-13 ([manifest](https://code.claude.com/docs/en/plugins/manifest-reference.md), [components](https://code.claude.com/docs/en/plugins/components.md), [marketplaces](https://code.claude.com/docs/en/plugins/marketplace-reference.md)).
+
+- **MCP server:** a stdio server in `.mcp.json`, started by Claude Code for each session and stopped when the session ends. `${CLAUDE_PLUGIN_ROOT}` is the installed plugin (it changes on every update), and `${CLAUDE_PLUGIN_DATA}` is a folder that survives updates.
+- **Settings:** `userConfig` in `plugin.json` asks the user for values on install, which `.mcp.json` uses as `${user_config.<key>}`.
+- **No long-running processes:** MCP servers and monitors only run during a session. The bridge must receive messages all the time, so the plugin does not run it. It helps the user install the bridge as a service instead.
+- **No per-platform binaries:** a plugin has no way to pick a binary per OS and architecture, and the directory holds any compiled executable for review. The plugin ships a small launcher script that downloads the release binary instead.
+
+## Design
+
+```
+.claude-plugin/marketplace.json     the marketplace: one plugin, source "./plugin"
+plugin/
+  .claude-plugin/plugin.json        name, version, description, author, license, links, userConfig
+  .mcp.json                         the MCP server, started through the launcher
+  scripts/launch.sh                 macOS and Linux launcher
+  scripts/launch.ps1                Windows launcher
+  scripts/SHA256SUMS                checksums of the release binaries this plugin version runs
+  skills/whatsapp-setup/SKILL.md    setup: config file, bridge service, linking
+  README.md                         what the plugin downloads, runs and stores
+```
+
+**Launcher.** `launch.sh serve` finds the OS and architecture, and checks for `${CLAUDE_PLUGIN_DATA}/bin/whatsapp-mcp` at the version this plugin pins. When the binary is missing or has the wrong version, the launcher downloads it from the GitHub release, checks it against `SHA256SUMS`, and stops with a clear error if the checksum is wrong. Then it runs the binary with `exec`. The bridge service runs the same binary, so plugin updates also update the bridge on its next restart.
+
+**`.mcp.json`:**
+
+```json
+{
+  "mcpServers": {
+    "whatsapp": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/launch.sh",
+      "args": ["serve"],
+      "env": {
+        "WHATSAPP_MCP_READ_ONLY": "${user_config.read_only}",
+        "WHATSAPP_MCP_CONFIG": "${user_config.config_file}"
+      }
+    }
+  }
+}
+```
+
+**`userConfig`:**
+
+| Key | Type | Default | Purpose |
+|---|---|---|---|
+| `read_only` | boolean | `true` | Hides the send tools. |
+| `config_file` | file | `~/.config/whatsapp-mcp/config.yaml` | The [configuration file](../../README.md#configuration) that both the bridge and the server read. |
+
+The bridge token stays in `config.yaml` (mode `0600`), not in `userConfig`: the bridge runs as a service outside Claude Code and cannot read Claude's secure store.
+
+**Setup skill.** `whatsapp-setup` walks the user through:
+
+1. Creating `config.yaml` with a fresh token, and optionally `media_dir` and `send_allowlist`.
+2. Installing the bridge as a user service: launchd on macOS, a systemd user unit on Linux, a scheduled task on Windows.
+3. Linking with a QR code or pairing code. The skill recommends trying a test account first.
+4. Checking that `messages.db` fills and that the tools answer.
+
+It also explains how to stop the service and remove the store folder when uninstalling.
+
+## Steps
+
+Each step is one pull request.
+
+| Step | Work | Done when |
+|---|---|---|
+| 1. Release binaries | Part of 1.0 phase 6. A release workflow builds `whatsapp-mcp` for macOS (arm64, x86_64), Linux (x86_64, arm64) and Windows (x86_64) on a `v*` tag, and attaches the binaries and `SHA256SUMS` to the GitHub release. | A test tag produces all five binaries; each prints the right `--version`; the checksums match. |
+| 2. Plugin folder | `plugin/` as in [Design](#design): manifest, `.mcp.json`, launchers, pinned checksums, README. Choose the plugin name: not `mcp`, `plugin`, `claude` or other reserved words, and not confusable with WhatsApp's own products. | `claude plugin validate plugin --strict` passes. The launchers download, verify and start the binary on macOS, Linux and Windows, and refuse a binary with a wrong checksum. `read_only` defaults to on, and turning it off shows the send tools. |
+| 3. Setup skill | `skills/whatsapp-setup/SKILL.md`, with the service files for each platform. | On a clean user account on macOS and Linux, following the skill gives a linked bridge that survives a logout or reboot, and working tools in Claude Code. |
+| 4. Marketplace | `.claude-plugin/marketplace.json` at the repository root, with a distinctive name that is not one of the reserved marketplace names. A check in CI that runs `claude plugin validate` on the plugin and the marketplace. | `claude plugin marketplace add erwinvaneijk/whatsapp-mcp` and `claude plugin install` work on a clean machine. CI fails on an invalid manifest. |
+| 5. Evals | `claude plugin eval` cases with mocked tools in `evals/mocks/`, so no WhatsApp account is needed: read-only mode hides the send tools; a message with injected instructions is not acted on; `list_messages` with time filters. | The evals pass in CI. |
+| 6. Release | A release process: bump `version` in `plugin.json` and the pinned `SHA256SUMS` with each binary release, and tag. README: an "Install as a Claude Code plugin" section. | A plugin update with `claude plugin update` moves both the server and (after a restart) the bridge to the new version. |
+
+## Directory listing (later)
+
+Anthropic's plugin directory takes submissions at claude.ai/directory/manage ([checklist](https://claude.com/docs/plugins/pre-submission-checklist)). Before submitting:
+
+- Read the [directory policy](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy). This is an unofficial WhatsApp client, and it can be used for prompt injection and data leaks (the lethal trifecta); both may stop a listing.
+- A launcher that downloads a binary, and any compiled code, is held for a reviewer. Explain the download and the pinned checksums in the submission.
+- The README must name everything the plugin runs, sends or fetches. The repository must stay under 50 MiB archived and 10,000 files, without submodules or secrets.
+
+## Risks
+
+- **The bridge service differs per platform.** Three service formats to write and test. Windows has the least testing so far (phase 1 deferred it).
+- **First start is slow.** The first session downloads the binary before the MCP server starts. If the download takes too long, Claude Code may report the server as failed; the setup skill downloads it ahead of time to avoid this.
+- **Version skew.** The server and the bridge run the same binary but restart at different times. The bridge API is kept stable for 1.0, so a server one version ahead of the bridge must keep working.
