@@ -75,6 +75,10 @@ enum Sink {
     File(Mutex<std::fs::File>),
     #[cfg(unix)]
     Syslog(std::os::unix::net::UnixDatagram),
+    /// macOS: its unified log (`log show`), which no longer keeps what is
+    /// sent to the syslog socket.
+    #[cfg(target_os = "macos")]
+    OsLog(oslog::OsLog),
 }
 
 impl Logger {
@@ -102,7 +106,7 @@ impl Logger {
                     format!("Cannot open the log file {}: {e}", path.display())
                 })?))
             }
-            LogOutput::Syslog => open_syslog()?,
+            LogOutput::Syslog => open_syslog(program)?,
         };
         let own = level_filter(level);
         let mut builder = env_filter::Builder::new();
@@ -188,6 +192,15 @@ impl Log for Logger {
                 let datagram = syslog_datagram(now, record.level(), std::process::id(), &body);
                 socket.send(datagram.as_bytes()).map(|_| ())
             }
+            #[cfg(target_os = "macos")]
+            Sink::OsLog(log) => {
+                let body = match self.format {
+                    LogFormat::Text => format!("{source}: {message}"),
+                    LogFormat::Json => json(now, record.level(), &source, &message),
+                };
+                log.with_level(os_log_level(record.level()), &body);
+                Ok(())
+            }
         };
     }
 
@@ -204,6 +217,8 @@ impl Log for Logger {
             }
             #[cfg(unix)]
             Sink::Syslog(_) => {}
+            #[cfg(target_os = "macos")]
+            Sink::OsLog(_) => {}
         }
     }
 }
@@ -303,12 +318,32 @@ fn open_private(path: &Path) -> std::io::Result<std::fs::File> {
     Ok(file)
 }
 
-/// The local syslog sockets: Linux, macOS, the BSDs.
-#[cfg(unix)]
-const SYSLOG_SOCKETS: [&str; 3] = ["/dev/log", "/var/run/syslog", "/var/run/log"];
+/// The local syslog sockets: Linux, the BSDs.
+#[cfg(all(unix, not(target_os = "macos")))]
+const SYSLOG_SOCKETS: [&str; 2] = ["/dev/log", "/var/run/log"];
 
-#[cfg(unix)]
-fn open_syslog() -> Result<Sink, String> {
+/// macOS: the unified log, with subsystem `whatsapp-mcp` and the program
+/// (`serve` or `bridge`) as category.
+#[cfg(target_os = "macos")]
+fn open_syslog(program: Program) -> Result<Sink, String> {
+    Ok(Sink::OsLog(oslog::OsLog::new(SYSLOG_TAG, program.name())))
+}
+
+/// The unified log's level for a record, as Apple uses them: `info` and
+/// `debug` there are not kept by default, so our `info` is `default`.
+#[cfg(target_os = "macos")]
+pub fn os_log_level(level: Level) -> oslog::Level {
+    match level {
+        Level::Error => oslog::Level::Fault,
+        Level::Warn => oslog::Level::Error,
+        Level::Info => oslog::Level::Default,
+        Level::Debug => oslog::Level::Info,
+        Level::Trace => oslog::Level::Debug,
+    }
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn open_syslog(_program: Program) -> Result<Sink, String> {
     for path in SYSLOG_SOCKETS {
         if let Ok(socket) = connect_syslog(Path::new(path)) {
             return Ok(Sink::Syslog(socket));
@@ -321,7 +356,7 @@ fn open_syslog() -> Result<Sink, String> {
 }
 
 #[cfg(not(unix))]
-fn open_syslog() -> Result<Sink, String> {
+fn open_syslog(_program: Program) -> Result<Sink, String> {
     Err("WHATSAPP_LOG_OUTPUT (or log_output) cannot be syslog on Windows; use stderr, stdout or a file".into())
 }
 

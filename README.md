@@ -287,6 +287,7 @@ To see message content in the logs while debugging, start the bridge with `WHATS
 ```
 
 - **Where:** `log_output` is `stderr` (the default), `stdout`, `syslog` (the local syslog; not on Windows), or a file path, absolute or starting with `~/`. A file is appended to and readable by you only; rotate it with `logrotate` or `newsyslog`. `serve` refuses `stdout`, which carries the MCP protocol.
+- **syslog on macOS** goes to the unified log, with subsystem `whatsapp-mcp` and `serve` or `bridge` as category: `log show --last 1h --predicate 'subsystem == "whatsapp-mcp"'`, or `log stream` with the same predicate. Errors show as faults and warnings as errors there, as macOS uses those levels.
 - **Format:** `log_format: json` writes one JSON object per line, with `time`, `level`, `source` and `message`.
 - **Level:** `log_level` sets the level of the programs' own lines (default `info`); the library's lines are shown from `warn`. `RUST_LOG` (such as `RUST_LOG=whatsapp_rust=debug`) goes on top, per module, for debugging; debug output is not meant for logs you share.
 - **Linking:** the QR code and the pairing code always appear on the terminal (stderr), whatever `log_output` says; the log only notes that one was shown.
