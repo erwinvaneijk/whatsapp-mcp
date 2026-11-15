@@ -10,8 +10,6 @@ Here's an example of what you can do when it's connected to Claude.
 
 ![WhatsApp MCP](./example-use.png)
 
-> To get updates on this and other projects I work on [enter your email here](https://docs.google.com/forms/d/1rTF9wMBTN0vPfzWuQa2BjfGKdKIpTbyeKxhPMcEzgyI/preview)
-
 > *Caution:* as with many MCP servers, the WhatsApp MCP is subject to [the lethal trifecta](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/). This means that project injection could lead to private data exfiltration.
 > Any message you receive is untrusted input that the model reads: someone can send you a message containing instructions (prompt injection) that try to make the agent forward your private conversations or files to them. If you only need to read and search messages, enable [read-only mode](#read-only-mode).
 
@@ -149,7 +147,7 @@ A few error messages are clearer than in the Python server; see [Behaviour that 
 
 ### Windows
 
-The Windows build is made and tested in CI, but has not been tried with WhatsApp yet. `log_output: syslog` is not available on Windows, and the store folder's permissions work differently there; see [Data Storage](#data-storage).
+**Windows is beta in 1.0.** The Windows build is made and tested in CI, but has not been tried with WhatsApp yet. Problems are welcome as [issues](https://github.com/erwinvaneijk/whatsapp-mcp/issues). `log_output: syslog` is not available on Windows, and the store folder's permissions work differently there; see [Data Storage](#data-storage).
 
 ## Configuration
 
@@ -159,7 +157,7 @@ The bridge and the MCP server read their settings from environment variables, or
 |---|---|---|---|
 | `bridge_token` | `WHATSAPP_BRIDGE_TOKEN` | both | Shared secret, at least 32 characters. Required. |
 | `media_dir` | `WHATSAPP_MEDIA_DIR` | both | The only folder files can be sent from. |
-| `send_allowlist` | `WHATSAPP_SEND_ALLOWLIST` | bridge | Chats the bridge may send to; a YAML list in the file. See [Limit who the bridge sends to](#limit-who-the-bridge-sends-to). |
+| `send_allowlist` | `WHATSAPP_SEND_ALLOWLIST` | bridge | Chats the bridge may send to; a YAML list in the file. See [Control whom the bridge is allowed to send to](#control-whom-the-bridge-is-allowed-to-send-to). |
 | `read_only` | `WHATSAPP_MCP_READ_ONLY` | MCP server | Hide the tools that send. See [Read-only mode](#read-only-mode). |
 | `log_content` | `WHATSAPP_LOG_CONTENT` | bridge | Write message content to the logs. See [Logs](#logs). |
 | `pair_phone` | `WHATSAPP_PAIR_PHONE` | bridge | Link with a pairing code instead of a QR code. |
@@ -220,7 +218,7 @@ Anyone who can send you a WhatsApp message controls text that Claude reads. A me
 
 This lowers the risk but cannot rule it out: a model can still be misled. For full protection against sending, use [read-only mode](#read-only-mode).
 
-### Limit who the bridge sends to
+### Control whom the bridge is allowed to send to
 
 Set `send_allowlist` in the [configuration file](#configuration), or `WHATSAPP_SEND_ALLOWLIST` in the bridge's environment, to the chats it may send messages and reactions to. Anything else is refused by the bridge with HTTP 403, so a message that tries to make Claude write to someone else (prompt injection) cannot succeed. This also applies to calls that bypass the MCP server.
 
