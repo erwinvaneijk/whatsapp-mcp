@@ -3,6 +3,8 @@
 //! `serve` is the MCP server; `bridge` keeps the WhatsApp connection, stores
 //! messages, sends and serves the local API for `serve`.
 
+mod service;
+
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -27,6 +29,19 @@ enum Command {
         #[arg(long, value_name = "DIR", default_value = "whatsapp-bridge/store")]
         store: PathBuf,
     },
+    /// Link WhatsApp: show a QR or pairing code, store the history sync, then
+    /// stop. Run it in a terminal, before `service install`.
+    #[command(visible_alias = "login")]
+    Link {
+        /// The store folder, as for `bridge`.
+        #[arg(long, value_name = "DIR", default_value = "whatsapp-bridge/store")]
+        store: PathBuf,
+    },
+    /// Run the bridge as a user service (macOS: launchd, Linux: systemd).
+    Service {
+        #[command(subcommand)]
+        action: ServiceAction,
+    },
     /// Serve the MCP tools over stdio, for an MCP client such as Claude Desktop.
     Serve {
         /// The bridge's store folder, with messages.db and whatsapp.db.
@@ -38,8 +53,38 @@ enum Command {
     },
 }
 
+#[derive(Debug, Subcommand)]
+enum ServiceAction {
+    /// Install and start the service, for a linked store.
+    Install {
+        /// The store folder, as for `bridge`.
+        #[arg(long, value_name = "DIR", default_value = "whatsapp-bridge/store")]
+        store: PathBuf,
+    },
+    /// Stop the service and remove it.
+    Uninstall,
+    /// Say whether the service is installed and running.
+    Status,
+}
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
+    // The service commands read the configuration file themselves, and
+    // uninstall and status must work with a broken one.
+    if let Command::Service { action } = cli.command {
+        let result = match action {
+            ServiceAction::Install { store } => service::install(&store),
+            ServiceAction::Uninstall => service::uninstall(),
+            ServiceAction::Status => service::status(),
+        };
+        return match result {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("whatsapp-mcp service: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     // Errors on stderr: for serve, stdout carries the MCP protocol.
     let config = match whatsapp_mcp_config::Config::load() {
         Ok(config) => config,
@@ -49,8 +94,8 @@ fn main() -> ExitCode {
         }
     };
     let program = match cli.command {
-        Command::Bridge { .. } => Program::Bridge,
         Command::Serve { .. } => Program::Serve,
+        _ => Program::Bridge,
     };
     // Before anything is logged; a bad log setting stops here, on stderr.
     if let Err(e) = whatsapp_mcp_logging::init(program, &config) {
@@ -60,17 +105,8 @@ fn main() -> ExitCode {
     for warning in config.warnings() {
         log::warn!("{warning}");
     }
+    let link_only = matches!(cli.command, Command::Link { .. });
     match cli.command {
-        Command::Bridge { store } => {
-            let options = whatsapp_mcp_bridge::Options { store_dir: store };
-            match whatsapp_mcp_bridge::run_blocking(&config, options) {
-                Ok(()) => ExitCode::SUCCESS,
-                Err(e) => {
-                    log::error!("{e}");
-                    ExitCode::FAILURE
-                }
-            }
-        }
         Command::Serve { store, bridge_url } => {
             for line in serve_startup_lines(&config, &store, &bridge_url) {
                 log::info!("{line}");
@@ -87,6 +123,20 @@ fn main() -> ExitCode {
                 }
             }
         }
+        Command::Bridge { store } | Command::Link { store } => {
+            let options = whatsapp_mcp_bridge::Options {
+                store_dir: store,
+                link_only,
+            };
+            match whatsapp_mcp_bridge::run_blocking(&config, options) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(e) => {
+                    log::error!("{e}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
+        Command::Service { .. } => unreachable!("handled above"),
     }
 }
 

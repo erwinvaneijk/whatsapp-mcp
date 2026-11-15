@@ -22,7 +22,7 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-15 (M04 and C10 changed: read-only by default, `full_control`).
+Last updated: 2026-11-15 (R10 added: link and run the bridge as a service).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
@@ -31,8 +31,8 @@ Last updated: 2026-11-15 (M04 and C10 changed: read-only by default, `full_contr
 | Bridge: WhatsApp | 17 | 0 | 1 | 0 | 16 | 0 |
 | Bridge: API and security | 8 | 0 | 0 | 0 | 8 | 0 |
 | Bridge: storage | 6 | 0 | 0 | 0 | 6 | 0 |
-| Build, release, docs | 9 | 1 | 1 | 3 | 4 | 0 |
-| **Total** | **75** | **1** | **2** | **3** | **66** | **3** |
+| Build, release, docs | 10 | 1 | 2 | 3 | 4 | 0 |
+| **Total** | **76** | **1** | **3** | **3** | **66** | **3** |
 
 ## MCP interface
 
@@ -146,3 +146,4 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | R07 | Go and Python code removed | review | done | 0.9: the Python server is removed. 1.0: the Go bridge and its CI job are removed; the parity harness (Python, test tooling only) stays. `verified` after review. |
 | R08 | `dev-main` merged into `main`, tagged `v1.0.0` | review | todo | |
 | R09 | Dependency checks (vulnerabilities, licenses, sources) and no `unsafe` code | CI | verified | Phase 2: `cargo deny check` in the `Rust dependencies` CI job ([deny.toml](../../deny.toml)); `unsafe_code = "forbid"` for every crate. Verified 2026-11-15: `cargo deny check` passes in CI on `dev-main` at 86b5be4. |
+| R10 | Link, then run the bridge as a service: `link` (`login`), `service install`, `status`, `uninstall` | live | wip | [#45](https://github.com/erwinvaneijk/whatsapp-mcp/issues/45). Tests: the launchd and systemd files (quoting, absolute paths), the token check for the service. Checked on macOS: `status` when not installed, `install` refuses an unlinked store. `verified` after a live run on macOS and Linux: link, install, log out and in, status, uninstall. |

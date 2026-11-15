@@ -88,19 +88,35 @@ One program, `whatsapp-mcp`, does both jobs:
 
    Environment variables work too, instead of the file or on top of it; see [Configuration](#configuration).
 
-3. **Run the bridge and link WhatsApp**
+3. **Link WhatsApp**
 
-   Choose a store folder. It holds your messages (`messages.db`), the WhatsApp session (`session.db`) and downloaded media, and is created when missing. Without `--store`, the bridge uses `whatsapp-bridge/store` in the current folder.
+   Choose a store folder. It holds your messages (`messages.db`), the WhatsApp session (`session.db`) and downloaded media, and is created when missing. Without `--store`, the commands use `whatsapp-bridge/store` in the current folder. In a terminal:
 
    ```bash
-   whatsapp-mcp bridge --store ~/.local/share/whatsapp-mcp/store
+   whatsapp-mcp link --store ~/.local/share/whatsapp-mcp/store
    ```
 
-   The first time, it shows a QR code. On your phone open WhatsApp > Linked devices > Link a device, and scan it. To link with a code instead, set `pair_phone` (or `WHATSAPP_PAIR_PHONE`) to your phone number with country code, such as `31612345678`. The bridge then prints an 8-character code; on your phone choose Link with phone number instead, and enter it.
+   It shows a QR code. On your phone open WhatsApp > Linked devices > Link a device, and scan it. To link with a code instead, set `pair_phone` (or `WHATSAPP_PAIR_PHONE`) to your phone number with country code, such as `31612345678`. It then prints an 8-character code; on your phone choose Link with phone number instead, and enter it.
 
-   After linking, WhatsApp sends your recent history; the log says `History sync complete` when it is in. Keep the bridge running: it receives your messages and sends for the MCP server.
+   After linking, WhatsApp sends your recent history. `link` stores it and stops by itself once it is in (when no more arrives for a minute). `whatsapp-mcp login` does the same.
 
-4. **Connect your MCP client**
+4. **Run the bridge**
+
+   The bridge must keep running: it receives your messages and sends for the MCP server. On macOS and Linux, install it as a service that starts when you log in:
+
+   ```bash
+   whatsapp-mcp service install --store ~/.local/share/whatsapp-mcp/store
+   whatsapp-mcp service status
+   ```
+
+   - **macOS:** a launchd agent in `~/Library/LaunchAgents`. With the default `log_output: stderr` its log goes to `~/Library/Logs/whatsapp-mcp/bridge.log`, in a folder only you can read; or set `log_output` to a file of your own or `syslog` (see [Logs](#logs)).
+   - **Linux:** a systemd user unit, `whatsapp-mcp-bridge.service`. Its log is in `journalctl --user -u whatsapp-mcp-bridge`. To keep it running when you are not logged in: `loginctl enable-linger`.
+   - The service only reads the [configuration file](#configuration), not the environment variables you set in your shell; `install` checks that the bridge token is in the file. It also refuses a store that is not linked yet.
+   - `whatsapp-mcp service uninstall` stops and removes it. Run `install` again after moving the program or the store.
+
+   Or run it in a terminal: `whatsapp-mcp bridge --store ~/.local/share/whatsapp-mcp/store`, and leave it open. For Windows, see [Windows](#windows).
+
+5. **Connect your MCP client**
 
    Copy the JSON below. Use absolute paths: the client starts the server from a folder of its own choosing.
 
@@ -129,7 +145,7 @@ One program, `whatsapp-mcp`, does both jobs:
    ~/.cursor/mcp.json
    ```
 
-5. **Restart Claude Desktop / Cursor**
+6. **Restart Claude Desktop / Cursor**
 
    Open Claude Desktop and you should now see WhatsApp as an available integration.
 
@@ -141,13 +157,24 @@ From 1.0 the Go bridge is replaced by `whatsapp-mcp bridge`. Your messages and c
 
 ### Upgrading from the Python MCP server
 
-Before version 0.9, the MCP server was a Python program run with `uv`. From 0.9 it is `whatsapp-mcp serve`, with the same tools and the same configuration. In your MCP client's configuration, replace `"command"` and `"args"` with the ones in step 4, keep the `env` block if you have one, and restart the client. Then follow [Upgrading to 1.0](docs/upgrading-to-1.0.md) for the bridge.
+Before version 0.9, the MCP server was a Python program run with `uv`. From 0.9 it is `whatsapp-mcp serve`, with the same tools and the same configuration. In your MCP client's configuration, replace `"command"` and `"args"` with the ones in step 5, keep the `env` block if you have one, and restart the client. Then follow [Upgrading to 1.0](docs/upgrading-to-1.0.md) for the bridge.
 
 A few error messages are clearer than in the Python server; see [Behaviour that improves](docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10).
 
 ### Windows
 
 **Windows is beta in 1.0.** The Windows build is made and tested in CI, but has not been tried with WhatsApp yet. Problems are welcome as [issues](https://github.com/erwinvaneijk/whatsapp-mcp/issues). `log_output: syslog` is not available on Windows, and the store folder's permissions work differently there; see [Data Storage](#data-storage).
+
+`whatsapp-mcp service` is not available on Windows. Link with `whatsapp-mcp link` in a terminal, then run the bridge as a scheduled task that starts when you log in. In PowerShell, with your own paths:
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "C:\Users\me\bin\whatsapp-mcp.exe" -Argument 'bridge --store "C:\Users\me\whatsapp-store"'
+$trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+$settings = New-ScheduledTaskSettingsSet -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit 0
+Register-ScheduledTask -TaskName "whatsapp-mcp bridge" -Action $action -Trigger $trigger -Settings $settings
+```
+
+Set `log_output` to a file in the configuration file, since a scheduled task has no terminal. Remove the task with `Unregister-ScheduledTask -TaskName "whatsapp-mcp bridge"`.
 
 ## Configuration
 

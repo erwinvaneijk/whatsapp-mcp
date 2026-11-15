@@ -22,7 +22,7 @@ Coming from the Python MCP server (before 0.9)? Do [Upgrading from the Python MC
 
 ## Steps
 
-1. **Stop the Go bridge.** Both bridges use port 8080 and the same `messages.db`; only one may run at a time. Stop it in its terminal (Ctrl-C), or stop the service you run it as.
+1. **Stop the Go bridge.** Both bridges use port 8080 and the same `messages.db`; only one may run at a time. Stop it in its terminal (Ctrl-C). If you set it up as a service yourself (launchd, systemd, a scheduled task), stop and remove that service, or it starts the Go bridge again at the next login.
 
 2. **Back up the store folder.** Copy `whatsapp-bridge/store` (or the folder you use) somewhere safe. It holds `messages.db` with your history.
 
@@ -43,22 +43,28 @@ Coming from the Python MCP server (before 0.9)? Do [Upgrading from the Python MC
 
    If your MCP client points at a binary path, put the new program at that path, or update the path in the client's configuration.
 
-4. **Start the bridge** with the same store folder:
+4. **Link WhatsApp again**, in a terminal, with the same store folder:
 
    ```bash
-   whatsapp-mcp bridge --store /path/to/whatsapp-bridge/store
+   whatsapp-mcp link --store /path/to/whatsapp-bridge/store
    ```
 
-   On the first start it shows a QR code. On your phone open WhatsApp > Linked devices > Link a device, and scan it. To link with a code instead, set `pair_phone` (or `WHATSAPP_PAIR_PHONE`) to your number with country code; the bridge then prints an 8-character code to enter under Link with phone number instead.
+   It shows a QR code. On your phone open WhatsApp > Linked devices > Link a device, and scan it. To link with a code instead, set `pair_phone` (or `WHATSAPP_PAIR_PHONE`) to your number with country code; it then prints an 8-character code to enter under Link with phone number instead. `link` stops by itself once the history sync is in.
 
-   The log shows `History sync complete` when the history has arrived. Keep the bridge running, as you did the Go bridge.
+5. **Run the bridge.** On macOS and Linux, as a service that starts when you log in:
 
-5. **Remove the old link.** Your phone now lists two linked devices. Log out the older one, which was the Go bridge, under Linked devices.
+   ```bash
+   whatsapp-mcp service install --store /path/to/whatsapp-bridge/store
+   ```
 
-6. **Restart your MCP client** and try a tool, such as `list_chats`.
+   The service reads only the configuration file, so move settings you kept in environment variables (such as the bridge token) into it. Or run `whatsapp-mcp bridge --store …` in a terminal, as you did the Go bridge. See [Run the bridge](../README.md#steps) for details and Windows.
+
+6. **Remove the old link.** Your phone now lists two linked devices. Log out the older one, which was the Go bridge, under Linked devices.
+
+7. **Restart your MCP client** and try a tool, such as `list_chats`.
 
 ## Going back
 
-The Rust bridge does not touch `whatsapp.db`, so the Go bridge can still run on the same store folder. Stop `whatsapp-mcp bridge`, check out `v0.9.0` and start the Go bridge as before. If you removed its link in step 5, it asks you to link again. Messages received by the Rust bridge stay in `messages.db`.
+The Rust bridge does not touch `whatsapp.db`, so the Go bridge can still run on the same store folder. Stop `whatsapp-mcp bridge` (`whatsapp-mcp service uninstall` if it runs as a service), check out `v0.9.0` and start the Go bridge as before. If you removed its link in step 6, it asks you to link again. Messages received by the Rust bridge stay in `messages.db`.
 
 If something is wrong with `messages.db`, stop the bridge and put back the backup from step 2.
