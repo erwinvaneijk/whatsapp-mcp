@@ -1,0 +1,66 @@
+name: Plugin
+
+# The Claude Code plugin in plugin/ (docs/plugin/plan.md): the manifest is
+# valid, and the launcher downloads the pinned release binary, checks it,
+# runs it, and refuses one with a wrong checksum, on every platform.
+
+on:
+  push:
+    branches: [main, dev-main]
+    paths: ["plugin/**", ".claude-plugin/**", ".github/workflows/plugin.yml"]
+  pull_request:
+    branches: [main, dev-main]
+    paths: ["plugin/**", ".claude-plugin/**", ".github/workflows/plugin.yml"]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Install Claude Code
+        run: npm install --global @anthropic-ai/claude-code@2.1.311
+      - name: Validate the plugin
+        run: claude plugin validate plugin --strict
+
+  launcher:
+    name: Launcher (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Downloads, checks and runs the pinned binary
+        run: |
+          export CLAUDE_PLUGIN_DATA="$RUNNER_TEMP/data"
+          version="$(sed -n 's/^VERSION="\(.*\)"$/\1/p' plugin/scripts/launch.sh)"
+          out="$(bash plugin/scripts/launch.sh --version)"
+          test "$out" = "whatsapp-mcp $version"
+          # A second start uses the file it already has.
+          ! bash plugin/scripts/launch.sh --version 2>&1 | grep downloading
+
+      - name: Refuses a binary with a wrong checksum
+        run: |
+          export CLAUDE_PLUGIN_DATA="$RUNNER_TEMP/tampered"
+          mkdir -p "$RUNNER_TEMP/release"
+          while read -r _ f; do
+            printf 'not the release\n' > "$RUNNER_TEMP/release/$f"
+          done < plugin/scripts/SHA256SUMS
+          base="file://$RUNNER_TEMP/release"
+          if [ "${RUNNER_OS}" = "Windows" ]; then base="file:///$(cygpath -m "$RUNNER_TEMP/release")"; fi
+          if WHATSAPP_MCP_DOWNLOAD_URL="$base" bash plugin/scripts/launch.sh --version 2> err.txt; then
+            echo "ran a binary with a wrong checksum"; exit 1
+          fi
+          cat err.txt
+          grep -q "checksum mismatch" err.txt
+          test -z "$(ls -A "$CLAUDE_PLUGIN_DATA/bin")"

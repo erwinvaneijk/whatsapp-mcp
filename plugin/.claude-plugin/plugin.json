@@ -1,0 +1,27 @@
+{
+  "name": "whatsapp-mcp",
+  "version": "1.0.0",
+  "description": "Search, read and (with full control) send your WhatsApp messages from Claude Code, through a bridge on your own computer. Read-only by default.",
+  "author": {
+    "name": "Erwin van Eijk",
+    "url": "https://github.com/erwinvaneijk"
+  },
+  "homepage": "https://github.com/erwinvaneijk/whatsapp-mcp",
+  "repository": "https://github.com/erwinvaneijk/whatsapp-mcp",
+  "license": "MIT",
+  "keywords": ["whatsapp", "messaging", "mcp"],
+  "userConfig": {
+    "full_control": {
+      "type": "boolean",
+      "title": "Full control (sending)",
+      "description": "Offer the tools that send messages and reactions. Off by default: a message someone sends you can try to make Claude send for them (prompt injection). The bridge also needs full_control: yes in the configuration file.",
+      "default": false
+    },
+    "config_file": {
+      "type": "file",
+      "title": "Configuration file",
+      "description": "The whatsapp-mcp configuration file (config.yaml), shared with the bridge. Leave empty for ~/.config/whatsapp-mcp/config.yaml.",
+      "required": false
+    }
+  }
+}
