@@ -52,12 +52,15 @@ jobs:
       - name: Refuses a binary with a wrong checksum
         run: |
           export CLAUDE_PLUGIN_DATA="$RUNNER_TEMP/tampered"
-          mkdir -p "$RUNNER_TEMP/release"
+          # In the checkout: on Windows $RUNNER_TEMP is a D:\ path, which
+          # bash does not take as a folder.
+          release="$PWD/fake-release"
+          mkdir -p "$release"
           while read -r _ f; do
-            printf 'not the release\n' > "$RUNNER_TEMP/release/$f"
+            printf 'not the release\n' > "$release/$f"
           done < plugin/scripts/SHA256SUMS
-          base="file://$RUNNER_TEMP/release"
-          if [ "${RUNNER_OS}" = "Windows" ]; then base="file:///$(cygpath -m "$RUNNER_TEMP/release")"; fi
+          base="file://$release"
+          if [ "${RUNNER_OS}" = "Windows" ]; then base="file:///$(cygpath -m "$release")"; fi
           if WHATSAPP_MCP_DOWNLOAD_URL="$base" bash plugin/scripts/launch.sh --version 2> err.txt; then
             echo "ran a binary with a wrong checksum"; exit 1
           fi
