@@ -26,6 +26,8 @@ jobs:
         run: npm install --global @anthropic-ai/claude-code@2.1.311
       - name: Validate the plugin
         run: claude plugin validate plugin --strict
+      - name: Validate the marketplace
+        run: claude plugin validate . --strict
 
   launcher:
     name: Launcher (${{ matrix.os }})

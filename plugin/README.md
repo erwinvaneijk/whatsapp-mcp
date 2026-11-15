@@ -4,6 +4,14 @@ Search and read your WhatsApp messages from Claude Code, and, if you turn on ful
 
 Read-only by default. Anyone who can send you a WhatsApp message controls text that Claude reads, and could try to make it send your conversations to them (prompt injection). Turn on **Full control** in the plugin's settings only if you need Claude to send.
 
+## Install
+
+```sh
+claude plugin install whatsapp-mcp --marketplace erwinvaneijk/whatsapp-mcp
+```
+
+This adds the `erwinvaneijk` marketplace (this repository) and installs the plugin from it, on Claude Code 2.1.275 or later. With an older version, add the marketplace first: `claude plugin marketplace add erwinvaneijk/whatsapp-mcp`, then `claude plugin install whatsapp-mcp@erwinvaneijk`.
+
 ## What it runs
 
 - **The MCP server**, `whatsapp-mcp serve`, started by Claude Code for each session through [`scripts/launch.sh`](scripts/launch.sh).
