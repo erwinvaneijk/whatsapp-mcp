@@ -1,5 +1,5 @@
--- Copied byte for byte from whatsapp-bridge/main.go (NewMessageStore), so the
--- schema text in sqlite_master is the same as the Go bridge's. Do not reformat.
+-- Byte for byte the Go bridge's schema, so the schema text in sqlite_master is
+-- the same in databases it created. Do not reformat.
 
 		CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
 			content,
