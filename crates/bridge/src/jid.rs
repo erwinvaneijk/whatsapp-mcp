@@ -75,7 +75,7 @@ impl Jid {
         Ok(jid)
     }
 
-    /// The Go bridge's `parseRecipient`: a JID, or else a phone number.
+    /// A recipient as the send tools take it: a JID, or else a phone number.
     pub fn parse_recipient(recipient: &str) -> Result<Jid, InvalidJid> {
         let recipient = recipient.trim();
         if recipient.is_empty() {

@@ -1,7 +1,7 @@
 //! Writing messages.db: the schema must be the Go bridge's, older databases
 //! must migrate, and what is written must read back the same through the
-//! MCP server's queries. Ported from whatsapp-bridge/fts_test.go,
-//! moment_index_test.go, quoted_test.go and parity_schema_test.go.
+//! MCP server's queries. Databases written by the Go bridge must keep
+//! working, so the schema is compared with parity/fixture/schema.sql.
 
 use chrono::{DateTime, FixedOffset, TimeZone};
 use rusqlite::Connection;
@@ -85,7 +85,7 @@ fn store_folder_and_database_are_private() {
     assert_eq!(mode(&store.join("messages.db")), 0o600);
 }
 
-/// From fsperm_test.go: SQLite gives the WAL files the database file's mode,
+/// SQLite gives the WAL files the database file's mode,
 /// so creating messages.db as 0600 first keeps them private too.
 #[cfg(unix)]
 #[test]
@@ -104,7 +104,7 @@ fn wal_files_are_private() {
     }
 }
 
-/// From moment_index_test.go: indexes on the raw time text are replaced by
+/// Indexes on the raw time text are replaced by
 /// indexes on julianday(...).
 #[test]
 fn old_time_indexes_are_replaced() {
@@ -147,7 +147,7 @@ fn old_time_indexes_are_replaced() {
     }
 }
 
-/// From quoted_test.go: an older database gets quoted_message_id; replies
+/// An older database gets quoted_message_id; replies
 /// store the quoted ID, other messages NULL.
 #[test]
 fn quoted_message_id_migration_and_storage() {
@@ -192,7 +192,7 @@ fn quoted_message_id_migration_and_storage() {
     assert_eq!(quoted("p1"), None);
 }
 
-/// From fts_test.go: FTS triggers left behind by a database without the
+/// FTS triggers left behind by a database without the
 /// index must not break inserts; afterwards search finds new messages by
 /// prefix, and old messages are indexed too.
 #[test]
@@ -637,7 +637,7 @@ fn where_names_come_from() {
     assert_eq!(store.names_source(), NamesSource::MessagesDb, "Rust bridge");
 }
 
-/// From fsperm_test.go: an existing folder or file that others can read is
+/// An existing folder or file that others can read is
 /// made private, and a file keeps its content.
 #[cfg(unix)]
 #[test]

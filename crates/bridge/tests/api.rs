@@ -1,6 +1,6 @@
 //! The local API, against docs/rust-1.0/interface.md section 3, row by row,
-//! with a fake WhatsApp. Allowlist tests ported from
-//! whatsapp-bridge/allowlist_test.go.
+//! with a fake WhatsApp, and the send allowlist: an unlisted chat is refused
+//! before anything is sent.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -483,7 +483,8 @@ async fn without_full_control_nothing_is_sent() {
     assert_eq!(a.backend.calls.lock().unwrap().len(), 1);
 }
 
-/// From allowlist_test.go: TestAPIRefusesUnlistedChats.
+/// A send or reaction to a chat not on the allowlist is refused with 403 and
+/// never reaches WhatsApp.
 #[tokio::test]
 async fn unlisted_chats_are_refused_before_sending() {
     let a = api(Fake::default(), "31612345678");
@@ -518,7 +519,7 @@ async fn unlisted_chats_are_refused_before_sending() {
     );
 }
 
-/// From allowlist_test.go: TestSendAllowlistAllows.
+/// An allowlist entry matches a contact by phone number, by JID and by LID.
 #[test]
 fn allowlist_matches_numbers_and_lids() {
     let fake = Fake {

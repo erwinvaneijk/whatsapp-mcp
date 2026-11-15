@@ -1,6 +1,6 @@
-//! Incoming messages to stored text, quoted IDs and media. Ported case for
-//! case from the Go bridge's main_test.go, caption_test.go and
-//! quoted_test.go, so the stored text stays the same.
+//! Incoming messages to stored text, quoted IDs and media. The cases come
+//! from the Go bridge's tests, so new messages are stored with the same text
+//! as the ones already in messages.db.
 
 use chrono::TimeZone;
 use whatsapp_mcp_bridge::convert::{media, quoted_message_id, text_content};
@@ -58,7 +58,9 @@ fn protocol(kind: ProtocolType, edited: Option<wa::Message>) -> wa::Message {
     })
 }
 
-/// From main_test.go: TestExtractTextContentNonText.
+/// Each kind of message gets its stored text: quoted replies, the short
+/// bracketed form of reactions, polls, locations, contacts, edits, deletes and
+/// stickers, and the text inside view-once and disappearing envelopes.
 #[test]
 fn text_of_each_kind_of_message() {
     let cases: Vec<(&str, wa::Message, &str)> = vec![
@@ -219,7 +221,7 @@ fn text_of_each_kind_of_message() {
     }
 }
 
-/// From main_test.go: TestPollVariants.
+/// All versions of a poll message are stored as a poll.
 #[test]
 fn every_poll_version() {
     let want = "[poll: Lunch? — options: Pizza]";
@@ -270,7 +272,8 @@ fn every_poll_version() {
     }
 }
 
-/// From main_test.go: TestTopLevelEditedMessage.
+/// An edit that arrives as the message itself, not inside a protocol
+/// message, is stored as an edit.
 #[test]
 fn top_level_edited_message() {
     let msg = make!(wa::Message {
@@ -279,7 +282,7 @@ fn top_level_edited_message() {
     assert_eq!(text_content(&msg), "[edited] corrected");
 }
 
-/// From caption_test.go: TestExtractTextContent.
+/// Captions on images, videos and documents are stored as the text.
 #[test]
 fn captions_are_text() {
     let image = |caption: Option<String>| {
@@ -351,7 +354,8 @@ fn captions_are_text() {
     }
 }
 
-/// From caption_test.go: TestExtractMediaInfoUnwraps.
+/// Media inside an envelope, such as a view-once message, keeps its
+/// attachment details.
 #[test]
 fn enveloped_image_keeps_its_attachment() {
     let msg = make!(wa::Message {
@@ -392,7 +396,9 @@ fn media_file_names() {
     assert_eq!(media(&conversation("hi"), now).media_type, "");
 }
 
-/// From quoted_test.go: TestExtractQuotedMessageID.
+/// A reply stores the ID of the message it quotes, for text, media, sticker
+/// and location replies and inside an envelope; a mention without a reply
+/// stores none.
 #[test]
 fn quoted_message_ids() {
     let ctx = || {

@@ -461,7 +461,7 @@ async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pair
     }
 }
 
-/// The Go bridge's `handleMessage`.
+/// Stores a live message, with its chat, and logs it.
 async fn store_live(shared: &Shared, client: &Arc<Client>, info: &MessageInfo, msg: &wa::Message) {
     let source = &info.source;
     let chat_jid = source.chat.to_string();
@@ -589,8 +589,8 @@ async fn group_subject(client: &Arc<Client>, chat_jid: &str) -> Option<String> {
     metadata.subject.filter(|s| !s.is_empty())
 }
 
-/// The Go bridge's `handleHistorySync`, plus push names and the LID map
-/// from the same payload.
+/// Stores the conversations of a history sync, plus push names and the LID
+/// map from the same payload.
 async fn store_history(shared: &Shared, client: &Arc<Client>, lazy: &LazyHistorySync) {
     let Some(sync) = lazy.get() else {
         log::warning("Received a history sync chunk that could not be decoded");
