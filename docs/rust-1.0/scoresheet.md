@@ -22,7 +22,7 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-15 (phase 5, step 7: week of use; MCP and configuration rows verified).
+Last updated: 2026-11-15 (phases 6 and 7: upgrade guide, README, Go bridge removed, security policy).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
@@ -31,8 +31,8 @@ Last updated: 2026-11-15 (phase 5, step 7: week of use; MCP and configuration ro
 | Bridge: WhatsApp | 17 | 0 | 1 | 0 | 16 | 0 |
 | Bridge: API and security | 8 | 0 | 0 | 0 | 8 | 0 |
 | Bridge: storage | 6 | 0 | 0 | 0 | 6 | 0 |
-| Build, release, docs | 9 | 3 | 3 | 0 | 3 | 0 |
-| **Total** | **75** | **3** | **4** | **0** | **67** | **1** |
+| Build, release, docs | 9 | 1 | 2 | 3 | 3 | 0 |
+| **Total** | **75** | **1** | **3** | **3** | **67** | **1** |
 
 ## MCP interface
 
@@ -142,7 +142,7 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | wip | Phase 6: [`release.yml`](../../.github/workflows/release.yml) builds all five on their own runners (Linux on Ubuntu 22.04, for glibc 2.35 and newer) and, on a `v*` tag, attaches them and `SHA256SUMS` to a draft release. `done` after the first tag. |
 | R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | wip | Phase 6: [Upgrading to 1.0](../upgrading-to-1.0.md). `verified` once an upgrade has been done by following it. |
 | R05 | README rewritten for the single binary | review | done | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. 1.0: installation from a release or with `cargo`, `bridge` and `serve`, without Go; `main` is the release branch. `verified` after review. |
-| R06 | `SECURITY.md` and the issue page updated | review | todo | |
+| R06 | `SECURITY.md` and the issue page updated | review | done | 1.0: SECURITY.md covers the latest release and `whatsapp-mcp` (bridge and serve); issue templates in `.github/ISSUE_TEMPLATE/`. Issues are turned off on the repository; they show once turned on. `verified` after review. |
 | R07 | Go and Python code removed | review | done | 0.9: the Python server is removed. 1.0: the Go bridge and its CI job are removed; the parity harness (Python, test tooling only) stays. `verified` after review. |
 | R08 | `dev-main` merged into `main`, tagged `v1.0.0` | review | todo | |
 | R09 | Dependency checks (vulnerabilities, licenses, sources) and no `unsafe` code | CI | verified | Phase 2: `cargo deny check` in the `Rust dependencies` CI job ([deny.toml](../../deny.toml)); `unsafe_code = "forbid"` for every crate. Verified 2026-11-15: `cargo deny check` passes in CI on `dev-main` at 86b5be4. |

@@ -2,7 +2,9 @@
 
 ## Supported versions
 
-Only the [`dev-main`](https://github.com/erwinvaneijk/whatsapp-mcp/tree/dev-main) branch of this fork gets security fixes. The `main` branch mirrors the original [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp), which is no longer maintained.
+Security fixes go into the latest release and [`dev-main`](https://github.com/erwinvaneijk/whatsapp-mcp/tree/dev-main). A fix comes out as a new release, with binaries on the [releases page](https://github.com/erwinvaneijk/whatsapp-mcp/releases). Older releases, including 0.9 with the Go bridge, get no fixes: upgrade instead, as [Upgrading to 1.0](docs/upgrading-to-1.0.md) describes.
+
+The original [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp) is no longer maintained.
 
 ## Reporting a vulnerability
 
@@ -13,20 +15,20 @@ Report them privately through GitHub instead: open the [Security tab](https://gi
 Useful to include:
 
 - what an attacker can do, and what they need first (for example: another user on the same computer, someone who can message you, or a web page you visit);
-- the steps to reproduce it, and the commit of `dev-main` you tested;
+- the steps to reproduce it, and the version you tested (`whatsapp-mcp --version`, or the commit of `dev-main`);
 - a suggested fix, if you have one.
 
 ## What to expect
 
-This fork is maintained by one person in their spare time, so replies are best effort. I aim to confirm a report within a week and keep you informed while it is fixed. Once a fix is on `dev-main`, the advisory is published, crediting you unless you prefer otherwise.
+This fork is maintained by one person in their spare time, so replies are best effort. I aim to confirm a report within a week and keep you informed while it is fixed. Once a fix is released, the advisory is published, crediting you unless you prefer otherwise.
 
 ## Scope
 
-In scope: the WhatsApp bridge (`whatsapp-bridge/`) and the MCP server (`whatsapp-mcp-server/`) in this repository.
+In scope: the `whatsapp-mcp` program, both `bridge` and `serve` (the code in `crates/`), and the release binaries.
 
 Out of scope, please report these to their own projects:
 
-- [whatsmeow](https://github.com/tulir/whatsmeow), the library the bridge uses to talk to WhatsApp;
+- [whatsapp-rust](https://github.com/oxidezap/whatsapp-rust), the library the bridge uses to talk to WhatsApp;
 - WhatsApp itself, through [Meta's bug bounty program](https://bugbounty.meta.com/);
 - MCP clients such as Claude Desktop or Cursor.
 
