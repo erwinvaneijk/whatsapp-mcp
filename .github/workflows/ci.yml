@@ -93,6 +93,20 @@ jobs:
       - name: Run the binary
         run: target/release/whatsapp-mcp --version
 
+      # log_output: syslog on Linux: serve's startup lines must reach the
+      # local syslog (/dev/log, journald on the runner), tagged whatsapp-mcp.
+      - name: Syslog on Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          store=$(mktemp -d)
+          since=$(date '+%Y-%m-%d %H:%M:%S')
+          WHATSAPP_LOG_OUTPUT=syslog WHATSAPP_BRIDGE_TOKEN=$(head -c 32 /dev/urandom | base64) \
+            target/release/whatsapp-mcp serve --store "$store" </dev/null || true
+          sleep 2
+          sudo journalctl --since "$since" -t whatsapp-mcp --no-pager | tee syslog.txt
+          grep -q 'serve: whatsapp-mcp ' syslog.txt
+          grep -q 'serve:   log_output: syslog' syslog.txt
+
   rust-deny:
     name: Rust dependencies
     runs-on: ubuntu-latest

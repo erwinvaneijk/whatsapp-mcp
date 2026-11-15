@@ -511,26 +511,22 @@ async fn store_live(shared: &Shared, client: &Arc<Client>, info: &MessageInfo, m
         ));
         return;
     }
-    let timestamp = receive::local(info.timestamp).format("%Y-%m-%d %H:%M:%S");
     let direction = if source.is_from_me { "→" } else { "←" };
     log::line(&match (row.media_type.is_empty(), shared.log_content) {
         (false, true) => format!(
-            "[{timestamp}] {direction} {}: [{}: {}] {}",
+            "{direction} {}: [{}: {}] {}",
             log::clean(&sender),
             row.media_type,
             log::clean(&row.filename),
             log::clean(&row.content)
         ),
-        (false, false) => format!(
-            "[{timestamp}] {direction} message stored [{}]",
-            row.media_type
-        ),
+        (false, false) => format!("{direction} message stored [{}]", row.media_type),
         (true, true) => format!(
-            "[{timestamp}] {direction} {}: {}",
+            "{direction} {}: {}",
             log::clean(&sender),
             log::clean(&row.content)
         ),
-        (true, false) => format!("[{timestamp}] {direction} message stored"),
+        (true, false) => format!("{direction} message stored"),
     });
 }
 
