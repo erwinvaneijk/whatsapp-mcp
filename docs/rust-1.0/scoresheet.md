@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-15 (R04 verified by the week of use).
+Last updated: 2026-11-15 (M04 and C10 changed: read-only by default, `full_control`).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
-| MCP interface | 20 | 0 | 0 | 0 | 19 | 1 |
-| Configuration | 15 | 0 | 0 | 0 | 15 | 0 |
+| MCP interface | 20 | 0 | 0 | 0 | 18 | 2 |
+| Configuration | 15 | 0 | 0 | 0 | 14 | 1 |
 | Bridge: WhatsApp | 17 | 0 | 1 | 0 | 16 | 0 |
 | Bridge: API and security | 8 | 0 | 0 | 0 | 8 | 0 |
 | Bridge: storage | 6 | 0 | 0 | 0 | 6 | 0 |
 | Build, release, docs | 9 | 1 | 1 | 3 | 4 | 0 |
-| **Total** | **75** | **1** | **2** | **3** | **68** | **1** |
+| **Total** | **75** | **1** | **2** | **3** | **66** | **3** |
 
 ## MCP interface
 
@@ -43,7 +43,7 @@ What Claude and other MCP clients see. Today: `whatsapp-mcp-server/main.py` and 
 | M01 | Server name `whatsapp` and the server instructions text | harness | verified | Harness: `_server.json` in every profile matches (`run.py --server rust --only _server`). Verified 2026-11-15 (CI on `dev-main` at 86b5be4): the parity harness passes. |
 | M02 | Tool list: names, titles, descriptions, parameter schemas and defaults | harness | verified | Definitions are data (`crates/mcp/src/tools.json`); `crates/mcp/tests/definitions.rs` keeps them equal to the golden file. Verified 2026-11-15 (CI on `dev-main` at 86b5be4): the parity harness passes. |
 | M03 | Tool annotations (read-only, destructive, idempotent, open-world) | harness | verified | Part of the definitions; checked as M02. Verified 2026-11-15 (CI on `dev-main` at 86b5be4): the parity harness passes. |
-| M04 | Read-only mode hides the send tools | harness | verified | `read_only` / `WHATSAPP_MCP_READ_ONLY` Harness profiles `read_only_env` and `read_only_config`; `definitions.rs` checks exactly the four send tools are hidden. Verified 2026-11-15 (CI on `dev-main` at 86b5be4): the parity harness passes. |
+| M04 | Read-only mode hides the send tools | harness | changed | 1.0 ([#44](https://github.com/erwinvaneijk/whatsapp-mcp/issues/44)): read-only is the default; `full_control` / `WHATSAPP_FULL_CONTROL` offers the send tools, and the old `read_only` still works. Harness profiles `read_only_default`, `full_control_config`, `read_only_env`, `read_only_config` and `read_only_no_config`; `definitions.rs` checks exactly the four send tools are hidden without full control. Before: verified 2026-11-15 at 86b5be4. |
 | M05 | `search_contacts` | harness | verified | Names and LID-to-phone map; see plan, "Contact names". Harness: Rust matches the golden files (phase 4, step 2). Verified 2026-11-15 (CI on `dev-main` at 86b5be4): the parity harness passes. |
 | M06 | `list_messages`: filters (time, sender, chat), paging, sorting | harness | verified | Harness: Rust matches the golden files (phase 4, step 2). Time filters also in Amsterdam and New York, and across the DST change. Verified 2026-11-15 (CI on `dev-main` at 86b5be4): the parity harness passes. |
 | M07 | `list_messages`: text search, FTS5 and the fallback scan | harness | verified | Rust always has FTS5; the fallback is still needed for a database without the index. Harness: Rust matches the golden files (phase 4, step 2). Both with the FTS5 index (`default`) and without (`no_fts`). Verified 2026-11-15 (CI on `dev-main` at 86b5be4): the parity harness passes. |
@@ -76,7 +76,7 @@ Same file, same environment variables, same rules. Today: `whatsapp-bridge/confi
 | C07 | `bridge_token` / `WHATSAPP_BRIDGE_TOKEN`: bridge refuses to start without one (32+ characters) | tests | verified | `Config::bridge_token` refuses fewer than 32 characters; the bridge stops with that message, after its startup block shows `too short`. Phase 5, step 5: shown in the startup block of both commands, never the token itself (tests). Verified 2026-11-15: the shared cases (`parity/config-cases.json`) pass in Go and Rust in CI, and the week of use (user, 2026-11-08 to 2026-11-15) ran on the configuration file. |
 | C08 | `media_dir` / `WHATSAPP_MEDIA_DIR` | tests | verified | `Config::media_dir`: `send_file` in `serve` and sending in the bridge (phase 5, step 4). Phase 5, step 5: shown in the startup block of both commands. Verified 2026-11-15: the shared cases (`parity/config-cases.json`) pass in Go and Rust in CI, and the week of use (user, 2026-11-08 to 2026-11-15) ran on the configuration file. |
 | C09 | `send_allowlist` / `WHATSAPP_SEND_ALLOWLIST`: a bad entry stops the bridge | tests | verified | `SendAllowlist::parse`, with the bridge's rules; shared cases run against Go and Rust. A bad entry stops the bridge; a LID matches its phone number through `lid_map` (phase 5, step 2). Phase 5, step 5: shown in the startup block of both commands, as a count. Verified 2026-11-15: the shared cases (`parity/config-cases.json`) pass in Go and Rust in CI, and the week of use (user, 2026-11-08 to 2026-11-15) ran on the configuration file. |
-| C10 | `read_only` / `WHATSAPP_MCP_READ_ONLY` | tests | verified | `Config::read_only`, used by `serve` since phase 4. Phase 5, step 5: shown in the startup block of `serve`. Verified 2026-11-15: the shared cases (`parity/config-cases.json`) pass in Go and Rust in CI, and the week of use (user, 2026-11-08 to 2026-11-15) ran on the configuration file. |
+| C10 | `read_only` / `WHATSAPP_MCP_READ_ONLY` | tests | changed | 1.0 ([#44](https://github.com/erwinvaneijk/whatsapp-mcp/issues/44)): replaced by `full_control` / `WHATSAPP_FULL_CONTROL`, off by default, for `serve` and `bridge` (403 on send and react). `read_only` still counts as its opposite until 2.0, with a warning; the two disagreeing is an error (`load.rs`, shared cases). Both programs log it on start. Before: verified 2026-11-15. |
 | C11 | `log_content` / `WHATSAPP_LOG_CONTENT` | tests | verified | `Config::log_content`, used by the bridge since phase 5, step 2. Phase 5, step 5: shown in the startup block of both commands. Verified 2026-11-15: the shared cases (`parity/config-cases.json`) pass in Go and Rust in CI, and the week of use (user, 2026-11-08 to 2026-11-15) ran on the configuration file. |
 | C12 | `pair_phone` / `WHATSAPP_PAIR_PHONE` | tests | verified | `Config::pair_phone`, used by the bridge since phase 5, step 3 (verified live). Phase 5, step 5: shown in the startup block of the bridge, as set or not set only. Verified 2026-11-15: the shared cases (`parity/config-cases.json`) pass in Go and Rust in CI, and the week of use (user, 2026-11-08 to 2026-11-15) ran on the configuration file. |
 | C13 | `log_output` / `WHATSAPP_LOG_OUTPUT`: `stderr`, `stdout`, `syslog` or a file; never stdout for `serve` | tests | verified | New in Rust; phase 5, step 6: `Config::log_output`, `whatsapp-mcp-logging` (tests for stderr, a file and a syslog socket; `serve` refuses stdout). The Go bridge accepts and ignores it (shared case in `parity/config-cases.json`). Verified live (Claude, 2026-11-15) with `serve` on macOS: a log file is created `0600`, `json` gives one object per line, `warn` leaves out the info lines, an unknown level is refused; syslog reaches macOS's unified log (`log show`) and, in CI, Linux's journal. |

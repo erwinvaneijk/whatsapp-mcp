@@ -32,4 +32,4 @@ Out of scope, please report these to their own projects:
 - WhatsApp itself, through [Meta's bug bounty program](https://bugbounty.meta.com/);
 - MCP clients such as Claude Desktop or Cursor.
 
-The bridge and the MCP server are meant to run on your own computer, for one user. The [Security section of the README](README.md#security) describes the protections in place (the bridge token, the media folder, read-only mode, the send allowlist, marking messages from others as data, and keeping message content out of logs). Prompt injection through messages from others is limited, not prevented: a report that shows a way around these protections is welcome.
+The bridge and the MCP server are meant to run on your own computer, for one user. The [Security section of the README](README.md#security) describes the protections in place (the bridge token, the media folder, read-only by default, the send allowlist, marking messages from others as data, and keeping message content out of logs). Prompt injection through messages from others is limited, not prevented: a report that shows a way around these protections is welcome.

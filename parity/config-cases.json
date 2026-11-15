@@ -72,6 +72,11 @@
       "values": { "WHATSAPP_MEDIA_DIR": "/x", "WHATSAPP_MCP_READ_ONLY": "yes" }
     },
     {
+      "name": "full_control, and read_only, its old name",
+      "yaml": "full_control: yes\nread_only: no\n",
+      "values": { "WHATSAPP_FULL_CONTROL": "yes", "WHATSAPP_MCP_READ_ONLY": "no" }
+    },
+    {
       "name": "Windows line endings",
       "yaml": "media_dir: /x\r\nread_only: yes\r\n",
       "values": { "WHATSAPP_MEDIA_DIR": "/x", "WHATSAPP_MCP_READ_ONLY": "yes" }

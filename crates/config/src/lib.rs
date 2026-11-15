@@ -44,6 +44,7 @@ pub enum Setting {
     BridgeToken,
     MediaDir,
     SendAllowlist,
+    FullControl,
     ReadOnly,
     LogContent,
     PairPhone,
@@ -53,10 +54,11 @@ pub enum Setting {
 }
 
 impl Setting {
-    pub const ALL: [Setting; 9] = [
+    pub const ALL: [Setting; 10] = [
         Setting::BridgeToken,
         Setting::MediaDir,
         Setting::SendAllowlist,
+        Setting::FullControl,
         Setting::ReadOnly,
         Setting::LogContent,
         Setting::PairPhone,
@@ -71,6 +73,7 @@ impl Setting {
             Setting::BridgeToken => "bridge_token",
             Setting::MediaDir => "media_dir",
             Setting::SendAllowlist => "send_allowlist",
+            Setting::FullControl => "full_control",
             Setting::ReadOnly => "read_only",
             Setting::LogContent => "log_content",
             Setting::PairPhone => "pair_phone",
@@ -86,6 +89,7 @@ impl Setting {
             Setting::BridgeToken => "WHATSAPP_BRIDGE_TOKEN",
             Setting::MediaDir => "WHATSAPP_MEDIA_DIR",
             Setting::SendAllowlist => "WHATSAPP_SEND_ALLOWLIST",
+            Setting::FullControl => "WHATSAPP_FULL_CONTROL",
             Setting::ReadOnly => "WHATSAPP_MCP_READ_ONLY",
             Setting::LogContent => "WHATSAPP_LOG_CONTENT",
             Setting::PairPhone => "WHATSAPP_PAIR_PHONE",
@@ -173,13 +177,30 @@ impl Config {
                 from_env.insert(setting);
             }
         }
-        Ok(Config {
+        let config = Config {
             file,
             looked_for: looked_for.map(|(path, _)| path),
             values,
             from_env,
             home: home.map(Path::to_path_buf),
-        })
+        };
+        config.check_full_control()?;
+        Ok(config)
+    }
+
+    /// `read_only` is the old, opposite name of `full_control`: both set and
+    /// disagreeing (`full_control: yes` with `read_only: yes`) is an error.
+    fn check_full_control(&self) -> Result<(), ConfigError> {
+        match (self.get(Setting::FullControl), self.get(Setting::ReadOnly)) {
+            (Some(full), Some(read_only)) if flag(full) == flag(read_only) => {
+                Err(ConfigError::invalid(format!(
+                    "full_control is {} but read_only is {}; read_only is the old name, remove it",
+                    yes_no(flag(full)),
+                    yes_no(flag(read_only)),
+                )))
+            }
+            _ => Ok(()),
+        }
     }
 
     /// Where a setting's value comes from.
@@ -225,9 +246,39 @@ impl Config {
         SendAllowlist::parse(self.get(Setting::SendAllowlist).unwrap_or(""))
     }
 
-    /// Whether the MCP server hides the tools that send messages.
-    pub fn read_only(&self) -> bool {
-        self.get(Setting::ReadOnly).is_some_and(flag)
+    /// Whether sending is allowed: the MCP server offers the tools that send,
+    /// and the bridge sends and reacts. Off by default. The old setting
+    /// `read_only` counts as its opposite when `full_control` is not set.
+    pub fn full_control(&self) -> bool {
+        match (self.get(Setting::FullControl), self.get(Setting::ReadOnly)) {
+            (Some(full), _) => flag(full),
+            (None, Some(read_only)) => !flag(read_only),
+            (None, None) => false,
+        }
+    }
+
+    /// Warnings for settings that still work but should change: the old
+    /// `read_only`, which `full_control` replaces.
+    pub fn warnings(&self) -> Vec<String> {
+        let Some(read_only) = self.get(Setting::ReadOnly) else {
+            return Vec::new();
+        };
+        let name = match self.source(Setting::ReadOnly) {
+            Source::Environment => Setting::ReadOnly.env(),
+            _ => Setting::ReadOnly.name(),
+        };
+        let fix = if flag(read_only) {
+            "read-only is now the default; remove it".to_string()
+        } else {
+            format!(
+                "remove it and set {} (or {}) to yes",
+                Setting::FullControl.name(),
+                Setting::FullControl.env()
+            )
+        };
+        vec![format!(
+            "{name} is replaced by full_control and will stop working in 2.0: {fix}"
+        )]
     }
 
     /// Whether the bridge writes message content to its logs.
@@ -332,4 +383,8 @@ fn check_permissions(path: &Path, meta: &std::fs::Metadata) -> Result<(), Config
 #[cfg(not(unix))]
 fn check_permissions(_path: &Path, _meta: &std::fs::Metadata) -> Result<(), ConfigError> {
     Ok(())
+}
+
+fn yes_no(on: bool) -> &'static str {
+    if on { "yes" } else { "no" }
 }

@@ -57,6 +57,9 @@ fn main() -> ExitCode {
         eprintln!("whatsapp-mcp {}: {e}", program.name());
         return ExitCode::FAILURE;
     }
+    for warning in config.warnings() {
+        log::warn!("{warning}");
+    }
     match cli.command {
         Command::Bridge { store } => {
             let options = whatsapp_mcp_bridge::Options { store_dir: store };
@@ -95,7 +98,7 @@ fn serve_startup_lines(config: &Config, store: &Path, bridge_url: &str) -> Vec<S
     let mut lines = vec![format!("whatsapp-mcp {} serve", env!("CARGO_PKG_VERSION"))];
     lines.extend(config.startup_lines(&[
         Setting::BridgeToken,
-        Setting::ReadOnly,
+        Setting::FullControl,
         Setting::MediaDir,
         Setting::SendAllowlist,
         Setting::LogContent,
@@ -199,7 +202,12 @@ mod tests {
         );
         assert_eq!(lines[1], "Configuration file: none");
         assert!(lines.contains(&"  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)".to_string()));
-        assert!(lines.contains(&"  read_only: on (from WHATSAPP_MCP_READ_ONLY)".to_string()));
+        assert!(
+            lines.contains(
+                &"  full_control: off (read-only: nothing is sent) (from WHATSAPP_MCP_READ_ONLY)"
+                    .to_string()
+            )
+        );
         let store = lines.iter().find(|l| l.starts_with("Store: ")).unwrap();
         assert!(store.contains("no messages.db"), "{store}");
         assert!(

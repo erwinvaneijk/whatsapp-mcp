@@ -74,6 +74,7 @@ impl Backend for Fake {
 fn api(fake: Fake, allowlist: &str) -> Api<Fake> {
     Api {
         token: TOKEN.into(),
+        full_control: true,
         allowlist: SendAllowlist::parse(allowlist).unwrap(),
         log_content: false,
         backend: Arc::new(fake),
@@ -447,6 +448,39 @@ async fn html_characters_are_escaped_as_go_does() {
         r.body,
         "{\"success\":true,\"message\":\"Reaction \\u003c\\u0026\\u003e sent\"}\n"
     );
+}
+
+/// Without full control, sends and reactions are refused with 403 before
+/// anything reaches WhatsApp; downloads still work.
+#[tokio::test]
+async fn without_full_control_nothing_is_sent() {
+    let a = Api {
+        full_control: false,
+        ..api(Fake::default(), "")
+    };
+    for (path, body) in [
+        ("/api/send", r#"{"recipient":"31612345678","message":"hi"}"#),
+        (
+            "/api/react",
+            r#"{"message_id":"M1","chat_jid":"31612345678@s.whatsapp.net","emoji":"👍"}"#,
+        ),
+    ] {
+        let r = post(&a, path, body).await;
+        assert_eq!(r.status, 403, "{path} {body}");
+        assert_eq!(
+            r.body,
+            "{\"success\":false,\"message\":\"Sending is off: set full_control (or WHATSAPP_FULL_CONTROL) to yes for the bridge to send.\"}\n"
+        );
+    }
+    assert!(a.backend.calls.lock().unwrap().is_empty());
+    let r = post(
+        &a,
+        "/api/download",
+        r#"{"message_id":"M1","chat_jid":"31612345678@s.whatsapp.net"}"#,
+    )
+    .await;
+    assert_ne!(r.status, 403);
+    assert_eq!(a.backend.calls.lock().unwrap().len(), 1);
 }
 
 /// A send or reaction to a chat not on the allowlist is refused with 403 and

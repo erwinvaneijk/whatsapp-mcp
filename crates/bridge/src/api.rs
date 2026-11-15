@@ -68,6 +68,8 @@ pub trait Backend: Send + Sync + 'static {
 /// The API's settings and its backend.
 pub struct Api<B> {
     pub token: String,
+    /// Whether sending and reacting are allowed (`full_control`).
+    pub full_control: bool,
     pub allowlist: Option<SendAllowlist>,
     pub log_content: bool,
     pub backend: Arc<B>,
@@ -91,12 +93,12 @@ impl<B: Backend> Api<B> {
         if !constant_time_eq(given, self.token.as_bytes()) {
             return text(StatusCode::UNAUTHORIZED, "Unauthorized");
         }
-        let json = request
+        let is_json = request
             .headers()
             .get(CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
             .is_some_and(|v| v.starts_with("application/json"));
-        if !json {
+        if !is_json {
             return text(
                 StatusCode::UNSUPPORTED_MEDIA_TYPE,
                 "Content-Type must be application/json",
@@ -108,6 +110,16 @@ impl<B: Backend> Api<B> {
         }
         if request.method() != Method::POST {
             return text(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed");
+        }
+        if !self.full_control && path != "/api/download" {
+            log::warning("Refused to send: full_control is off");
+            return json(
+                StatusCode::FORBIDDEN,
+                &Status {
+                    success: false,
+                    message: "Sending is off: set full_control (or WHATSAPP_FULL_CONTROL) to yes for the bridge to send.".into(),
+                },
+            );
         }
         // A body over the limit fails to read, like any malformed body.
         let Ok(body) = Limited::new(request.into_body(), MAX_BODY).collect().await else {

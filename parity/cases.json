@@ -90,8 +90,28 @@
         "react_to_message-no-id": {"tool": "react_to_message", "args": {"message_id": "", "chat_jid": "31600000001@s.whatsapp.net", "emoji": "👍"}}
       }
     },
+    "read_only_default": {
+      "description": "full_control not set: read-only, the send tools are hidden.",
+      "full_control": false,
+      "cases": {
+        "list_chats-still-works": {"tool": "list_chats", "args": {"limit": 1}}
+      }
+    },
+    "full_control_config": {
+      "description": "full_control in the configuration file: the send tools are offered.",
+      "full_control": false,
+      "config": "full_control: yes\n",
+      "cases": {}
+    },
+    "read_only_no_config": {
+      "description": "read_only: no, the old name, still gives full control.",
+      "full_control": false,
+      "config": "read_only: no\n",
+      "cases": {}
+    },
     "read_only_env": {
-      "description": "WHATSAPP_MCP_READ_ONLY=1: the send tools are hidden.",
+      "description": "WHATSAPP_MCP_READ_ONLY=1, the old name: the send tools are hidden.",
+      "full_control": false,
       "env": {"WHATSAPP_MCP_READ_ONLY": "1"},
       "cases": {
         "list_chats-still-works": {"tool": "list_chats", "args": {"limit": 1}}
@@ -99,6 +119,7 @@
     },
     "read_only_config": {
       "description": "read_only in the configuration file instead of the environment.",
+      "full_control": false,
       "config": "read_only: yes\n",
       "cases": {}
     },

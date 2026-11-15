@@ -53,7 +53,7 @@ Shared by the bridge and the MCP server. The exact rules are in `whatsapp-bridge
 | `bridge_token` | `WHATSAPP_BRIDGE_TOKEN` | both; the bridge refuses to start without one of at least 32 characters |
 | `media_dir` | `WHATSAPP_MEDIA_DIR` | both; files are only sent from here |
 | `send_allowlist` | `WHATSAPP_SEND_ALLOWLIST` | bridge; a bad entry stops it |
-| `read_only` | `WHATSAPP_MCP_READ_ONLY` | MCP server |
+| `read_only` | `WHATSAPP_MCP_READ_ONLY` | MCP server. Replaced in 1.0 by `full_control` (`WHATSAPP_FULL_CONTROL`, both programs, off by default); still read until 2.0. |
 | `log_content` | `WHATSAPP_LOG_CONTENT` | bridge |
 | `pair_phone` | `WHATSAPP_PAIR_PHONE` | bridge |
 | `log_output` | `WHATSAPP_LOG_OUTPUT` | both Rust programs (new in phase 5, step 6); the Go bridge accepts and ignores it |

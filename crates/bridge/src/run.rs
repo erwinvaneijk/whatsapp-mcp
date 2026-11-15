@@ -39,6 +39,7 @@ pub struct Options {
 /// The settings the bridge reads, checked before anything starts.
 struct Settings {
     token: String,
+    full_control: bool,
     allowlist: Option<SendAllowlist>,
     log_content: bool,
     pair_phone: Option<String>,
@@ -55,6 +56,7 @@ impl Settings {
         let pair_phone = config.pair_phone().map(pair_phone).transpose()?;
         Ok(Settings {
             token,
+            full_control: config.full_control(),
             allowlist,
             log_content: config.log_content(),
             pair_phone,
@@ -174,6 +176,7 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
 
     let api = Arc::new(Api {
         token: settings.token,
+        full_control: settings.full_control,
         allowlist: settings.allowlist,
         log_content: settings.log_content,
         backend: Arc::new(Live {
@@ -219,6 +222,7 @@ pub fn startup_lines(config: &Config, store: &Path) -> Vec<String> {
     lines.extend(config.startup_lines(&[
         Setting::BridgeToken,
         Setting::MediaDir,
+        Setting::FullControl,
         Setting::SendAllowlist,
         Setting::LogContent,
         Setting::PairPhone,
@@ -771,11 +775,12 @@ mod tests {
             format!("whatsapp-mcp {} bridge", env!("CARGO_PKG_VERSION"))
         );
         assert_eq!(
-            &lines[1..10],
+            &lines[1..11],
             [
                 "Configuration file: none",
                 "  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)",
                 "  media_dir: not set (sending files is disabled) (default)",
+                "  full_control: off (read-only: nothing is sent) (default)",
                 "  send_allowlist: 1 chat (from WHATSAPP_SEND_ALLOWLIST)",
                 "  log_content: off (default)",
                 "  pair_phone: set (from WHATSAPP_PAIR_PHONE)",

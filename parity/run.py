@@ -230,6 +230,8 @@ async def run_profile(server_cmd: list[str], name: str, profile: dict) -> dict[s
             env["WHATSAPP_BRIDGE_TOKEN"] = TOKEN
         if profile.get("media_dir", True):
             env["WHATSAPP_MEDIA_DIR"] = str(ws.media)
+        if profile.get("full_control", True):
+            env["WHATSAPP_FULL_CONTROL"] = "1"
         env.update(profile.get("env", {}))
 
         rules = profile.get("normalize", [])
