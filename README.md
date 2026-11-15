@@ -86,14 +86,16 @@ One program, `whatsapp-mcp`, does both jobs:
 
    Set `media_dir` to the folder you will send files from, or leave it empty to turn sending files off.
 
+   `store_dir` is the store folder: it holds your messages (`messages.db`), the WhatsApp session (`session.db`) and downloaded media, and is created when missing. The example sets it to `~/.local/share/whatsapp-mcp/store`. Every command reads it from the file, so you don't need `--store`; `--store DIR` still overrides it for one command. Without either, the commands use `whatsapp-bridge/store` in the current folder.
+
    Environment variables work too, instead of the file or on top of it; see [Configuration](#configuration).
 
 3. **Link WhatsApp**
 
-   Choose a store folder. It holds your messages (`messages.db`), the WhatsApp session (`session.db`) and downloaded media, and is created when missing. Without `--store`, the commands use `whatsapp-bridge/store` in the current folder. In a terminal:
+   In a terminal:
 
    ```bash
-   whatsapp-mcp link --store ~/.local/share/whatsapp-mcp/store
+   whatsapp-mcp link
    ```
 
    It shows a QR code. On your phone open WhatsApp > Linked devices > Link a device, and scan it. To link with a code instead, set `pair_phone` (or `WHATSAPP_PAIR_PHONE`) to your phone number with country code, such as `31612345678`. It then prints an 8-character code; on your phone choose Link with phone number instead, and enter it.
@@ -105,7 +107,7 @@ One program, `whatsapp-mcp`, does both jobs:
    The bridge must keep running: it receives your messages and sends for the MCP server. On macOS and Linux, install it as a service that starts when you log in:
 
    ```bash
-   whatsapp-mcp service install --store ~/.local/share/whatsapp-mcp/store
+   whatsapp-mcp service install
    whatsapp-mcp service status
    ```
 
@@ -114,7 +116,7 @@ One program, `whatsapp-mcp`, does both jobs:
    - The service only reads the [configuration file](#configuration), not the environment variables you set in your shell; `install` checks that the bridge token is in the file. It also refuses a store that is not linked yet.
    - `whatsapp-mcp service uninstall` stops and removes it. Run `install` again after moving the program or the store.
 
-   Or run it in a terminal: `whatsapp-mcp bridge --store ~/.local/share/whatsapp-mcp/store`, and leave it open. For Windows, see [Windows](#windows).
+   Or run it in a terminal: `whatsapp-mcp bridge`, and leave it open. For Windows, see [Windows](#windows).
 
 5. **Connect your MCP client**
 
@@ -125,13 +127,13 @@ One program, `whatsapp-mcp`, does both jobs:
      "mcpServers": {
        "whatsapp": {
          "command": "/absolute/path/to/whatsapp-mcp",
-         "args": ["serve", "--store", "/absolute/path/to/store"]
+         "args": ["serve"]
        }
      }
    }
    ```
 
-   `--store` is the same folder as the bridge's. The server reads the token and the media folder from the configuration file; without the file, add them in an `"env"` block as `WHATSAPP_BRIDGE_TOKEN` and `WHATSAPP_MEDIA_DIR`. If the bridge's API is not at `http://127.0.0.1:8080/api`, add `"--bridge-url", "http://…/api"` to the arguments.
+   The server reads the store folder, the token and the media folder from the configuration file; without the file, add them in an `"env"` block as `WHATSAPP_STORE_DIR`, `WHATSAPP_BRIDGE_TOKEN` and `WHATSAPP_MEDIA_DIR`. If the bridge's API is not at `http://127.0.0.1:8080/api`, add `"--bridge-url", "http://…/api"` to the arguments.
 
    For **Claude**, save this as `claude_desktop_config.json` in your Claude Desktop configuration directory at:
 
@@ -183,6 +185,7 @@ The bridge and the MCP server read their settings from environment variables, or
 | Setting in the file | Environment variable | Used by | Meaning |
 |---|---|---|---|
 | `bridge_token` | `WHATSAPP_BRIDGE_TOKEN` | both | Shared secret, at least 32 characters. Required. |
+| `store_dir` | `WHATSAPP_STORE_DIR` | both | The store folder, absolute or starting with `~/`. `--store` overrides it; without either, `whatsapp-bridge/store` in the current folder. |
 | `media_dir` | `WHATSAPP_MEDIA_DIR` | both | The only folder files can be sent from. |
 | `send_allowlist` | `WHATSAPP_SEND_ALLOWLIST` | bridge | Chats the bridge may send to; a YAML list in the file. See [Control whom the bridge is allowed to send to](#control-whom-the-bridge-is-allowed-to-send-to). |
 | `full_control` | `WHATSAPP_FULL_CONTROL` | both | Allow sending; off by default. See [Full control (sending)](#full-control-sending). Replaces `read_only` (`WHATSAPP_MCP_READ_ONLY`), which still works until 2.0. |
@@ -349,7 +352,7 @@ By default, just the metadata of the media is stored in the local database. The 
 
 ## Troubleshooting
 
-- Use absolute paths for `"command"` and `--store` in the client configuration: MCP clients start the server from a folder of their own choosing.
+- Use an absolute path for `"command"` in the client configuration, and set `store_dir` in the configuration file (or pass an absolute `--store`): MCP clients start the server from a folder of their own choosing.
 - Make sure `whatsapp-mcp bridge` is running: the MCP server reads what it stores, and sends through it. The client starts the MCP server itself.
 - The MCP server writes its warnings and errors to stderr. Claude Desktop keeps them in its MCP log (`~/Library/Logs/Claude/mcp-server-whatsapp.log` on macOS); a missing `messages.db` is reported there when the server starts.
 

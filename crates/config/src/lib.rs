@@ -42,6 +42,7 @@ pub const MIN_BRIDGE_TOKEN_LEN: usize = 32;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Setting {
     BridgeToken,
+    StoreDir,
     MediaDir,
     SendAllowlist,
     FullControl,
@@ -54,8 +55,9 @@ pub enum Setting {
 }
 
 impl Setting {
-    pub const ALL: [Setting; 10] = [
+    pub const ALL: [Setting; 11] = [
         Setting::BridgeToken,
+        Setting::StoreDir,
         Setting::MediaDir,
         Setting::SendAllowlist,
         Setting::FullControl,
@@ -71,6 +73,7 @@ impl Setting {
     pub fn name(self) -> &'static str {
         match self {
             Setting::BridgeToken => "bridge_token",
+            Setting::StoreDir => "store_dir",
             Setting::MediaDir => "media_dir",
             Setting::SendAllowlist => "send_allowlist",
             Setting::FullControl => "full_control",
@@ -87,6 +90,7 @@ impl Setting {
     pub fn env(self) -> &'static str {
         match self {
             Setting::BridgeToken => "WHATSAPP_BRIDGE_TOKEN",
+            Setting::StoreDir => "WHATSAPP_STORE_DIR",
             Setting::MediaDir => "WHATSAPP_MEDIA_DIR",
             Setting::SendAllowlist => "WHATSAPP_SEND_ALLOWLIST",
             Setting::FullControl => "WHATSAPP_FULL_CONTROL",
@@ -233,6 +237,29 @@ impl Config {
         match self.get(Setting::BridgeToken) {
             Some(token) if token.len() >= MIN_BRIDGE_TOKEN_LEN => Ok(token),
             _ => Err(ConfigError::BridgeToken),
+        }
+    }
+
+    /// The store folder (`messages.db`, `session.db`, media), when set. It
+    /// must be absolute or start with `~/`: MCP clients start `serve` in a
+    /// folder of their own choosing, so a relative path would point anywhere.
+    pub fn store_dir(&self) -> Result<Option<PathBuf>, ConfigError> {
+        let Some(value) = self.get(Setting::StoreDir) else {
+            return Ok(None);
+        };
+        let path = match (value.strip_prefix("~/"), &self.home) {
+            (Some(rest), Some(home)) => home.join(rest),
+            _ => PathBuf::from(value),
+        };
+        if path.is_absolute() {
+            Ok(Some(path))
+        } else {
+            let value: String = value.chars().filter(|c| !c.is_control()).collect();
+            Err(ConfigError::invalid(format!(
+                "{} (or {} in the configuration file) is {value:?}; use an absolute path, or one starting with ~/",
+                Setting::StoreDir.env(),
+                Setting::StoreDir.name()
+            )))
         }
     }
 

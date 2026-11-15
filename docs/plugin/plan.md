@@ -66,7 +66,7 @@ plugin/
 | `full_control` | boolean | `false` | Offers the send tools. The bridge needs `full_control` in the configuration file too, since the plugin doesn't start it. |
 | `config_file` | file | `~/.config/whatsapp-mcp/config.yaml` | The [configuration file](../../README.md#configuration) that both the bridge and the server read. |
 
-The bridge token stays in `config.yaml` (mode `0600`), not in `userConfig`: the bridge runs as a service outside Claude Code and cannot read Claude's secure store.
+The store folder comes from `store_dir` in `config.yaml`, so `serve` needs no `--store`. The bridge token stays in `config.yaml` (mode `0600`), not in `userConfig`: the bridge runs as a service outside Claude Code and cannot read Claude's secure store.
 
 **Setup skill.** `whatsapp-setup` walks the user through:
 

@@ -82,6 +82,11 @@ impl Config {
             .into(),
             Setting::ReadOnly => on_off(!self.full_control()),
             Setting::LogContent => on_off(self.log_content()),
+            Setting::StoreDir => match self.store_dir() {
+                Ok(Some(dir)) => clean(&dir.display().to_string()),
+                Ok(None) => "not set".into(),
+                Err(_) => "invalid".into(),
+            },
             Setting::MediaDir => match value {
                 Some(dir) => clean(dir),
                 None => "not set (sending files is disabled)".into(),

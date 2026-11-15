@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-15 (R05, R06 and R07 verified: reviewed by the user).
+Last updated: 2026-11-15 (C16 added: store_dir).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
 | MCP interface | 20 | 0 | 0 | 0 | 18 | 2 |
-| Configuration | 15 | 0 | 0 | 0 | 14 | 1 |
+| Configuration | 16 | 0 | 0 | 1 | 14 | 1 |
 | Bridge: WhatsApp | 17 | 0 | 1 | 0 | 16 | 0 |
 | Bridge: API and security | 8 | 0 | 0 | 0 | 8 | 0 |
 | Bridge: storage | 6 | 0 | 0 | 0 | 6 | 0 |
 | Build, release, docs | 10 | 1 | 2 | 0 | 7 | 0 |
-| **Total** | **76** | **1** | **3** | **0** | **69** | **3** |
+| **Total** | **77** | **1** | **3** | **1** | **69** | **3** |
 
 ## MCP interface
 
@@ -82,6 +82,7 @@ Same file, same environment variables, same rules. Today: `whatsapp-bridge/confi
 | C13 | `log_output` / `WHATSAPP_LOG_OUTPUT`: `stderr`, `stdout`, `syslog` or a file; never stdout for `serve` | tests | verified | New in Rust; phase 5, step 6: `Config::log_output`, `whatsapp-mcp-logging` (tests for stderr, a file and a syslog socket; `serve` refuses stdout). The Go bridge accepts and ignores it (shared case in `parity/config-cases.json`). Verified live (Claude, 2026-11-15) with `serve` on macOS: a log file is created `0600`, `json` gives one object per line, `warn` leaves out the info lines, an unknown level is refused; syslog reaches macOS's unified log (`log show`) and, in CI, Linux's journal. |
 | C14 | `log_format` / `WHATSAPP_LOG_FORMAT`: `text` or `json` | tests | verified | New in Rust; phase 5, step 6: `Config::log_format`; text and JSON lines tested. Verified live (Claude, 2026-11-15) with `serve` on macOS: a log file is created `0600`, `json` gives one object per line, `warn` leaves out the info lines, an unknown level is refused; syslog reaches macOS's unified log (`log show`) and, in CI, Linux's journal. |
 | C15 | `log_level` / `WHATSAPP_LOG_LEVEL`: `error`, `warn`, `info`, `debug` | tests | verified | New in Rust; phase 5, step 6: `Config::log_level`; our crates from the level, libraries from `warn`, `RUST_LOG` on top per module (tests). Verified live (Claude, 2026-11-15) with `serve` on macOS: a log file is created `0600`, `json` gives one object per line, `warn` leaves out the info lines, an unknown level is refused; syslog reaches macOS's unified log (`log show`) and, in CI, Linux's journal. |
+| C16 | `store_dir` / `WHATSAPP_STORE_DIR`: the store folder, absolute or `~/`; `--store` overrides it | tests | done | New in 1.0 ([#50](https://github.com/erwinvaneijk/whatsapp-mcp/issues/50)): `Config::store_dir`, used by `bridge`, `serve`, `link` and `service install`; the startup log says where the store comes from. Tests: `load.rs` (`~/`, relative refused), `main.rs` (flag, setting, default), shared cases. `verified` once CI passes on `dev-main`. |
 
 ## Bridge: WhatsApp
 

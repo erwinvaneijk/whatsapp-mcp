@@ -222,6 +222,7 @@ fn settings_match_the_documented_names() {
         pairs,
         [
             ("bridge_token", "WHATSAPP_BRIDGE_TOKEN"),
+            ("store_dir", "WHATSAPP_STORE_DIR"),
             ("media_dir", "WHATSAPP_MEDIA_DIR"),
             ("send_allowlist", "WHATSAPP_SEND_ALLOWLIST"),
             ("full_control", "WHATSAPP_FULL_CONTROL"),
@@ -302,6 +303,7 @@ fn startup_lines_show_settings_but_no_secrets() {
                 path.display()
             ),
             "  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)".to_string(),
+            "  store_dir: not set (default)".to_string(),
             "  media_dir: /media[31m/out (from WHATSAPP_MEDIA_DIR)".to_string(),
             "  send_allowlist: 2 chats (from the configuration file)".to_string(),
             "  full_control: off (read-only: nothing is sent) (default)".to_string(),
@@ -484,4 +486,27 @@ fn full_control_and_its_old_name() {
             "{err}"
         );
     }
+}
+
+/// store_dir: absolute or starting with ~/, never relative.
+#[test]
+fn store_dir_paths() {
+    let home = tempfile::tempdir().unwrap();
+    let load = |value: &str| {
+        Config::load_from(env(&[("WHATSAPP_STORE_DIR", value)]), Some(home.path())).unwrap()
+    };
+    assert_eq!(load("").store_dir().unwrap(), None, "empty counts as unset");
+    assert_eq!(
+        load("/data/wa").store_dir().unwrap(),
+        Some(std::path::PathBuf::from("/data/wa"))
+    );
+    assert_eq!(
+        load("~/wa").store_dir().unwrap(),
+        Some(home.path().join("wa"))
+    );
+    let err = load("wa/store").store_dir().unwrap_err().to_string();
+    assert!(
+        err.contains("WHATSAPP_STORE_DIR (or store_dir in the configuration file)"),
+        "{err}"
+    );
 }

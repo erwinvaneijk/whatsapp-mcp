@@ -43,10 +43,10 @@ Coming from the Python MCP server (before 0.9)? Do [Upgrading from the Python MC
 
    If your MCP client points at a binary path, put the new program at that path, or update the path in the client's configuration.
 
-4. **Link WhatsApp again**, in a terminal, with the same store folder:
+4. **Set the store folder and link WhatsApp again.** Add `store_dir` to the configuration file, with the absolute path of your existing store folder (such as `store_dir: ~/src/whatsapp-mcp/whatsapp-bridge/store`); every command then uses it, and you can leave `--store` out of your MCP client's configuration. Then, in a terminal:
 
    ```bash
-   whatsapp-mcp link --store /path/to/whatsapp-bridge/store
+   whatsapp-mcp link
    ```
 
    It shows a QR code. On your phone open WhatsApp > Linked devices > Link a device, and scan it. To link with a code instead, set `pair_phone` (or `WHATSAPP_PAIR_PHONE`) to your number with country code; it then prints an 8-character code to enter under Link with phone number instead. `link` stops by itself once the history sync is in.
@@ -54,10 +54,10 @@ Coming from the Python MCP server (before 0.9)? Do [Upgrading from the Python MC
 5. **Run the bridge.** On macOS and Linux, as a service that starts when you log in:
 
    ```bash
-   whatsapp-mcp service install --store /path/to/whatsapp-bridge/store
+   whatsapp-mcp service install
    ```
 
-   The service reads only the configuration file, so move settings you kept in environment variables (such as the bridge token) into it. Or run `whatsapp-mcp bridge --store …` in a terminal, as you did the Go bridge. See [Run the bridge](../README.md#steps) for details and Windows.
+   The service reads only the configuration file, so move settings you kept in environment variables (such as the bridge token) into it. Or run `whatsapp-mcp bridge` in a terminal, as you did the Go bridge. See [Run the bridge](../README.md#steps) for details and Windows.
 
 6. **Remove the old link.** Your phone now lists two linked devices. Log out the older one, which was the Go bridge, under Linked devices.
 

@@ -36,6 +36,8 @@ pub const API_ADDRESS: ([u8; 4], u16) = ([127, 0, 0, 1], 8080);
 pub struct Options {
     /// The store folder: `messages.db` and `session.db`.
     pub store_dir: PathBuf,
+    /// Where `store_dir` comes from, for the startup log.
+    pub store_source: String,
     /// `whatsapp-mcp link`: link, store the history sync, then stop. No
     /// local API.
     pub link_only: bool,
@@ -145,7 +147,7 @@ pub fn is_linked(store: &Path) -> Result<bool, String> {
 /// for good (logged out, replaced by another client).
 pub async fn run(config: &Config, options: Options) -> Result<(), String> {
     let store = options.store_dir;
-    for line in startup_lines(config, &store) {
+    for line in startup_lines(config, &store, &options.store_source) {
         log::line(&line);
     }
     let settings = Settings::from_config(config)?;
@@ -293,7 +295,7 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
 /// What `bridge` logs on start: the version, the settings and where each
 /// comes from, and the store. Logged before the settings are checked, so a
 /// refused setting shows next to the others.
-pub fn startup_lines(config: &Config, store: &Path) -> Vec<String> {
+pub fn startup_lines(config: &Config, store: &Path, source: &str) -> Vec<String> {
     let mut lines = vec![format!("whatsapp-mcp {} bridge", env!("CARGO_PKG_VERSION"))];
     lines.extend(config.startup_lines(&[
         Setting::BridgeToken,
@@ -317,7 +319,7 @@ pub fn startup_lines(config: &Config, store: &Path) -> Vec<String> {
     } else {
         "messages.db will be created"
     };
-    lines.push(format!("Store: {shown} ({state})"));
+    lines.push(format!("Store: {shown} ({source}; {state})"));
     lines
 }
 
@@ -869,7 +871,7 @@ mod tests {
         )
         .unwrap();
         let dir = tempfile::tempdir().unwrap();
-        let lines = startup_lines(&config, dir.path());
+        let lines = startup_lines(&config, dir.path(), "from --store");
         assert_eq!(
             lines[0],
             format!("whatsapp-mcp {} bridge", env!("CARGO_PKG_VERSION"))
@@ -896,12 +898,15 @@ mod tests {
                 .cloned()
                 .unwrap()
         };
-        assert!(store(&lines).ends_with("(messages.db will be created)"));
+        assert!(store(&lines).ends_with("(from --store; messages.db will be created)"));
         let all = lines.join("\n");
         assert!(!all.contains("s3cr3t") && !all.contains("31612345678"));
 
         drop(Writer::open(dir.path()).unwrap());
-        assert!(store(&startup_lines(&config, dir.path())).ends_with("(messages.db found)"));
+        assert!(
+            store(&startup_lines(&config, dir.path(), "from --store"))
+                .ends_with("(from --store; messages.db found)")
+        );
 
         let session = dir.path().join("session.db");
         assert!(session_line(&session, true, true).ends_with("session.db (linked)"));
