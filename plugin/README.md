@@ -26,7 +26,7 @@ On first start, `launch.sh` downloads the `whatsapp-mcp` program for your platfo
 3. Run the bridge as a service: `whatsapp-mcp service install` (macOS, Linux).
 4. Start a new Claude Code session and ask about your messages.
 
-The full steps are in the [main README](https://github.com/erwinvaneijk/whatsapp-mcp#installation).
+Or ask Claude to set it up: the plugin's `whatsapp-setup` skill walks through these steps, and does what it can for you. The full steps are also in the [main README](https://github.com/erwinvaneijk/whatsapp-mcp#installation).
 
 ## Settings
 

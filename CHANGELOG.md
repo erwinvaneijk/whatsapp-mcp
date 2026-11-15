@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Plugin setup skill** ([plugin plan](docs/plugin/plan.md), step 3): `whatsapp-setup` walks through the configuration file (with a fresh token it never shows), linking in the user's terminal, `service install`, and checking that the tools answer; also turning on sending and removing it.
 - **Claude Code plugin** ([plugin plan](docs/plugin/plan.md), step 2): [`plugin/`](plugin/README.md) runs `whatsapp-mcp serve` in Claude Code. Its launcher downloads the release binary, checks it against pinned checksums and runs it; read-only unless the plugin's Full control setting is on. Installing it from a marketplace comes in step 4.
 
 ## 1.0.0
