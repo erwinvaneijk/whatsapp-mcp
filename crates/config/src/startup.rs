@@ -21,8 +21,21 @@ impl Config {
     pub fn startup_lines(&self, settings: &[Setting]) -> Vec<String> {
         let mut lines = vec![self.file_line()];
         for &setting in settings {
-            let source = match self.source(setting) {
-                Source::Environment => format!("from {}", setting.env()),
+            // full_control may come from its old name, read_only.
+            let from = match setting {
+                Setting::FullControl
+                    if self.get(Setting::FullControl).is_none()
+                        && self.get(Setting::ReadOnly).is_some() =>
+                {
+                    Setting::ReadOnly
+                }
+                _ => setting,
+            };
+            let source = match self.source(from) {
+                Source::Environment => format!("from {}", from.env()),
+                Source::File if from != setting => {
+                    format!("from {} in the configuration file", from.name())
+                }
                 Source::File => "from the configuration file".to_string(),
                 Source::Default => "default".to_string(),
             };
@@ -61,7 +74,13 @@ impl Config {
                 Some(_) => "set".into(),
             },
             Setting::PairPhone => if value.is_some() { "set" } else { "not set" }.into(),
-            Setting::ReadOnly => on_off(self.read_only()),
+            Setting::FullControl => if self.full_control() {
+                "on (the send tools are offered and the bridge sends)"
+            } else {
+                "off (read-only: nothing is sent)"
+            }
+            .into(),
+            Setting::ReadOnly => on_off(!self.full_control()),
             Setting::LogContent => on_off(self.log_content()),
             Setting::MediaDir => match value {
                 Some(dir) => clean(dir),

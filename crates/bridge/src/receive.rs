@@ -1,7 +1,7 @@
 //! What the bridge stores for what arrives: live messages, history sync
-//! conversations, chat names and LID mappings. Ported from the Go bridge's
-//! `handleMessage`, `handleHistorySync` and `GetChatName`, with the same
-//! values (sender rules, times in local time, the order of name sources).
+//! conversations, chat names and LID mappings. The values are the ones the Go
+//! bridge stored (sender rules, times in local time, the order of name
+//! sources), so old and new rows in messages.db read the same.
 //! Plain functions over the store, so they are tested without a connection;
 //! `run` feeds them from whatsapp-rust's events.
 
@@ -142,7 +142,7 @@ pub enum ChatName {
     AskGroup,
 }
 
-/// The Go bridge's `GetChatName`: the stored name when the chat has one;
+/// A chat's name: the stored name when the chat has one;
 /// for a group the name from the history sync conversation; for a contact
 /// the name saved in the phone (also under the contact's other ID, LID or
 /// phone number), else the sender, else the number.

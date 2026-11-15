@@ -7,11 +7,12 @@ Coming from the Python MCP server (before 0.9)? Do [Upgrading from the Python MC
 ## What stays
 
 - **Your message history.** `messages.db` is kept and used as it is. The Rust bridge applies the same schema and migrations as the Go bridge.
-- **Your configuration.** The same configuration file (`~/.config/whatsapp-mcp/config.yaml`) and the same environment variables, with the same rules. The bridge token, the media folder, the send allowlist and read-only mode work as before.
+- **Your configuration.** The same configuration file (`~/.config/whatsapp-mcp/config.yaml`) and the same environment variables, with the same rules. The bridge token, the media folder and the send allowlist work as before.
 - **Your MCP client's configuration**, if you already run `whatsapp-mcp serve` (0.9). The local API between `serve` and the bridge is the same.
 
 ## What changes
 
+- **Nothing is sent until you turn on full control.** In 1.0 the model can read and search, but sending is off unless you set `full_control: yes` (or `WHATSAPP_FULL_CONTROL=1`). If you used `read_only: no` before, that still turns sending on, with a warning to rename it; `read_only: yes` can go. See [Full control (sending)](../README.md#full-control-sending).
 - **You link WhatsApp again, once.** The Rust bridge keeps its session in its own format, in `store/session.db`. The Go bridge's link (`store/whatsapp.db`) cannot be carried over. After linking, WhatsApp sends the recent history again. Messages already in `messages.db` are replaced by the same message, not added twice.
 - **Build requirements.** Go is no longer needed. Building needs Rust (`rustup`) and a C compiler; or download a release binary. FFmpeg is still needed to convert audio to voice messages.
 - **No `sqlite_fts5` tag.** Full-text search is always built in.

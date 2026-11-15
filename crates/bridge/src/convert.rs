@@ -1,9 +1,8 @@
 //! Incoming WhatsApp messages to what `messages.db` stores: the text (with
 //! captions, and a short bracketed form for non-text messages), the quoted
-//! message ID and the media details. Ported from the Go bridge
-//! (`unwrapMessage`, `extractTextContent`, `extractQuotedMessageID`,
-//! `extractMediaInfo`); the stored text must stay the same, because the MCP
-//! tools and anything built on them read it.
+//! message ID and the media details. The text is the same as the Go bridge
+//! stored, because the MCP tools, and anything built on them, read it, also in
+//! messages stored before 1.0.
 
 use whatsapp_rust::prelude::wa;
 use whatsapp_rust::prelude::wa::message::protocol_message::Type as ProtocolType;

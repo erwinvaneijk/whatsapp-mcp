@@ -1,6 +1,6 @@
 //! Loading: where the file is, precedence, permissions and the typed settings.
-//! Ported from whatsapp-bridge/config_test.go and
-//! whatsapp-mcp-server/tests/test_config.py.
+//! The cases come from the Go bridge's and the Python server's tests, so
+//! existing configuration files keep working.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -54,7 +54,7 @@ fn environment_wins_and_empty_counts_as_unset() {
     assert_eq!(config.file(), Some(path.as_path()));
     assert_eq!(config.media_dir(), Some("/from/env"));
     assert_eq!(config.pair_phone(), Some("31600000000"));
-    assert!(config.read_only());
+    assert!(!config.full_control());
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn environment_only() {
     assert_eq!(config.file(), None);
     assert_eq!(config.bridge_token().unwrap(), "t".repeat(32));
     assert!(config.log_content());
-    assert!(!config.read_only());
+    assert!(!config.full_control(), "off by default");
     assert_eq!(config.media_dir(), None);
     assert_eq!(
         config.send_allowlist().unwrap().unwrap().to_string(),
@@ -208,7 +208,7 @@ fn example_file_is_valid() {
         Some("")
     );
     assert_eq!(
-        values.get("WHATSAPP_MCP_READ_ONLY").map(String::as_str),
+        values.get("WHATSAPP_FULL_CONTROL").map(String::as_str),
         Some("no")
     );
     let known: Vec<&str> = Setting::ALL.iter().map(|s| s.env()).collect();
@@ -224,6 +224,7 @@ fn settings_match_the_documented_names() {
             ("bridge_token", "WHATSAPP_BRIDGE_TOKEN"),
             ("media_dir", "WHATSAPP_MEDIA_DIR"),
             ("send_allowlist", "WHATSAPP_SEND_ALLOWLIST"),
+            ("full_control", "WHATSAPP_FULL_CONTROL"),
             ("read_only", "WHATSAPP_MCP_READ_ONLY"),
             ("log_content", "WHATSAPP_LOG_CONTENT"),
             ("pair_phone", "WHATSAPP_PAIR_PHONE"),
@@ -303,7 +304,8 @@ fn startup_lines_show_settings_but_no_secrets() {
             "  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)".to_string(),
             "  media_dir: /media[31m/out (from WHATSAPP_MEDIA_DIR)".to_string(),
             "  send_allowlist: 2 chats (from the configuration file)".to_string(),
-            "  read_only: off (default)".to_string(),
+            "  full_control: off (read-only: nothing is sent) (default)".to_string(),
+            "  read_only: on (default)".to_string(),
             "  log_content: on (from the configuration file)".to_string(),
             "  pair_phone: set (from WHATSAPP_PAIR_PHONE)".to_string(),
             "  log_output: stderr (default)".to_string(),
@@ -416,4 +418,70 @@ fn logging_settings() {
         error.contains("log_level") && error.ends_with("use error, warn, info or debug"),
         "{error}"
     );
+}
+
+/// full_control is off by default. Its old name, read_only, still works
+/// with a warning, and the two may not disagree.
+#[test]
+fn full_control_and_its_old_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let load = |file: &str, vars: &[(&'static str, &str)]| {
+        let path = write_config(dir.path(), file, 0o600);
+        let mut all = vec![(CONFIG_PATH_ENV, path.to_str().unwrap().to_string())];
+        all.extend(vars.iter().map(|(k, v)| (*k, v.to_string())));
+        let all: Vec<(&'static str, &str)> = all.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        Config::load_from(env(&all), None)
+    };
+    let full = |line: &[String]| {
+        line.iter()
+            .find(|l| l.starts_with("  full_control"))
+            .cloned()
+    };
+
+    let config = load("", &[]).unwrap();
+    assert!(!config.full_control());
+    assert!(config.warnings().is_empty());
+
+    let config = load("full_control: yes\n", &[]).unwrap();
+    assert!(config.full_control());
+    assert!(config.warnings().is_empty());
+
+    let config = load("read_only: no\n", &[]).unwrap();
+    assert!(config.full_control());
+    assert_eq!(
+        config.warnings(),
+        [
+            "read_only is replaced by full_control and will stop working in 2.0: remove it and set full_control (or WHATSAPP_FULL_CONTROL) to yes"
+        ]
+    );
+    assert_eq!(
+        full(&config.startup_lines(&[Setting::FullControl])).unwrap(),
+        "  full_control: on (the send tools are offered and the bridge sends) (from read_only in the configuration file)"
+    );
+
+    let config = load("", &[("WHATSAPP_MCP_READ_ONLY", "1")]).unwrap();
+    assert!(!config.full_control());
+    assert_eq!(
+        config.warnings(),
+        [
+            "WHATSAPP_MCP_READ_ONLY is replaced by full_control and will stop working in 2.0: read-only is now the default; remove it"
+        ]
+    );
+
+    // Agreeing is fine; disagreeing stops.
+    let config = load("read_only: no\n", &[("WHATSAPP_FULL_CONTROL", "yes")]).unwrap();
+    assert!(config.full_control());
+    for (file, vars) in [
+        ("full_control: yes\nread_only: yes\n", &[][..]),
+        ("read_only: no\n", &[("WHATSAPP_FULL_CONTROL", "no")][..]),
+    ] {
+        let Err(err) = load(file, vars) else {
+            panic!("{file:?} {vars:?}: accepted");
+        };
+        assert!(
+            err.to_string()
+                .contains("read_only is the old name, remove it"),
+            "{err}"
+        );
+    }
 }

@@ -48,6 +48,7 @@ pub const LINK_QUIET: Duration = Duration::from_secs(60);
 /// The settings the bridge reads, checked before anything starts.
 struct Settings {
     token: String,
+    full_control: bool,
     allowlist: Option<SendAllowlist>,
     log_content: bool,
     pair_phone: Option<String>,
@@ -64,6 +65,7 @@ impl Settings {
         let pair_phone = config.pair_phone().map(pair_phone).transpose()?;
         Ok(Settings {
             token,
+            full_control: config.full_control(),
             allowlist,
             log_content: config.log_content(),
             pair_phone,
@@ -226,6 +228,7 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
 
     let api = Arc::new(Api {
         token: settings.token,
+        full_control: settings.full_control,
         allowlist: settings.allowlist,
         log_content: settings.log_content,
         backend: Arc::new(Live {
@@ -295,6 +298,7 @@ pub fn startup_lines(config: &Config, store: &Path) -> Vec<String> {
     lines.extend(config.startup_lines(&[
         Setting::BridgeToken,
         Setting::MediaDir,
+        Setting::FullControl,
         Setting::SendAllowlist,
         Setting::LogContent,
         Setting::PairPhone,
@@ -557,7 +561,7 @@ async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pair
     }
 }
 
-/// The Go bridge's `handleMessage`.
+/// Stores a live message, with its chat, and logs it.
 async fn store_live(shared: &Shared, client: &Arc<Client>, info: &MessageInfo, msg: &wa::Message) {
     let source = &info.source;
     let chat_jid = source.chat.to_string();
@@ -685,8 +689,8 @@ async fn group_subject(client: &Arc<Client>, chat_jid: &str) -> Option<String> {
     metadata.subject.filter(|s| !s.is_empty())
 }
 
-/// The Go bridge's `handleHistorySync`, plus push names and the LID map
-/// from the same payload.
+/// Stores the conversations of a history sync, plus push names and the LID
+/// map from the same payload.
 async fn store_history(shared: &Shared, client: &Arc<Client>, lazy: &LazyHistorySync) {
     let Some(sync) = lazy.get() else {
         log::warning("Received a history sync chunk that could not be decoded");
@@ -871,11 +875,12 @@ mod tests {
             format!("whatsapp-mcp {} bridge", env!("CARGO_PKG_VERSION"))
         );
         assert_eq!(
-            &lines[1..10],
+            &lines[1..11],
             [
                 "Configuration file: none",
                 "  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)",
                 "  media_dir: not set (sending files is disabled) (default)",
+                "  full_control: off (read-only: nothing is sent) (default)",
                 "  send_allowlist: 1 chat (from WHATSAPP_SEND_ALLOWLIST)",
                 "  log_content: off (default)",
                 "  pair_phone: set (from WHATSAPP_PAIR_PHONE)",

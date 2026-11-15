@@ -23,9 +23,9 @@ fn by_name(tools: impl IntoIterator<Item = Value>) -> BTreeMap<String, Value> {
         .collect()
 }
 
-fn server(read_only: bool) -> Server {
+fn server(full_control: bool) -> Server {
     let config = Config::load_from(
-        |name| Ok((read_only && name == "WHATSAPP_MCP_READ_ONLY").then(|| "1".to_string())),
+        |name| Ok((full_control && name == "WHATSAPP_FULL_CONTROL").then(|| "1".to_string())),
         None,
     )
     .unwrap();
@@ -57,15 +57,16 @@ fn name_and_instructions_match_the_python_server() {
 #[test]
 fn tools_match_the_python_server() {
     let want = by_name(golden("default")["tools"].as_array().unwrap().clone());
-    assert_eq!(published(&server(false)), want);
+    assert_eq!(published(&server(true)), want);
 }
 
+/// Without full control (the default) the server is read-only.
 #[test]
-fn read_only_hides_exactly_the_send_tools() {
+fn without_full_control_exactly_the_send_tools_are_hidden() {
     let want = by_name(golden("read_only_env")["tools"].as_array().unwrap().clone());
-    let got = published(&server(true));
+    let got = published(&server(false));
     assert_eq!(got, want);
-    let all = published(&server(false));
+    let all = published(&server(true));
     let hidden: Vec<&str> = all
         .keys()
         .filter(|name| !got.contains_key(*name))

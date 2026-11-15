@@ -10,8 +10,8 @@ Here's an example of what you can do when it's connected to Claude.
 
 ![WhatsApp MCP](./example-use.png)
 
-> *Caution:* as with many MCP servers, the WhatsApp MCP is subject to [the lethal trifecta](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/). This means that project injection could lead to private data exfiltration.
-> Any message you receive is untrusted input that the model reads: someone can send you a message containing instructions (prompt injection) that try to make the agent forward your private conversations or files to them. If you only need to read and search messages, enable [read-only mode](#read-only-mode).
+> *Caution:* as with many MCP servers, the WhatsApp MCP is subject to [the lethal trifecta](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/). This means that prompt injection could lead to private data exfiltration.
+> Any message you receive is untrusted input that the model reads: someone can send you a message containing instructions (prompt injection) that try to make the agent forward your private conversations or files to them. That is why nothing is sent by default: the model can read and search, but not send. Turn sending on only if you need it; see [Full control (sending)](#full-control-sending).
 
 ## About this fork and its branches
 
@@ -185,7 +185,7 @@ The bridge and the MCP server read their settings from environment variables, or
 | `bridge_token` | `WHATSAPP_BRIDGE_TOKEN` | both | Shared secret, at least 32 characters. Required. |
 | `media_dir` | `WHATSAPP_MEDIA_DIR` | both | The only folder files can be sent from. |
 | `send_allowlist` | `WHATSAPP_SEND_ALLOWLIST` | bridge | Chats the bridge may send to; a YAML list in the file. See [Control whom the bridge is allowed to send to](#control-whom-the-bridge-is-allowed-to-send-to). |
-| `read_only` | `WHATSAPP_MCP_READ_ONLY` | MCP server | Hide the tools that send. See [Read-only mode](#read-only-mode). |
+| `full_control` | `WHATSAPP_FULL_CONTROL` | both | Allow sending; off by default. See [Full control (sending)](#full-control-sending). Replaces `read_only` (`WHATSAPP_MCP_READ_ONLY`), which still works until 2.0. |
 | `log_content` | `WHATSAPP_LOG_CONTENT` | bridge | Write message content to the logs. See [Logs](#logs). |
 | `pair_phone` | `WHATSAPP_PAIR_PHONE` | bridge | Link with a pairing code instead of a QR code. |
 | `log_output` | `WHATSAPP_LOG_OUTPUT` | `whatsapp-mcp` | Where log lines go: `stderr` (default), `stdout` (not for `serve`), `syslog`, or a file. See [Logs](#logs). |
@@ -220,21 +220,18 @@ curl -s -X POST http://127.0.0.1:8080/api/download \
   -d '{"message_id": "<id>", "chat_jid": "<chat_jid>"}'
 ```
 
-### Read-only mode
+### Full control (sending)
 
-Set `WHATSAPP_MCP_READ_ONLY=1` in the MCP server's environment to remove the tools that send messages (`send_message`, `send_file`, `send_audio_message`, `react_to_message`). The model can then still search and read your messages, but cannot send anything, which removes the exfiltration path of a prompt injection hidden in a received message:
+By default nothing is sent. The MCP server leaves out the tools that send (`send_message`, `send_file`, `send_audio_message`, `react_to_message`), and the bridge refuses to send or react (HTTP 403), also for a program that has the token. The model can still search and read your messages and download media. This removes the way out for a prompt injection hidden in a received message.
 
-```json
-{
-  "mcpServers": {
-    "whatsapp": {
-      "command": "/absolute/path/to/whatsapp-mcp",
-      "args": ["serve", "--store", "/absolute/path/to/store"],
-      "env": { "WHATSAPP_MCP_READ_ONLY": "1" }
-    }
-  }
-}
-```
+To let the model send, set `full_control: yes` in the [configuration file](#configuration), or `WHATSAPP_FULL_CONTROL=1` for both `serve` and `bridge`, and restart them. Then:
+
+- Limit the chats it can send to with [`send_allowlist`](#control-whom-the-bridge-is-allowed-to-send-to).
+- Let your MCP client ask before each send: the send tools are marked as destructive, so clients that ask for confirmation do.
+
+Both programs log on start whether full control is on, and where that comes from.
+
+Before 1.0 sending was on by default, and `read_only` (`WHATSAPP_MCP_READ_ONLY`) turned it off. That setting still works until 2.0, with a warning on start: `read_only: yes` is now the default and can go, and `read_only: no` means `full_control: yes`. Setting both so that they disagree is an error.
 
 ### Messages from others are marked as data
 
@@ -243,7 +240,7 @@ Anyone who can send you a WhatsApp message controls text that Claude reads. A me
 - Message text is wrapped in `<message_content>` tags, and copies of that tag inside a message are neutralised, so a message cannot close the wrapper and continue as fake instructions. Chat and contact names are kept on one line, so they cannot fake extra lines of output.
 - Every read tool's description, and the instructions the server gives the client when it connects, say that this content is written by others and that instructions in it must never be followed.
 
-This lowers the risk but cannot rule it out: a model can still be misled. For full protection against sending, use [read-only mode](#read-only-mode).
+This lowers the risk but cannot rule it out: a model can still be misled. For full protection against sending, leave [full control](#full-control-sending) off.
 
 ### Control whom the bridge is allowed to send to
 

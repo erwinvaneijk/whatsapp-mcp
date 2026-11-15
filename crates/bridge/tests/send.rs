@@ -1,8 +1,6 @@
-//! Sending and media, without a connection. Ported from the Go bridge's
-//! send_context_test.go, outgoing_test.go, reaction_test.go (stored
-//! senders), media_retry_test.go (the message to ask again for),
-//! media_url_test.go and media_download_test.go; the Ogg analysis, media
-//! messages and download names are new.
+//! Sending and media, without a connection: replies and mentions, storing
+//! sent messages, the sender of a stored message, media URLs and downloads,
+//! voice notes. Most cases come from the Go bridge's tests.
 
 use std::path::Path;
 
@@ -83,7 +81,7 @@ fn store_sent(writer: &Writer, id: &str, chat: &Jid, msg: &wa::Message) {
         .unwrap();
 }
 
-// send_context_test.go
+// Replies and mentions.
 
 #[test]
 fn mentions_become_jids() {
@@ -158,7 +156,7 @@ fn context_goes_on_the_message() {
     assert!(plain.extended_text_message.as_option().is_none());
 }
 
-// outgoing_test.go
+// Sent messages are stored, in the chat they belong to.
 
 #[test]
 fn sent_messages_go_into_the_existing_chat() {
@@ -253,7 +251,8 @@ fn sent_messages_are_stored_like_received_ones() {
     );
 }
 
-// reaction_test.go and media_retry_test.go
+// The sender of a stored message, for reactions and for asking the sender's
+// phone to upload expired media again.
 
 #[test]
 fn stored_senders_become_jids() {
@@ -341,7 +340,7 @@ fn the_original_sender_of_a_stored_message() {
     );
 }
 
-// media_url_test.go and media_download_test.go
+// Media URLs and downloads.
 
 #[test]
 fn direct_paths_keep_the_query_byte_for_byte() {

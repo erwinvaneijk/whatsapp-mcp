@@ -15,7 +15,7 @@ Made on 2026-11-14:
 
 - **Self-hosted marketplace first.** The marketplace lives in this repository. A listing in Anthropic's plugin directory may follow later; see [Directory listing](#directory-listing-later).
 - **After 1.0.** The plugin is built on the 1.0 release binaries, not on 0.9 with the Go bridge.
-- **Read-only by default.** The plugin starts the MCP server in [read-only mode](../../README.md#read-only-mode). Users turn on sending themselves, knowing the prompt-injection risk.
+- **Read-only by default.** The MCP server is read-only unless [full control](../../README.md#full-control-sending) is on (the default since 1.0). Users turn on sending themselves, knowing the prompt-injection risk.
 
 ## What a plugin can and cannot do
 
@@ -51,7 +51,7 @@ plugin/
       "command": "${CLAUDE_PLUGIN_ROOT}/scripts/launch.sh",
       "args": ["serve"],
       "env": {
-        "WHATSAPP_MCP_READ_ONLY": "${user_config.read_only}",
+        "WHATSAPP_FULL_CONTROL": "${user_config.full_control}",
         "WHATSAPP_MCP_CONFIG": "${user_config.config_file}"
       }
     }
@@ -63,7 +63,7 @@ plugin/
 
 | Key | Type | Default | Purpose |
 |---|---|---|---|
-| `read_only` | boolean | `true` | Hides the send tools. |
+| `full_control` | boolean | `false` | Offers the send tools. The bridge needs `full_control` in the configuration file too, since the plugin doesn't start it. |
 | `config_file` | file | `~/.config/whatsapp-mcp/config.yaml` | The [configuration file](../../README.md#configuration) that both the bridge and the server read. |
 
 The bridge token stays in `config.yaml` (mode `0600`), not in `userConfig`: the bridge runs as a service outside Claude Code and cannot read Claude's secure store.
@@ -87,7 +87,7 @@ Each step is one pull request.
 | 2. Plugin folder | `plugin/` as in [Design](#design): manifest, `.mcp.json`, launchers, pinned checksums, README. Choose the plugin name: not `mcp`, `plugin`, `claude` or other reserved words, and not confusable with WhatsApp's own products. | `claude plugin validate plugin --strict` passes. The launchers download, verify and start the binary on macOS, Linux and Windows, and refuse a binary with a wrong checksum. `read_only` defaults to on, and turning it off shows the send tools. |
 | 3. Setup skill | `skills/whatsapp-setup/SKILL.md`, with the service files for each platform. | On a clean user account on macOS and Linux, following the skill gives a linked bridge that survives a logout or reboot, and working tools in Claude Code. |
 | 4. Marketplace | `.claude-plugin/marketplace.json` at the repository root, with a distinctive name that is not one of the reserved marketplace names. A check in CI that runs `claude plugin validate` on the plugin and the marketplace. | `claude plugin marketplace add erwinvaneijk/whatsapp-mcp` and `claude plugin install` work on a clean machine. CI fails on an invalid manifest. |
-| 5. Evals | `claude plugin eval` cases with mocked tools in `evals/mocks/`, so no WhatsApp account is needed: read-only mode hides the send tools; a message with injected instructions is not acted on; `list_messages` with time filters. | The evals pass in CI. |
+| 5. Evals | `claude plugin eval` cases with mocked tools in `evals/mocks/`, so no WhatsApp account is needed: without full control the send tools are hidden; a message with injected instructions is not acted on; `list_messages` with time filters. | The evals pass in CI. |
 | 6. Release | A release process: bump `version` in `plugin.json` and the pinned `SHA256SUMS` with each binary release, and tag. README: an "Install as a Claude Code plugin" section. | A plugin update with `claude plugin update` moves both the server and (after a restart) the bridge to the new version. |
 
 ## Directory listing (later)

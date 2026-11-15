@@ -1,9 +1,7 @@
 //! `whatsapp-mcp`: the bridge and the MCP server in one binary.
 //!
 //! `serve` is the MCP server; `bridge` keeps the WhatsApp connection, stores
-//! messages, sends and serves the local API (phase 5 of
-//! `docs/rust-1.0/plan.md`; until it is done the Go bridge is still the one
-//! for daily use).
+//! messages, sends and serves the local API for `serve`.
 
 mod service;
 
@@ -104,6 +102,9 @@ fn main() -> ExitCode {
         eprintln!("whatsapp-mcp {}: {e}", program.name());
         return ExitCode::FAILURE;
     }
+    for warning in config.warnings() {
+        log::warn!("{warning}");
+    }
     let link_only = matches!(cli.command, Command::Link { .. });
     match cli.command {
         Command::Serve { store, bridge_url } => {
@@ -147,7 +148,7 @@ fn serve_startup_lines(config: &Config, store: &Path, bridge_url: &str) -> Vec<S
     let mut lines = vec![format!("whatsapp-mcp {} serve", env!("CARGO_PKG_VERSION"))];
     lines.extend(config.startup_lines(&[
         Setting::BridgeToken,
-        Setting::ReadOnly,
+        Setting::FullControl,
         Setting::MediaDir,
         Setting::SendAllowlist,
         Setting::LogContent,
@@ -251,7 +252,12 @@ mod tests {
         );
         assert_eq!(lines[1], "Configuration file: none");
         assert!(lines.contains(&"  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)".to_string()));
-        assert!(lines.contains(&"  read_only: on (from WHATSAPP_MCP_READ_ONLY)".to_string()));
+        assert!(
+            lines.contains(
+                &"  full_control: off (read-only: nothing is sent) (from WHATSAPP_MCP_READ_ONLY)"
+                    .to_string()
+            )
+        );
         let store = lines.iter().find(|l| l.starts_with("Store: ")).unwrap();
         assert!(store.contains("no messages.db"), "{store}");
         assert!(

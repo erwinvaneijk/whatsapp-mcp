@@ -43,7 +43,7 @@ pub fn result_line(what: &str, success: bool, status: &str, with_content: bool) 
 mod tests {
     use super::*;
 
-    /// Ported from log_test.go.
+    /// The send and download results, with and without `log_content`.
     #[test]
     fn result_lines() {
         assert_eq!(
