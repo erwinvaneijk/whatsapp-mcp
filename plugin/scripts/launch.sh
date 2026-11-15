@@ -41,11 +41,13 @@ want="$(awk -v a="$asset" '$2 == a { print $1 }' "$here/SHA256SUMS")"
 data="${CLAUDE_PLUGIN_DATA:?CLAUDE_PLUGIN_DATA is not set; run this through Claude Code}"
 bin="$data/bin/whatsapp-mcp$exe"
 
+# From stdin: with a file name, Git Bash's sha256sum escapes a path with
+# backslashes and puts a \ before the hash.
 sha256() {
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$1" | awk '{ print $1 }'
+    sha256sum <"$1" | awk '{ print $1 }'
   else
-    shasum -a 256 "$1" | awk '{ print $1 }'
+    shasum -a 256 <"$1" | awk '{ print $1 }'
   fi
 }
 
