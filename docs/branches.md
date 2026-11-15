@@ -1,6 +1,6 @@
 # Branches in `dev-main`
 
-Every change in [`dev-main`](https://github.com/erwinvaneijk/whatsapp-mcp/tree/dev-main), one branch each, with what it does. Most are upstream pull requests from [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp); the rest are changes made in this fork. How the branches work is in the [README](../README.md#about-this-fork-and-its-branches).
+Every change in [`dev-main`](https://github.com/erwinvaneijk/whatsapp-mcp/tree/dev-main), one branch each, with what it does. Most are upstream pull requests from [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp); the rest are changes made in this fork. How the branches work is in the [README](../README.md#branches).
 
 Since version 0.9 the MCP server is a Rust program, `whatsapp-mcp serve`, and the Python server is gone. Entries about the Python server are kept for the record and marked as such; what they fixed, the Rust server does too (the [parity harness](../parity/README.md) checks it). The Go bridge is still in use until 1.0, when the Rust bridge (`whatsapp-mcp bridge`) replaces it.
 
