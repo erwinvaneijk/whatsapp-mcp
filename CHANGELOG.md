@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **`whatsapp-mcp link` and `whatsapp-mcp service`** ([#45](https://github.com/erwinvaneijk/whatsapp-mcp/issues/45)): `link` (or `login`) links WhatsApp in a terminal, stores the history sync and stops. `service install` runs the bridge as a user service that starts at login (launchd on macOS, systemd on Linux), for a linked store; `service status` and `service uninstall` go with it. On Windows the README explains a scheduled task. `bridge` without a link and without a terminal now stops and says to run `link` first, instead of logging a QR code nobody sees.
 - **Windows is beta:** the Windows binary is built and tested in CI, but has not been tried with WhatsApp yet. README: the newsletter link left over from upstream is gone, and the send allowlist section is now [Control whom the bridge is allowed to send to](README.md#control-whom-the-bridge-is-allowed-to-send-to).
 - **Security policy for 1.0:** [SECURITY.md](SECURITY.md) covers the latest release and `dev-main`, the `whatsapp-mcp` program and its release binaries. New issue templates ask for the version and platform, and point security reports to private reporting.
 - **The Go bridge is removed.** `whatsapp-mcp bridge` replaces it; see [Upgrading to 1.0](docs/upgrading-to-1.0.md). Your store folder, `whatsapp-bridge/store` by default, stays where it is. To go back to the Go bridge, use `v0.9.0`.

@@ -7,10 +7,12 @@
 //! drops events when its queue is full, and a dropped history sync chunk
 //! would be messages missing for good.
 
+use std::io::IsTerminal;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::{Duration, Instant};
 
 use tokio::sync::mpsc;
 use whatsapp_mcp_config::{Config, SendAllowlist, Setting};
@@ -34,7 +36,14 @@ pub const API_ADDRESS: ([u8; 4], u16) = ([127, 0, 0, 1], 8080);
 pub struct Options {
     /// The store folder: `messages.db` and `session.db`.
     pub store_dir: PathBuf,
+    /// `whatsapp-mcp link`: link, store the history sync, then stop. No
+    /// local API.
+    pub link_only: bool,
 }
+
+/// How long `link` waits after the last history sync chunk (or after
+/// connecting, when none comes) before it takes the history as complete.
+pub const LINK_QUIET: Duration = Duration::from_secs(60);
 
 /// The settings the bridge reads, checked before anything starts.
 struct Settings {
@@ -102,6 +111,34 @@ pub fn run_blocking(config: &Config, options: Options) -> Result<(), String> {
         .block_on(run(config, options))
 }
 
+/// Whether the store holds a linked WhatsApp session. Reads `session.db`
+/// without connecting; a store without one is not linked.
+pub fn is_linked(store: &Path) -> Result<bool, String> {
+    let path = store.join("session.db");
+    if !path.is_file() {
+        return Ok(false);
+    }
+    let session = path
+        .to_str()
+        .ok_or_else(|| format!("The store path is not UTF-8: {}", path.display()))?
+        .to_string();
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| format!("Failed to start the runtime: {e}"))?
+        .block_on(async {
+            let backend = SqliteStore::open(&session)
+                .await
+                .map_err(|e| format!("Failed to open the session database {session}: {e}"))?;
+            let bot = Bot::builder()
+                .with_backend(backend)
+                .build()
+                .await
+                .map_err(|e| format!("Failed to read the session database {session}: {e}"))?;
+            Ok(bot.client().pn().is_some())
+        })
+}
+
 /// Runs the bridge until Ctrl+C (or SIGTERM), or until the connection ends
 /// for good (logged out, replaced by another client).
 pub async fn run(config: &Config, options: Options) -> Result<(), String> {
@@ -119,14 +156,20 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
         writer: Mutex::new(writer),
         log_content: settings.log_content,
         connected: AtomicBool::new(false),
+        last_activity: Mutex::new(None),
+        history_done: AtomicBool::new(false),
     });
 
     // Bind before connecting: a second bridge (or the Go bridge) on the
     // port is found before this one links or stores anything.
     let address = SocketAddr::from(API_ADDRESS);
-    let listener = tokio::net::TcpListener::bind(address)
-        .await
-        .map_err(|e| format!("Failed to listen on {address} (is another bridge running?): {e}"))?;
+    let listener = if options.link_only {
+        None
+    } else {
+        Some(tokio::net::TcpListener::bind(address).await.map_err(|e| {
+            format!("Failed to listen on {address} (is another bridge running?): {e}")
+        })?)
+    };
 
     let session = session_path(&store)?;
     let backend = SqliteStore::open(&session)
@@ -155,11 +198,20 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
         .await
         .map_err(|e| format!("Failed to create WhatsApp client: {e}"))?;
     let client = bot.client();
-    log::line(&session_line(
-        Path::new(&session),
-        client.pn().is_some(),
-        pairing,
-    ));
+    let linked = client.pn().is_some();
+    log::line(&session_line(Path::new(&session), linked, pairing));
+    if options.link_only && linked {
+        log::line(
+            "Already linked; nothing to do. Start the bridge with `whatsapp-mcp bridge`, or as a service with `whatsapp-mcp service install`.",
+        );
+        return Ok(());
+    }
+    // A QR or pairing code in a service's log helps nobody.
+    if !linked && !options.link_only && !std::io::stderr().is_terminal() {
+        return Err(
+            "Not linked yet, and there is no terminal to show the QR or pairing code on. Run `whatsapp-mcp link` in a terminal first.".to_string(),
+        );
+    }
 
     let worker = {
         let shared = Arc::clone(&shared);
@@ -183,22 +235,46 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
             media_dir: settings.media_dir,
         }),
     });
-    let mut server = tokio::spawn(crate::api::serve_on(api, listener));
-    log::line(&format!(
-        "REST server is running on {address}. Press Ctrl+C to disconnect and exit."
-    ));
+    let mut server = listener.map(|listener| tokio::spawn(crate::api::serve_on(api, listener)));
+    if server.is_some() {
+        log::line(&format!(
+            "REST server is running on {address}. Press Ctrl+C to disconnect and exit."
+        ));
+    } else {
+        log::line("Linking. This stops by itself once the history sync is in.");
+    }
+    let server_stopped = async {
+        match server.as_mut() {
+            Some(server) => server.await,
+            None => std::future::pending().await,
+        }
+    };
+    let link_finished = async {
+        loop {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            if options.link_only && shared.link_finished() {
+                break;
+            }
+        }
+    };
 
     let mut handle = bot.spawn();
     let outcome = tokio::select! {
         _ = &mut handle => Err("The WhatsApp client stopped.".to_string()),
-        result = &mut server => Err(match result {
+        result = server_stopped => Err(match result {
             Ok(Err(e)) => format!("The REST server stopped: {e}"),
             _ => "The REST server stopped.".to_string(),
         }),
+        _ = link_finished => {
+            log::line("Linked, and the history sync is in. Now run the bridge: `whatsapp-mcp service install`, or `whatsapp-mcp bridge` in a terminal.");
+            Ok(())
+        }
         _ = shutdown_signal() => Ok(()),
     };
     log::line("Disconnecting...");
-    server.abort();
+    if let Some(server) = &server {
+        server.abort();
+    }
     let report = handle.shutdown().await;
     if let Err(e) = report.shutdown.device {
         log::warning(&format!(
@@ -346,6 +422,10 @@ pub(crate) struct Shared {
     pub(crate) log_content: bool,
     /// Set by the event worker on connecting and disconnecting.
     connected: AtomicBool,
+    /// When the bridge last connected or stored a history sync chunk.
+    last_activity: Mutex<Option<Instant>>,
+    /// Set when the last history sync chunk (progress 100) is stored.
+    history_done: AtomicBool,
 }
 
 impl Shared {
@@ -355,6 +435,19 @@ impl Shared {
 
     fn set_connected(&self, connected: bool) {
         self.connected.store(connected, Ordering::Relaxed);
+    }
+
+    fn active(&self) {
+        *self.last_activity.lock().unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
+    }
+
+    /// For `link`: connected, and the history sync complete or quiet for
+    /// [`LINK_QUIET`].
+    fn link_finished(&self) -> bool {
+        let last = *self.last_activity.lock().unwrap_or_else(|e| e.into_inner());
+        self.is_connected()
+            && (self.history_done.load(Ordering::Relaxed)
+                || last.is_some_and(|t| t.elapsed() >= LINK_QUIET))
     }
 
     pub(crate) fn writer(&self) -> MutexGuard<'_, Writer> {
@@ -398,6 +491,7 @@ async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pair
         Event::PairError(e) => log::warning(&format!("Linking failed: {}", log::clean(&e.error))),
         Event::Connected(_) => {
             shared.set_connected(true);
+            shared.active();
             log::line("✓ Connected to WhatsApp");
         }
         Event::Disconnected(_) => {
@@ -426,7 +520,13 @@ async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pair
                 store_live(shared, client, &inbound.info, &inbound.message).await;
             }
         }
-        Event::HistorySync(lazy) => store_history(shared, client, lazy).await,
+        Event::HistorySync(lazy) => {
+            store_history(shared, client, lazy).await;
+            shared.active();
+            if lazy.progress() == Some(100) {
+                shared.history_done.store(true, Ordering::Relaxed);
+            }
+        }
         Event::ContactUpdate(update) => {
             let action = &update.action;
             let names = ContactNames {
