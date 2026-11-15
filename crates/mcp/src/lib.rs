@@ -74,7 +74,7 @@ impl Server {
     pub fn new(config: &Config, options: ServeOptions) -> Self {
         let tools = all_tools()
             .into_iter()
-            .filter(|tool| !(config.read_only() && SEND_TOOLS.contains(&tool.name.as_ref())))
+            .filter(|tool| config.full_control() || !SEND_TOOLS.contains(&tool.name.as_ref()))
             .collect();
         Self {
             tools: Arc::new(tools),

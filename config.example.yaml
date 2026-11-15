@@ -30,9 +30,13 @@ send_allowlist:
   # - "+31 6 8765 4321"        # quotes are optional
   # - 120363000000000000@g.us  # a group
 
-# Hide the tools that send messages from the model (MCP server). yes / no.
-# WHATSAPP_MCP_READ_ONLY
-read_only: no
+# Let the model send: the MCP server offers the tools that send messages and
+# reactions, and the bridge sends them. Off by default, so nothing is sent.
+# Turn it on only if you accept that a message someone sends you can try to
+# make the model send for them (prompt injection). yes / no.
+# Replaces read_only (WHATSAPP_MCP_READ_ONLY), which still works until 2.0.
+# WHATSAPP_FULL_CONTROL
+full_control: no
 
 # Write message content (text, senders, file names) to the bridge's logs, for
 # debugging. yes / no.

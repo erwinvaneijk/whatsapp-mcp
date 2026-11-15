@@ -39,13 +39,15 @@ The media folder gets `photo.jpg` and `voice.ogg`; the workspace also has `outsi
 | Profile | What differs |
 |---|---|
 | `default` | Token, media folder, full-text search, `TZ=Europe/Amsterdam`. Most cases. |
-| `read_only_env`, `read_only_config` | Read-only mode, set in the environment or in the config file: no send tools. |
+| `read_only_default` | `full_control` not set: read-only, no send tools. |
+| `full_control_config` | `full_control: yes` in the config file: the send tools. |
+| `read_only_env`, `read_only_config`, `read_only_no_config` | The old name, `read_only`, in the environment or the config file. |
 | `new_york` | `TZ=America/New_York`: times without a zone are local to the server. |
 | `no_fts` | Database without the full-text index: search falls back to a scan. |
 | `bridge_down` | Nothing listens on the bridge address. |
 | `unconfigured` | No bridge token and no media folder. |
 
-A profile can set `env`, `config` (text of the config file), `tz`, `fts`, `token`, `media_dir`, `bridge` (`"down"`) and `normalize` (regular expressions applied to results, for text that differs per run, such as a connection error from the OS).
+A profile can set `env`, `config` (text of the config file), `tz`, `fts`, `token`, `media_dir`, `full_control` (default `true`: `WHATSAPP_FULL_CONTROL=1`), `bridge` (`"down"`) and `normalize` (regular expressions applied to results, for text that differs per run, such as a connection error from the OS).
 
 ## Cases
 
