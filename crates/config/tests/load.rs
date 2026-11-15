@@ -1,6 +1,6 @@
 //! Loading: where the file is, precedence, permissions and the typed settings.
-//! Ported from whatsapp-bridge/config_test.go and
-//! whatsapp-mcp-server/tests/test_config.py.
+//! The cases come from the Go bridge's and the Python server's tests, so
+//! existing configuration files keep working.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

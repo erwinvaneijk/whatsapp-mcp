@@ -1,5 +1,6 @@
-//! The configuration cases shared with the Go bridge and the Python server
-//! (`parity/config-cases.json`): all three must follow the same rules.
+//! The configuration cases in `parity/config-cases.json`: the rules the
+//! configuration file must keep. The Go bridge and the Python server
+//! followed the same cases, so files written for them still work.
 
 use std::collections::BTreeMap;
 

@@ -287,7 +287,7 @@ pub fn allows<B: Backend>(allowlist: Option<&SendAllowlist>, backend: &B, chat: 
         .is_some_and(|other| list.contains(&other.to_non_ad().to_string()))
 }
 
-/// The Go bridge's `allowedMediaPath`: the file, symlinks resolved, only when
+/// The file to send, symlinks resolved, only when
 /// it lies inside the media folder.
 pub fn allowed_media_path(media_dir: Option<&str>, path: &str) -> Result<PathBuf, String> {
     let Some(media_dir) = media_dir.filter(|d| !d.is_empty()) else {

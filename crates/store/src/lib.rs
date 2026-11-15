@@ -1,6 +1,6 @@
 //! `messages.db`: the queries the MCP tools need, with the same SQL as the
-//! Python server (`whatsapp-mcp-server/whatsapp.py`), so results match row
-//! for row. The bridge writes the database; this crate only reads it.
+//! Python server had before 0.9, so results match row for row. The bridge
+//! writes the database; this crate only reads it.
 //!
 //! SQLite is bundled, so full-text search (FTS5) is always available. The
 //! bridge's FTS5 index is only used when it is kept up to date (see
