@@ -22,7 +22,7 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-15 (R10 added: link and run the bridge as a service).
+Last updated: 2026-11-15 (R05, R06 and R07 verified: reviewed by the user).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
@@ -31,8 +31,8 @@ Last updated: 2026-11-15 (R10 added: link and run the bridge as a service).
 | Bridge: WhatsApp | 17 | 0 | 1 | 0 | 16 | 0 |
 | Bridge: API and security | 8 | 0 | 0 | 0 | 8 | 0 |
 | Bridge: storage | 6 | 0 | 0 | 0 | 6 | 0 |
-| Build, release, docs | 10 | 1 | 2 | 3 | 4 | 0 |
-| **Total** | **76** | **1** | **3** | **3** | **66** | **3** |
+| Build, release, docs | 10 | 1 | 2 | 0 | 7 | 0 |
+| **Total** | **76** | **1** | **3** | **0** | **69** | **3** |
 
 ## MCP interface
 
@@ -141,9 +141,9 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | R02 | CI: rustfmt, clippy, tests on macOS, Linux, Windows | CI | verified | Phase 2: `Rust (…)` CI jobs on Linux x86_64 and arm64, macOS arm64 and x86_64, Windows x86_64 (macOS arm64 in a workflow of its own, `macos-arm64.yml`, because GitHub often has no runner for it); see [crates/README.md](../../crates/README.md). Verified 2026-11-15: all five CI jobs pass on `dev-main` at 86b5be4. |
 | R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | wip | Phase 6: [`release.yml`](../../.github/workflows/release.yml) builds all five on their own runners (Linux on Ubuntu 22.04, for glibc 2.35 and newer) and, on a `v*` tag, attaches them and `SHA256SUMS` to a draft release. `done` after the first tag. |
 | R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | verified | Phase 6: [Upgrading to 1.0](../upgrading-to-1.0.md). The user's switch from the Go bridge for the week of use counts as the run (user, 2026-11-15). |
-| R05 | README rewritten for the single binary | review | done | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. 1.0: installation from a release or with `cargo`, `bridge` and `serve`, without Go; `main` is the release branch. `verified` after review. |
-| R06 | `SECURITY.md` and the issue page updated | review | done | 1.0: SECURITY.md covers the latest release and `whatsapp-mcp` (bridge and serve); issue templates in `.github/ISSUE_TEMPLATE/`. Issues are turned off on the repository; they show once turned on. `verified` after review. |
-| R07 | Go and Python code removed | review | done | 0.9: the Python server is removed. 1.0: the Go bridge and its CI job are removed; the parity harness (Python, test tooling only) stays. `verified` after review. |
+| R05 | README rewritten for the single binary | review | verified | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. 1.0: installation from a release or with `cargo`, `bridge` and `serve`, without Go; `main` is the release branch. Reviewed by the user, 2026-11-15. |
+| R06 | `SECURITY.md` and the issue page updated | review | verified | 1.0: SECURITY.md covers the latest release and `whatsapp-mcp` (bridge and serve); issue templates in `.github/ISSUE_TEMPLATE/`. Issues are turned off on the repository; they show once turned on. Reviewed by the user, 2026-11-15. |
+| R07 | Go and Python code removed | review | verified | 0.9: the Python server is removed. 1.0: the Go bridge and its CI job are removed; the parity harness (Python, test tooling only) stays. Reviewed by the user, 2026-11-15. |
 | R08 | `dev-main` merged into `main`, tagged `v1.0.0` | review | todo | |
 | R09 | Dependency checks (vulnerabilities, licenses, sources) and no `unsafe` code | CI | verified | Phase 2: `cargo deny check` in the `Rust dependencies` CI job ([deny.toml](../../deny.toml)); `unsafe_code = "forbid"` for every crate. Verified 2026-11-15: `cargo deny check` passes in CI on `dev-main` at 86b5be4. |
 | R10 | Link, then run the bridge as a service: `link` (`login`), `service install`, `status`, `uninstall` | live | wip | [#45](https://github.com/erwinvaneijk/whatsapp-mcp/issues/45). Tests: the launchd and systemd files (quoting, absolute paths), the token check for the service. Checked on macOS: `status` when not installed, `install` refuses an unlinked store. `verified` after a live run on macOS and Linux: link, install, log out and in, status, uninstall. |
