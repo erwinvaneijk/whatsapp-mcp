@@ -77,6 +77,11 @@
       "values": { "WHATSAPP_FULL_CONTROL": "yes", "WHATSAPP_MCP_READ_ONLY": "no" }
     },
     {
+      "name": "store_dir keeps ~/ as written",
+      "yaml": "store_dir: ~/.local/share/whatsapp-mcp/store\n",
+      "values": { "WHATSAPP_STORE_DIR": "~/.local/share/whatsapp-mcp/store" }
+    },
+    {
       "name": "Windows line endings",
       "yaml": "media_dir: /x\r\nread_only: yes\r\n",
       "values": { "WHATSAPP_MEDIA_DIR": "/x", "WHATSAPP_MCP_READ_ONLY": "yes" }

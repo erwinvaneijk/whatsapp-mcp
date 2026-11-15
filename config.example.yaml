@@ -17,6 +17,13 @@
 # The bridge refuses to start while it is empty.
 bridge_token: ""
 
+# The store folder: your messages (messages.db), the WhatsApp session
+# (session.db) and downloaded media. Used by bridge, serve, link and service
+# install, so --store can be left out. Absolute, or starting with ~/.
+# Leave empty for whatsapp-bridge/store in the current folder.
+# WHATSAPP_STORE_DIR
+store_dir: ~/.local/share/whatsapp-mcp/store
+
 # The only folder files can be sent from. Leave empty to disable sending files.
 # WHATSAPP_MEDIA_DIR
 media_dir: /Users/me/whatsapp-outbox

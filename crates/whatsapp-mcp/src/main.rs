@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use whatsapp_mcp_config::{Config, Setting};
+use whatsapp_mcp_config::{Config, Setting, Source};
 use whatsapp_mcp_logging::Program;
 use whatsapp_mcp_store::{NamesSource, Store};
 
@@ -25,17 +25,18 @@ enum Command {
     /// Keep the WhatsApp connection, store messages and serve the local API.
     Bridge {
         /// The store folder: messages.db, and the WhatsApp session in
-        /// session.db. Created when missing.
-        #[arg(long, value_name = "DIR", default_value = "whatsapp-bridge/store")]
-        store: PathBuf,
+        /// session.db. Created when missing. [default: store_dir in the
+        /// configuration file, else whatsapp-bridge/store]
+        #[arg(long, value_name = "DIR")]
+        store: Option<PathBuf>,
     },
     /// Link WhatsApp: show a QR or pairing code, store the history sync, then
     /// stop. Run it in a terminal, before `service install`.
     #[command(visible_alias = "login")]
     Link {
         /// The store folder, as for `bridge`.
-        #[arg(long, value_name = "DIR", default_value = "whatsapp-bridge/store")]
-        store: PathBuf,
+        #[arg(long, value_name = "DIR")]
+        store: Option<PathBuf>,
     },
     /// Run the bridge as a user service (macOS: launchd, Linux: systemd).
     Service {
@@ -44,9 +45,10 @@ enum Command {
     },
     /// Serve the MCP tools over stdio, for an MCP client such as Claude Desktop.
     Serve {
-        /// The bridge's store folder, with messages.db and whatsapp.db.
-        #[arg(long, value_name = "DIR", default_value = "whatsapp-bridge/store")]
-        store: PathBuf,
+        /// The bridge's store folder, with messages.db. [default: store_dir
+        /// in the configuration file, else whatsapp-bridge/store]
+        #[arg(long, value_name = "DIR")]
+        store: Option<PathBuf>,
         /// The bridge's local API.
         #[arg(long, value_name = "URL", default_value = "http://127.0.0.1:8080/api")]
         bridge_url: String,
@@ -58,8 +60,8 @@ enum ServiceAction {
     /// Install and start the service, for a linked store.
     Install {
         /// The store folder, as for `bridge`.
-        #[arg(long, value_name = "DIR", default_value = "whatsapp-bridge/store")]
-        store: PathBuf,
+        #[arg(long, value_name = "DIR")]
+        store: Option<PathBuf>,
     },
     /// Stop the service and remove it.
     Uninstall,
@@ -73,7 +75,10 @@ fn main() -> ExitCode {
     // uninstall and status must work with a broken one.
     if let Command::Service { action } = cli.command {
         let result = match action {
-            ServiceAction::Install { store } => service::install(&store),
+            ServiceAction::Install { store } => whatsapp_mcp_config::Config::load()
+                .map_err(|e| e.to_string())
+                .and_then(|config| store_folder(store, &config))
+                .and_then(|(store, _)| service::install(&store)),
             ServiceAction::Uninstall => service::uninstall(),
             ServiceAction::Status => service::status(),
         };
@@ -106,9 +111,20 @@ fn main() -> ExitCode {
         log::warn!("{warning}");
     }
     let link_only = matches!(cli.command, Command::Link { .. });
+    let resolve = |flag| match store_folder(flag, &config) {
+        Ok(found) => Ok(found),
+        Err(e) => {
+            log::error!("{e}");
+            Err(ExitCode::FAILURE)
+        }
+    };
     match cli.command {
         Command::Serve { store, bridge_url } => {
-            for line in serve_startup_lines(&config, &store, &bridge_url) {
+            let (store, source) = match resolve(store) {
+                Ok(found) => found,
+                Err(code) => return code,
+            };
+            for line in serve_startup_lines(&config, &store, &source, &bridge_url) {
                 log::info!("{line}");
             }
             let options = whatsapp_mcp_server::ServeOptions {
@@ -124,8 +140,13 @@ fn main() -> ExitCode {
             }
         }
         Command::Bridge { store } | Command::Link { store } => {
+            let (store, source) = match resolve(store) {
+                Ok(found) => found,
+                Err(code) => return code,
+            };
             let options = whatsapp_mcp_bridge::Options {
                 store_dir: store,
+                store_source: source,
                 link_only,
             };
             match whatsapp_mcp_bridge::run_blocking(&config, options) {
@@ -140,11 +161,37 @@ fn main() -> ExitCode {
     }
 }
 
+/// The store folder when `--store` is not given.
+const DEFAULT_STORE: &str = "whatsapp-bridge/store";
+
+/// The store folder, and where it comes from for the startup log: `--store`,
+/// then `store_dir` (or `WHATSAPP_STORE_DIR`), then [`DEFAULT_STORE`].
+fn store_folder(flag: Option<PathBuf>, config: &Config) -> Result<(PathBuf, String), String> {
+    if let Some(dir) = flag {
+        return Ok((dir, "from --store".to_string()));
+    }
+    Ok(match config.store_dir().map_err(|e| e.to_string())? {
+        Some(dir) => {
+            let source = match config.source(Setting::StoreDir) {
+                Source::Environment => format!("from {}", Setting::StoreDir.env()),
+                _ => "from store_dir in the configuration file".to_string(),
+            };
+            (dir, source)
+        }
+        None => (PathBuf::from(DEFAULT_STORE), "default".to_string()),
+    })
+}
+
 /// What `serve` logs on start, on stderr: the version, the settings and
 /// where each comes from, the store, where names come from and the bridge.
 /// A missing `messages.db` is said here: serving goes on, as the bridge may
 /// create it later, but every tool would fail until then.
-fn serve_startup_lines(config: &Config, store: &Path, bridge_url: &str) -> Vec<String> {
+fn serve_startup_lines(
+    config: &Config,
+    store: &Path,
+    source: &str,
+    bridge_url: &str,
+) -> Vec<String> {
     let mut lines = vec![format!("whatsapp-mcp {} serve", env!("CARGO_PKG_VERSION"))];
     lines.extend(config.startup_lines(&[
         Setting::BridgeToken,
@@ -163,10 +210,10 @@ fn serve_startup_lines(config: &Config, store: &Path, bridge_url: &str) -> Vec<S
             .to_string(),
     );
     if store.join("messages.db").is_file() {
-        lines.push(format!("Store: {shown} (messages.db found)"));
+        lines.push(format!("Store: {shown} ({source}; messages.db found)"));
     } else {
         lines.push(format!(
-            "Store: {shown} (no messages.db: start the bridge once, and point --store at its store folder, as an absolute path)"
+            "Store: {shown} ({source}; no messages.db: start the bridge once, and set store_dir, or --store, to its store folder)"
         ));
     }
     lines.push(
@@ -225,7 +272,7 @@ mod tests {
         else {
             panic!("not serve");
         };
-        assert_eq!(store, PathBuf::from("whatsapp-bridge/store"));
+        assert_eq!(store, None, "store_dir or the default decide");
         assert_eq!(bridge_url, "http://127.0.0.1:8080/api");
     }
 
@@ -245,7 +292,8 @@ mod tests {
         .unwrap();
         let dir = tempfile::tempdir().unwrap();
 
-        let lines = serve_startup_lines(&config, dir.path(), "http://127.0.0.1:8080/api");
+        let lines =
+            serve_startup_lines(&config, dir.path(), "default", "http://127.0.0.1:8080/api");
         assert_eq!(
             lines[0],
             format!("whatsapp-mcp {} serve", env!("CARGO_PKG_VERSION"))
@@ -267,12 +315,48 @@ mod tests {
         assert!(!lines.join("\n").contains("s3cr3t"));
 
         whatsapp_mcp_store::Writer::open(dir.path()).unwrap();
-        let lines = serve_startup_lines(&config, dir.path(), "http://127.0.0.1:8080/api");
+        let lines =
+            serve_startup_lines(&config, dir.path(), "default", "http://127.0.0.1:8080/api");
         assert!(
             lines
                 .iter()
-                .any(|l| l.starts_with("Store: ") && l.ends_with("(messages.db found)"))
+                .any(|l| l.starts_with("Store: ") && l.ends_with("messages.db found)"))
         );
         assert!(lines.contains(&"Names: from messages.db (contacts and lid_map)".to_string()));
+    }
+
+    #[test]
+    fn store_folder_from_flag_setting_or_default() {
+        let home = tempfile::tempdir().unwrap();
+        let load = |value: Option<&str>| {
+            Config::load_from(
+                |name| {
+                    Ok((name == "WHATSAPP_STORE_DIR")
+                        .then(|| value.map(str::to_string))
+                        .flatten())
+                },
+                Some(home.path()),
+            )
+            .unwrap()
+        };
+        let none = load(None);
+        assert_eq!(
+            store_folder(None, &none).unwrap(),
+            (PathBuf::from(DEFAULT_STORE), "default".to_string())
+        );
+        let set = load(Some("~/wa/store"));
+        assert_eq!(
+            store_folder(None, &set).unwrap(),
+            (
+                home.path().join("wa/store"),
+                "from WHATSAPP_STORE_DIR".to_string()
+            )
+        );
+        assert_eq!(
+            store_folder(Some(PathBuf::from("/x")), &set).unwrap(),
+            (PathBuf::from("/x"), "from --store".to_string())
+        );
+        let err = store_folder(None, &load(Some("relative/store"))).unwrap_err();
+        assert!(err.contains("use an absolute path"), "{err}");
     }
 }
