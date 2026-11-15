@@ -1,0 +1,55 @@
+name: Bug report
+description: Something in whatsapp-mcp does not work as described.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems go through [private reporting](https://github.com/erwinvaneijk/whatsapp-mcp/security/advisories/new), not here.
+        Logs can contain phone numbers and, with `log_content`, message text. Remove them before you paste, and never paste your bridge token.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `whatsapp-mcp --version`.
+      placeholder: whatsapp-mcp 1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS arm64
+        - macOS x86_64
+        - Linux x86_64
+        - Linux arm64
+        - Windows x86_64
+    validations:
+      required: true
+  - type: dropdown
+    id: part
+    attributes:
+      label: Part
+      options:
+        - bridge (whatsapp-mcp bridge)
+        - MCP server (whatsapp-mcp serve)
+        - installing or upgrading
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: textarea
+    id: log
+    attributes:
+      label: Log lines
+      description: The lines around the problem, from the bridge or from your MCP client's log for serve.
+      render: text

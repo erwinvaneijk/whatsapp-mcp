@@ -18,6 +18,7 @@ Security:
 - `fix/store-permissions` — upstream PR [#389](https://github.com/lharries/whatsapp-mcp/pull/389): `store/` and its databases and media are readable by your user only.
 - `feat/read-only-mode` — upstream PR [#388](https://github.com/lharries/whatsapp-mcp/pull/388): optional [read-only mode](../README.md#read-only-mode) that hides the send tools.
 - `docs/security-policy` — fork change: [SECURITY.md](../SECURITY.md) explains how to report a security problem privately, through GitHub's private vulnerability reporting.
+- `docs/security-1.0` — fork change, phase 7 of the [Rust rewrite plan](rust-1.0/plan.md): SECURITY.md covers the latest release and the `whatsapp-mcp` program; issue templates ask for the version and platform and send security reports to private reporting.
 - `fix/sqlite-cve-2026-119375` — fork fix for [CVE-2026-119375](https://nvd.nist.gov/vuln/detail/CVE-2026-119375) ([RUSTSEC-2026-0459](https://rustsec.org/advisories/RUSTSEC-2026-0459.html)): the SQLite built into the Rust program and into the Go bridge is 3.54.1. Older versions could return leftover memory when opening a database together with a crafted `-wal` file. The bridge builds with Go 1.27.4, for [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) in `net/http`.
 
 Fixes and speed:
