@@ -22,7 +22,7 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-15 (phases 6 and 7: upgrade guide, README, Go bridge removed, security policy).
+Last updated: 2026-11-15 (R04 verified by the week of use).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
@@ -31,8 +31,8 @@ Last updated: 2026-11-15 (phases 6 and 7: upgrade guide, README, Go bridge remov
 | Bridge: WhatsApp | 17 | 0 | 1 | 0 | 16 | 0 |
 | Bridge: API and security | 8 | 0 | 0 | 0 | 8 | 0 |
 | Bridge: storage | 6 | 0 | 0 | 0 | 6 | 0 |
-| Build, release, docs | 9 | 1 | 2 | 3 | 3 | 0 |
-| **Total** | **75** | **1** | **3** | **3** | **67** | **1** |
+| Build, release, docs | 9 | 1 | 1 | 3 | 4 | 0 |
+| **Total** | **75** | **1** | **2** | **3** | **68** | **1** |
 
 ## MCP interface
 
@@ -140,7 +140,7 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | R01 | Parity harness and fixture database, passing against today's code | CI | verified | Phase 0: [`parity/`](../../parity/README.md), 93 golden files, `Parity harness` CI job. Verified 2026-11-15 (CI on `dev-main` at 86b5be4): the parity harness passes. |
 | R02 | CI: rustfmt, clippy, tests on macOS, Linux, Windows | CI | verified | Phase 2: `Rust (…)` CI jobs on Linux x86_64 and arm64, macOS arm64 and x86_64, Windows x86_64 (macOS arm64 in a workflow of its own, `macos-arm64.yml`, because GitHub often has no runner for it); see [crates/README.md](../../crates/README.md). Verified 2026-11-15: all five CI jobs pass on `dev-main` at 86b5be4. |
 | R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | wip | Phase 6: [`release.yml`](../../.github/workflows/release.yml) builds all five on their own runners (Linux on Ubuntu 22.04, for glibc 2.35 and newer) and, on a `v*` tag, attaches them and `SHA256SUMS` to a draft release. `done` after the first tag. |
-| R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | wip | Phase 6: [Upgrading to 1.0](../upgrading-to-1.0.md). `verified` once an upgrade has been done by following it. |
+| R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | verified | Phase 6: [Upgrading to 1.0](../upgrading-to-1.0.md). The user's switch from the Go bridge for the week of use counts as the run (user, 2026-11-15). |
 | R05 | README rewritten for the single binary | review | done | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. 1.0: installation from a release or with `cargo`, `bridge` and `serve`, without Go; `main` is the release branch. `verified` after review. |
 | R06 | `SECURITY.md` and the issue page updated | review | done | 1.0: SECURITY.md covers the latest release and `whatsapp-mcp` (bridge and serve); issue templates in `.github/ISSUE_TEMPLATE/`. Issues are turned off on the repository; they show once turned on. `verified` after review. |
 | R07 | Go and Python code removed | review | done | 0.9: the Python server is removed. 1.0: the Go bridge and its CI job are removed; the parity harness (Python, test tooling only) stays. `verified` after review. |
