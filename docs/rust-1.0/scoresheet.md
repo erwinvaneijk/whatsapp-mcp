@@ -143,6 +143,6 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | wip | Phase 6: [Upgrading to 1.0](../upgrading-to-1.0.md). `verified` once an upgrade has been done by following it. |
 | R05 | README rewritten for the single binary | review | done | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. 1.0: installation from a release or with `cargo`, `bridge` and `serve`, without Go; `main` is the release branch. `verified` after review. |
 | R06 | `SECURITY.md` and the issue page updated | review | todo | |
-| R07 | Go and Python code removed | review | wip | 0.9: the Python server is removed. The Go bridge goes in 1.0, when everything else is `verified`. |
+| R07 | Go and Python code removed | review | done | 0.9: the Python server is removed. 1.0: the Go bridge and its CI job are removed; the parity harness (Python, test tooling only) stays. `verified` after review. |
 | R08 | `dev-main` merged into `main`, tagged `v1.0.0` | review | todo | |
 | R09 | Dependency checks (vulnerabilities, licenses, sources) and no `unsafe` code | CI | done | Phase 2: `cargo deny check` in the `Rust dependencies` CI job ([deny.toml](../../deny.toml)); `unsafe_code = "forbid"` for every crate. |

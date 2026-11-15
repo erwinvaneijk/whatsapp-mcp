@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **The Go bridge is removed.** `whatsapp-mcp bridge` replaces it; see [Upgrading to 1.0](docs/upgrading-to-1.0.md). Your store folder, `whatsapp-bridge/store` by default, stays where it is. To go back to the Go bridge, use `v0.9.0`.
 - **README for 1.0:** installation now uses one program, `whatsapp-mcp`, downloaded from a release or built with `cargo`, with `bridge` and `serve`; Go is no longer mentioned or needed. `main` becomes the branch with the latest release.
 - **Upgrade guide:** [Upgrading to 1.0](docs/upgrading-to-1.0.md) moves a setup from the Go bridge to `whatsapp-mcp bridge`: what stays, what changes, linking again, and how to go back.
 - **Security: SQLite 3.54.1** in `whatsapp-mcp` and in the Go bridge, for [CVE-2026-119375](https://nvd.nist.gov/vuln/detail/CVE-2026-119375): older SQLite could return leftover memory when it opened a database together with a crafted `-wal` file. The Go bridge also builds with Go 1.27.4 (downloaded by `go` when needed), for [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) in `net/http`. Rebuild both programs; nothing else changes.
