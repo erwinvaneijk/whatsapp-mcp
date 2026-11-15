@@ -150,6 +150,10 @@ This is temporary. The plan is to merge `dev-main` into `main` at some point and
 
    Or restart Cursor.
 
+### Upgrading to 1.0
+
+From 1.0 the Go bridge is replaced by `whatsapp-mcp bridge`. Your messages and configuration stay; you link WhatsApp again once. See [Upgrading to 1.0](docs/upgrading-to-1.0.md).
+
 ### Upgrading from the Python MCP server
 
 Before version 0.9, the MCP server was a Python program run with `uv`. From 0.9 it is the Rust program built in step 3, with the same tools and the same configuration. To upgrade:

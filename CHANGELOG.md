@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Upgrade guide:** [Upgrading to 1.0](docs/upgrading-to-1.0.md) moves a setup from the Go bridge to `whatsapp-mcp bridge`: what stays, what changes, linking again, and how to go back.
 - **Security: SQLite 3.54.1** in `whatsapp-mcp` and in the Go bridge, for [CVE-2026-119375](https://nvd.nist.gov/vuln/detail/CVE-2026-119375): older SQLite could return leftover memory when it opened a database together with a crafted `-wal` file. The Go bridge also builds with Go 1.27.4 (downloaded by `go` when needed), for [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) in `net/http`. Rebuild both programs; nothing else changes.
 - **syslog on macOS:** `log_output: syslog` now writes to macOS's unified log (subsystem `whatsapp-mcp`; see [Logs](README.md#logs)). Before, macOS accepted the lines and dropped them.
 - **`whatsapp-mcp bridge` (preview, test accounts only):** the Rust bridge links (QR code or `WHATSAPP_PAIR_PHONE`), keeps its session in `store/session.db`, and stores incoming messages, history sync, chat and group names, contacts and the LID map in `messages.db`. It sends text, replies, mentions, files and voice notes, reacts, and downloads media (asking the sender's phone again for expired media), with the same local API as the Go bridge. Keep using the Go bridge for your own account until 1.0. See [phase 5](docs/rust-1.0/phase5.md#step-4-live-test).
