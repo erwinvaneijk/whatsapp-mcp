@@ -22,7 +22,7 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-15 (phase 5, step 7: week of use; MCP and configuration rows verified).
+Last updated: 2026-11-15 (phases 6 and 7: upgrade guide, README, Go bridge removed, security policy).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
@@ -31,8 +31,8 @@ Last updated: 2026-11-15 (phase 5, step 7: week of use; MCP and configuration ro
 | Bridge: WhatsApp | 17 | 0 | 1 | 0 | 16 | 0 |
 | Bridge: API and security | 8 | 0 | 0 | 0 | 8 | 0 |
 | Bridge: storage | 6 | 0 | 0 | 0 | 6 | 0 |
-| Build, release, docs | 9 | 3 | 3 | 0 | 3 | 0 |
-| **Total** | **75** | **3** | **4** | **0** | **67** | **1** |
+| Build, release, docs | 9 | 1 | 2 | 3 | 3 | 0 |
+| **Total** | **75** | **1** | **3** | **3** | **67** | **1** |
 
 ## MCP interface
 
