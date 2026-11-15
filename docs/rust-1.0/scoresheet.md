@@ -22,7 +22,7 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-08 (phase 5, step 6: logging built).
+Last updated: 2026-11-15 (phase 6: release workflow).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
@@ -31,8 +31,8 @@ Last updated: 2026-11-08 (phase 5, step 6: logging built).
 | Bridge: WhatsApp | 17 | 0 | 1 | 1 | 15 | 0 |
 | Bridge: API and security | 8 | 0 | 0 | 6 | 2 | 0 |
 | Bridge: storage | 6 | 0 | 1 | 5 | 0 | 0 |
-| Build, release, docs | 9 | 5 | 2 | 2 | 0 | 0 |
-| **Total** | **75** | **5** | **4** | **48** | **17** | **1** |
+| Build, release, docs | 9 | 4 | 3 | 2 | 0 | 0 |
+| **Total** | **75** | **4** | **5** | **48** | **17** | **1** |
 
 ## MCP interface
 
@@ -139,7 +139,7 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 |---|---|---|---|---|
 | R01 | Parity harness and fixture database, passing against today's code | CI | done | Phase 0: [`parity/`](../../parity/README.md), 93 golden files, `Parity harness` CI job. |
 | R02 | CI: rustfmt, clippy, tests on macOS, Linux, Windows | CI | done | Phase 2: `Rust (…)` CI jobs on Linux x86_64 and arm64, macOS arm64 and x86_64, Windows x86_64 (macOS arm64 in a workflow of its own, `macos-arm64.yml`, because GitHub often has no runner for it); see [crates/README.md](../../crates/README.md). |
-| R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | todo | |
+| R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | wip | Phase 6: [`release.yml`](../../.github/workflows/release.yml) builds all five on their own runners (Linux on Ubuntu 22.04, for glibc 2.35 and newer) and, on a `v*` tag, attaches them and `SHA256SUMS` to a draft release. `done` after the first tag. |
 | R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | todo | |
 | R05 | README rewritten for the single binary | review | wip | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. The full rewrite comes with the Rust bridge (1.0). |
 | R06 | `SECURITY.md` and the issue page updated | review | todo | |
