@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Claude Code plugin** ([plugin plan](docs/plugin/plan.md), step 2): [`plugin/`](plugin/README.md) runs `whatsapp-mcp serve` in Claude Code. Its launcher downloads the release binary, checks it against pinned checksums and runs it; read-only unless the plugin's Full control setting is on. Installing it from a marketplace comes in step 4.
+
 ## 1.0.0
 
 `whatsapp-mcp` is now one program: `whatsapp-mcp bridge` replaces the Go bridge, next to `whatsapp-mcp serve` from 0.9. There are release binaries for macOS (arm64, x86_64), Linux (x86_64, arm64) and Windows (x86_64, beta), with `SHA256SUMS`. Nothing is sent unless you turn on full control.

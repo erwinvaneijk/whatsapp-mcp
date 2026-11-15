@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "whatsapp": {
+      "command": "bash",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/launch.sh", "serve"],
+      "env": {
+        "WHATSAPP_FULL_CONTROL": "${user_config.full_control}",
+        "WHATSAPP_MCP_CONFIG": "${user_config.config_file}"
+      }
+    }
+  }
+}
