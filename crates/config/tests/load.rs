@@ -496,9 +496,11 @@ fn store_dir_paths() {
         Config::load_from(env(&[("WHATSAPP_STORE_DIR", value)]), Some(home.path())).unwrap()
     };
     assert_eq!(load("").store_dir().unwrap(), None, "empty counts as unset");
+    // Absolute on every platform (a path without a drive is not, on Windows).
+    let absolute = home.path().join("data");
     assert_eq!(
-        load("/data/wa").store_dir().unwrap(),
-        Some(std::path::PathBuf::from("/data/wa"))
+        load(absolute.to_str().unwrap()).store_dir().unwrap(),
+        Some(absolute.clone())
     );
     assert_eq!(
         load("~/wa").store_dir().unwrap(),
