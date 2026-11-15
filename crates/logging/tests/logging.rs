@@ -263,6 +263,31 @@ fn syslog_gets_one_datagram_per_line() {
     assert_eq!(value["message"], "hi");
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn syslog_on_macos_is_the_unified_log() {
+    use whatsapp_mcp_logging::os_log_level;
+    // Info and debug in the unified log are not kept by default.
+    assert_eq!(os_log_level(Level::Info) as u8, oslog::Level::Default as u8);
+    assert_eq!(os_log_level(Level::Warn) as u8, oslog::Level::Error as u8);
+    assert_eq!(os_log_level(Level::Error) as u8, oslog::Level::Fault as u8);
+    assert_eq!(os_log_level(Level::Debug) as u8, oslog::Level::Info as u8);
+    let logger = Logger::new(
+        Program::Serve,
+        &LogOutput::Syslog,
+        LogFormat::Text,
+        LogLevel::Info,
+        None,
+    )
+    .unwrap();
+    log(
+        &logger,
+        "whatsapp_mcp_server",
+        Level::Info,
+        "test line from logging.rs",
+    );
+}
+
 #[cfg(windows)]
 #[test]
 fn no_syslog_on_windows() {
