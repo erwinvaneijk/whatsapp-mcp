@@ -4,7 +4,7 @@ This is a Model Context Protocol (MCP) server for WhatsApp.
 
 With this you can search and read your personal Whatsapp messages (including images, videos, documents, and audio messages), search your contacts and send messages to either individuals or groups. You can also send media files including images, videos, documents, and audio messages.
 
-It connects to your **personal WhatsApp account** directly via the Whatsapp web multidevice API (using the [whatsmeow](https://github.com/tulir/whatsmeow) library). All your messages are stored locally in a SQLite database and only sent to an LLM (such as Claude) when the agent accesses them through tools (which you control).
+It connects to your **personal WhatsApp account** directly via the Whatsapp web multidevice API (using the [whatsapp-rust](https://github.com/oxidezap/whatsapp-rust) library). All your messages are stored locally in a SQLite database and only sent to an LLM (such as Claude) when the agent accesses them through tools (which you control).
 
 Here's an example of what you can do when it's connected to Claude.
 
@@ -23,8 +23,8 @@ For every open upstream issue, [Upstream issues and this fork](docs/upstream-iss
 
 | Branch | Purpose |
 | --- | --- |
-| `main` | Mirrors upstream `main`. Only updated by pulling from upstream; no fork-specific changes. |
-| `dev-main` | Development branch. Collects all feature and fix branches. **Use this branch** if you want a working bridge. |
+| `main` | The latest release. **Use this branch**, or a [release](https://github.com/erwinvaneijk/whatsapp-mcp/releases). |
+| `dev-main` | Development branch. Collects all feature and fix branches, and is merged into `main` for a release. |
 | `fix/*`, `feat/*` | One branch per change (often an upstream PR). Merged into `dev-main` with `--no-ff`, so each change stays visible and easy to revert. |
 
 Working with the branches:
@@ -33,9 +33,6 @@ Working with the branches:
 # one-time: track the original project
 git remote add upstream git@github.com:lharries/whatsapp-mcp.git
 
-# keep main in sync with upstream
-git checkout main && git pull --ff-only upstream main
-
 # bring an upstream PR in as a feature branch, then collect it in dev-main
 git fetch upstream pull/<PR>/head:fix/<name>
 git checkout dev-main && git merge --no-ff fix/<name>
@@ -43,94 +40,84 @@ git checkout dev-main && git merge --no-ff fix/<name>
 
 What is in `dev-main`: over 50 changes, from upstream pull requests and from this fork, each on its own branch. [Branches in `dev-main`](docs/branches.md) lists them with what each one does.
 
-This is temporary. The plan is to merge `dev-main` into `main` at some point and announce that this fork is actively maintained. From then on, `main` will be the branch to use.
-
 ## Installation
+
+One program, `whatsapp-mcp`, does both jobs:
+
+- `whatsapp-mcp bridge` keeps the connection with WhatsApp and stores your messages. It runs all the time, in a terminal or as a service.
+- `whatsapp-mcp serve` is the MCP server. Your MCP client (Claude Desktop, Cursor) starts it.
 
 ### Prerequisites
 
-- Go, for the WhatsApp bridge
-- [Rust](https://rustup.rs) (`rustup`) and a C compiler, to build the MCP server. rustup installs the right Rust version by itself. A C compiler is needed for the SQLite that is built in: the Xcode command line tools on macOS, `gcc` or `clang` on Linux, the Visual Studio build tools on Windows.
-- Anthropic Claude Desktop app (or Cursor)
-- FFmpeg (_optional_) - Only needed for audio messages. If you want to send audio files as playable WhatsApp voice messages, they must be in `.ogg` Opus format. With FFmpeg installed, the MCP server will automatically convert non-Opus audio files. Without FFmpeg, you can still send raw audio files using the `send_file` tool.
+- An MCP client, such as Claude Desktop or Cursor.
+- FFmpeg (_optional_), to send audio as WhatsApp voice messages. Voice messages must be `.ogg` Opus; with FFmpeg the MCP server converts other audio. Without it, `send_file` still sends audio as a plain file.
+- To build from source instead of downloading: [Rust](https://rustup.rs) (`rustup`) and a C compiler, for the SQLite that is built in. That is the Xcode command line tools on macOS, `gcc` or `clang` on Linux, the Visual Studio build tools on Windows.
 
 ### Steps
 
-1. **Clone this repository**
+1. **Get the program**
+
+   Download `whatsapp-mcp` for your platform from the [releases page](https://github.com/erwinvaneijk/whatsapp-mcp/releases): macOS (arm64, x86_64), Linux (x86_64, arm64) or Windows (x86_64). Check it against `SHA256SUMS` and make it executable:
 
    ```bash
-   git clone -b dev-main https://github.com/erwinvaneijk/whatsapp-mcp.git
+   shasum -a 256 -c SHA256SUMS --ignore-missing   # sha256sum on Linux
+   mv whatsapp-mcp-aarch64-apple-darwin ~/.local/bin/whatsapp-mcp
+   chmod +x ~/.local/bin/whatsapp-mcp
+   ```
+
+   Or build it:
+
+   ```bash
+   git clone https://github.com/erwinvaneijk/whatsapp-mcp.git
    cd whatsapp-mcp
-   ```
-
-2. **Run the WhatsApp bridge**
-
-   The bridge only starts with a shared secret (the bridge token, at least 32 characters), and only sends files from one folder (the media folder). See [Bridge token and media folder](#bridge-token-and-media-folder). Generate a token once and keep it; the MCP server needs the same value.
-
-   The easiest way is a [configuration file](#configuration) that both the bridge and the MCP server read:
-
-   ```bash
-   mkdir -p ~/.config/whatsapp-mcp
-   cp config.example.yaml ~/.config/whatsapp-mcp/config.yaml
-   chmod 600 ~/.config/whatsapp-mcp/config.yaml
-   head -c 32 /dev/urandom | base64   # paste this as bridge_token in the file
-   cd whatsapp-bridge
-   go run -tags sqlite_fts5 .
-   ```
-
-   Or use environment variables instead of the file:
-
-   ```bash
-   export WHATSAPP_BRIDGE_TOKEN="$(head -c 32 /dev/urandom | base64)"
-   export WHATSAPP_MEDIA_DIR="$HOME/whatsapp-outbox"   # optional; leave unset to disable sending files
-   cd whatsapp-bridge
-   go run -tags sqlite_fts5 .
-   ```
-
-   The `sqlite_fts5` tag turns on fast full-text search for `list_messages(query=...)`. Plain `go run .` also works; search then falls back to a slower scan of all messages.
-
-   The first time you run it, you will be prompted to scan a QR code. Scan the QR code with your WhatsApp mobile app to authenticate.
-
-   To link with a code instead of scanning, set your phone number (with country code) first: `export WHATSAPP_PAIR_PHONE=31612345678`. The bridge then prints an 8-character code; on your phone open WhatsApp > Linked devices > Link a device > Link with phone number instead, and enter it.
-
-   After approximately 20 days, you will might need to re-authenticate.
-
-3. **Build the MCP server**
-
-   In the repository folder:
-
-   ```bash
    cargo build --release
    ```
 
-   This builds `target/release/whatsapp-mcp` (`whatsapp-mcp.exe` on Windows), one program without further dependencies. Build it again after pulling new changes.
+   This makes `target/release/whatsapp-mcp` (`whatsapp-mcp.exe` on Windows). Build it again after pulling new changes.
 
-4. **Connect to the MCP server**
+2. **Write the configuration file**
 
-   Copy the below json with the appropriate {{PATH}} values. `{{PATH_TO_SRC}}` is the folder you cloned into: in the repository, run `pwd` and leave out the last `/whatsapp-mcp`. Use absolute paths; the client starts the server from a folder of its own choosing.
+   The bridge only starts with a shared secret (the bridge token, at least 32 characters), and only sends files from one folder (the media folder). See [Bridge token and media folder](#bridge-token-and-media-folder). Both `bridge` and `serve` read them from one [configuration file](#configuration):
+
+   ```bash
+   mkdir -p ~/.config/whatsapp-mcp
+   curl -o ~/.config/whatsapp-mcp/config.yaml https://raw.githubusercontent.com/erwinvaneijk/whatsapp-mcp/main/config.example.yaml
+   chmod 600 ~/.config/whatsapp-mcp/config.yaml
+   head -c 32 /dev/urandom | base64   # paste this as bridge_token in the file
+   ```
+
+   Set `media_dir` to the folder you will send files from, or leave it empty to turn sending files off.
+
+   Environment variables work too, instead of the file or on top of it; see [Configuration](#configuration).
+
+3. **Run the bridge and link WhatsApp**
+
+   Choose a store folder. It holds your messages (`messages.db`), the WhatsApp session (`session.db`) and downloaded media, and is created when missing. Without `--store`, the bridge uses `whatsapp-bridge/store` in the current folder.
+
+   ```bash
+   whatsapp-mcp bridge --store ~/.local/share/whatsapp-mcp/store
+   ```
+
+   The first time, it shows a QR code. On your phone open WhatsApp > Linked devices > Link a device, and scan it. To link with a code instead, set `pair_phone` (or `WHATSAPP_PAIR_PHONE`) to your phone number with country code, such as `31612345678`. The bridge then prints an 8-character code; on your phone choose Link with phone number instead, and enter it.
+
+   After linking, WhatsApp sends your recent history; the log says `History sync complete` when it is in. Keep the bridge running: it receives your messages and sends for the MCP server.
+
+4. **Connect your MCP client**
+
+   Copy the JSON below. Use absolute paths: the client starts the server from a folder of its own choosing.
 
    ```json
    {
      "mcpServers": {
        "whatsapp": {
-         "command": "{{PATH_TO_SRC}}/whatsapp-mcp/target/release/whatsapp-mcp",
-         "args": [
-           "serve",
-           "--store",
-           "{{PATH_TO_SRC}}/whatsapp-mcp/whatsapp-bridge/store"
-         ],
-         "env": {
-           "WHATSAPP_BRIDGE_TOKEN": "{{SAME_TOKEN_AS_THE_BRIDGE}}",
-           "WHATSAPP_MEDIA_DIR": "{{SAME_FOLDER_AS_THE_BRIDGE}}"
-         }
+         "command": "/absolute/path/to/whatsapp-mcp",
+         "args": ["serve", "--store", "/absolute/path/to/store"]
        }
      }
    }
    ```
 
-   With the [configuration file](#configuration), leave out the `env` block: the MCP server reads the token and the media folder from the file.
-
-   `--store` is the bridge's store folder, with `messages.db`. If the bridge's API is not at `http://127.0.0.1:8080/api`, add `"--bridge-url", "http://…/api"` to the arguments.
+   `--store` is the same folder as the bridge's. The server reads the token and the media folder from the configuration file; without the file, add them in an `"env"` block as `WHATSAPP_BRIDGE_TOKEN` and `WHATSAPP_MEDIA_DIR`. If the bridge's API is not at `http://127.0.0.1:8080/api`, add `"--bridge-url", "http://…/api"` to the arguments.
 
    For **Claude**, save this as `claude_desktop_config.json` in your Claude Desktop configuration directory at:
 
@@ -156,35 +143,13 @@ From 1.0 the Go bridge is replaced by `whatsapp-mcp bridge`. Your messages and c
 
 ### Upgrading from the Python MCP server
 
-Before version 0.9, the MCP server was a Python program run with `uv`. From 0.9 it is the Rust program built in step 3, with the same tools and the same configuration. To upgrade:
+Before version 0.9, the MCP server was a Python program run with `uv`. From 0.9 it is `whatsapp-mcp serve`, with the same tools and the same configuration. In your MCP client's configuration, replace `"command"` and `"args"` with the ones in step 4, keep the `env` block if you have one, and restart the client. Then follow [Upgrading to 1.0](docs/upgrading-to-1.0.md) for the bridge.
 
-1. Pull the new version and run `cargo build --release` (step 3).
-2. In your MCP client's configuration, replace `"command"` and `"args"` with the ones in step 4. Keep the `env` block, if you have one.
-3. Restart the client.
+A few error messages are clearer than in the Python server; see [Behaviour that improves](docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10).
 
-Nothing else changes: the configuration file, the environment variables, the bridge and its link with your phone, and `messages.db` with your message history all stay as they are. A few error messages are clearer; see [Behaviour that improves](docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10).
+### Windows
 
-### Windows Compatibility
-
-If you're running this project on Windows, be aware that `go-sqlite3` requires **CGO to be enabled** in order to compile and work properly. By default, **CGO is disabled on Windows**, so you need to explicitly enable it and have a C compiler installed.
-
-#### Steps to get it working:
-
-1. **Install a C compiler**  
-   We recommend using [MSYS2](https://www.msys2.org/) to install a C compiler for Windows. After installing MSYS2, make sure to add the `ucrt64\bin` folder to your `PATH`.  
-   → A step-by-step guide is available [here](https://code.visualstudio.com/docs/cpp/config-mingw).
-
-2. **Enable CGO and run the app**
-
-   ```bash
-   cd whatsapp-bridge
-   go env -w CGO_ENABLED=1
-   go run -tags sqlite_fts5 .
-   ```
-
-Without this setup, you'll likely run into errors like:
-
-> `Binary was compiled with 'CGO_ENABLED=0', go-sqlite3 requires cgo to work.`
+The Windows build is made and tested in CI, but has not been tried with WhatsApp yet. `log_output: syslog` is not available on Windows, and the store folder's permissions work differently there; see [Data Storage](#data-storage).
 
 ## Configuration
 
@@ -202,8 +167,8 @@ The bridge and the MCP server read their settings from environment variables, or
 | `log_format` | `WHATSAPP_LOG_FORMAT` | `whatsapp-mcp` | `text` (default) or `json`. |
 | `log_level` | `WHATSAPP_LOG_LEVEL` | `whatsapp-mcp` | `error`, `warn`, `info` (default) or `debug`. |
 
-- The file holds the token, so both programs refuse it when other users can read or change it (`chmod 600` fixes that). This check is skipped on Windows.
-- An unknown setting stops both programs with the line number, so a typo cannot go unnoticed.
+- The file holds the token, so `bridge` and `serve` refuse it when other users can read or change it (`chmod 600` fixes that). This check is skipped on Windows.
+- An unknown setting stops them with the line number, so a typo cannot go unnoticed.
 - Values are used exactly as written; YAML does not turn `0612345678` into another number.
 - A file named in `WHATSAPP_MCP_CONFIG` must exist; the default file is optional.
 
@@ -220,7 +185,7 @@ The bridge's REST API is locked down. It refuses to start unless the bridge and 
 - The API listens on `127.0.0.1` only, and only accepts `Content-Type: application/json`.
 - Downloaded media filenames and chat IDs are sanitised, so a sender cannot write outside `store/`.
 - Message text is stripped of control characters before it is printed to the terminal.
-- `whatsapp-bridge/store/` (session keys, messages and media) is readable by your user only.
+- The store folder (session keys, messages and media) is readable by your user only.
 
 To call the API by hand, pass the token:
 
@@ -238,8 +203,8 @@ Set `WHATSAPP_MCP_READ_ONLY=1` in the MCP server's environment to remove the too
 {
   "mcpServers": {
     "whatsapp": {
-      "command": "{{PATH_TO_SRC}}/whatsapp-mcp/target/release/whatsapp-mcp",
-      "args": ["serve", "--store", "{{PATH_TO_SRC}}/whatsapp-mcp/whatsapp-bridge/store"],
+      "command": "/absolute/path/to/whatsapp-mcp",
+      "args": ["serve", "--store", "/absolute/path/to/store"],
       "env": { "WHATSAPP_MCP_READ_ONLY": "1" }
     }
   }
@@ -283,7 +248,7 @@ By default the bridge keeps message content out of its output: it logs that a me
 
 To see message content in the logs while debugging, start the bridge with `WHATSAPP_LOG_CONTENT=1`.
 
-`whatsapp-mcp serve` and `whatsapp-mcp bridge` (the Rust programs; the Go bridge ignores these settings) give every log line a time, a level and its source, the same for their own lines and for the WhatsApp library:
+`whatsapp-mcp serve` and `whatsapp-mcp bridge` give every log line a time, a level and its source, the same for their own lines and for the WhatsApp library:
 
 ```
 2026-11-08T14:03:12.345+01:00 INFO  bridge: ✓ Connected to WhatsApp
@@ -299,19 +264,19 @@ To see message content in the logs while debugging, start the bridge with `WHATS
 
 ## Architecture Overview
 
-This application consists of two main components:
+`whatsapp-mcp` is one Rust program, built from [`crates/`](crates/README.md), with two commands:
 
-1. **Go WhatsApp Bridge** (`whatsapp-bridge/`): A Go application that connects to WhatsApp's web API, handles authentication via QR code, and stores message history in SQLite. It serves as the bridge between WhatsApp and the MCP server.
+1. **Bridge** (`whatsapp-mcp bridge`): connects to WhatsApp's web API with [whatsapp-rust](https://github.com/oxidezap/whatsapp-rust), handles linking with a QR or pairing code, and stores message history in SQLite. It serves a local API on `127.0.0.1:8080` for sending and downloading. Before version 1.0 this was a Go program.
 
-2. **MCP Server** (`whatsapp-mcp serve`, built from [`crates/`](crates/README.md)): a Rust program implementing the Model Context Protocol (MCP), which provides standardized tools for Claude to interact with WhatsApp data and send/receive messages. It reads `messages.db` directly and sends through the bridge's local API. Before version 0.9 this was a Python server.
+2. **MCP Server** (`whatsapp-mcp serve`): implements the Model Context Protocol (MCP), which provides standardized tools for Claude to interact with WhatsApp data and send/receive messages. It reads `messages.db` directly and sends through the bridge's local API. Before version 0.9 this was a Python server.
 
 ### Data Storage
 
-- All message history is stored in a SQLite database within the `whatsapp-bridge/store/` directory
+- All message history is stored in a SQLite database, `messages.db`, in the store folder
 - The database maintains tables for chats and messages
 - Messages are indexed for efficient searching and retrieval
-- `whatsapp-bridge/store/` holds your WhatsApp session keys (`whatsapp.db`, which give full access to your account) and your message history. The bridge restricts it to your user: the directory is set to `0700` (also when it already exists) and the databases and downloaded media to `0600`.
-- On Windows these permission bits do not apply; the folder inherits the access rules of its parent. Keep the repository inside your user profile, or restrict the folder explicitly, e.g. `icacls whatsapp-bridge\store /inheritance:r /grant:r "%USERNAME%:(OI)(CI)F"`.
+- The store folder holds your WhatsApp session keys (`session.db`, which give full access to your account) and your message history. The bridge restricts it to your user: the directory is set to `0700` (also when it already exists) and the databases and downloaded media to `0600`.
+- On Windows these permission bits do not apply; the folder inherits the access rules of its parent. Keep the store folder inside your user profile, or restrict the folder explicitly, e.g. `icacls <store folder> /inheritance:r /grant:r "%USERNAME%:(OI)(CI)F"`.
 
 ## Usage
 
@@ -355,23 +320,23 @@ By default, just the metadata of the media is stored in the local database. The 
 ## Technical Details
 
 1. Claude sends requests to the MCP server
-2. The MCP server queries the Go bridge for WhatsApp data or directly to the SQLite database
-3. The Go accesses the WhatsApp API and keeps the SQLite database up to date
+2. The MCP server reads the SQLite database directly, and asks the bridge to send messages and download media
+3. The bridge talks to WhatsApp and keeps the SQLite database up to date
 4. Data flows back through the chain to Claude
-5. When sending messages, the request flows from Claude through the MCP server to the Go bridge and to WhatsApp
+5. When sending messages, the request flows from Claude through the MCP server to the bridge and to WhatsApp
 
 ## Troubleshooting
 
 - Use absolute paths for `"command"` and `--store` in the client configuration: MCP clients start the server from a folder of their own choosing.
-- Make sure the Go bridge is running: the MCP server reads what it stores, and sends through it. The client starts the MCP server itself.
+- Make sure `whatsapp-mcp bridge` is running: the MCP server reads what it stores, and sends through it. The client starts the MCP server itself.
 - The MCP server writes its warnings and errors to stderr. Claude Desktop keeps them in its MCP log (`~/Library/Logs/Claude/mcp-server-whatsapp.log` on macOS); a missing `messages.db` is reported there when the server starts.
 
 ### Authentication Issues
 
 - **QR Code Not Displaying**: If the QR code doesn't appear, try restarting the authentication script. If issues persist, check if your terminal supports displaying QR codes.
-- **WhatsApp Already Logged In**: If your session is already active, the Go bridge will automatically reconnect without showing a QR code.
+- **WhatsApp Already Logged In**: If your session is already active, the bridge will automatically reconnect without showing a QR code.
 - **Device Limit Reached**: WhatsApp limits the number of linked devices. If you reach this limit, you'll need to remove an existing device from WhatsApp on your phone (Settings > Linked Devices).
 - **No Messages Loading**: After initial authentication, it can take several minutes for your message history to load, especially if you have many chats.
-- **WhatsApp Out of Sync**: If your WhatsApp messages get out of sync with the bridge, delete both database files (`whatsapp-bridge/store/messages.db` and `whatsapp-bridge/store/whatsapp.db`) and restart the bridge to re-authenticate.
+- **WhatsApp Out of Sync**: If your WhatsApp messages get out of sync with the bridge, stop the bridge, delete `session.db` and `messages.db` in the store folder, and start the bridge to link again. This also deletes your stored history; WhatsApp sends the recent part again.
 
 For additional Claude Desktop integration troubleshooting, see the [MCP documentation](https://modelcontextprotocol.io/quickstart/server#claude-for-desktop-integration-issues). The documentation includes helpful tips for checking logs and resolving common issues.
