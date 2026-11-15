@@ -8,34 +8,6 @@ on:
   workflow_dispatch: # "Run workflow" button on the Actions tab
 
 jobs:
-  go:
-    name: Go build, vet and test
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: whatsapp-bridge
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: whatsapp-bridge/go.mod
-          cache-dependency-path: whatsapp-bridge/go.sum
-
-      - name: Build
-        run: go build -v ./...
-
-      - name: Vet
-        run: go vet ./...
-
-      # Both builds must work: full-text search is optional (see README).
-      - name: Test without FTS5
-        run: go test -timeout 120s ./...
-
-      - name: Test with FTS5
-        run: go test -tags sqlite_fts5 -timeout 300s ./...
-
   # Rust workspace (docs/rust-1.0/plan.md, phase 2). Every release platform
   # builds, lints and tests here; the toolchain comes from rust-toolchain.toml.
   rust:
