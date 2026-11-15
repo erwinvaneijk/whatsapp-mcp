@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **README:** "About this fork" is now [This server's origin story](README.md#this-servers-origin-story), and the example screenshot shows the Rust server (names changed).
 - **`whatsapp-mcp link` and `whatsapp-mcp service`** ([#45](https://github.com/erwinvaneijk/whatsapp-mcp/issues/45)): `link` (or `login`) links WhatsApp in a terminal, stores the history sync and stops. `service install` runs the bridge as a user service that starts at login (launchd on macOS, systemd on Linux), for a linked store; `service status` and `service uninstall` go with it. On Windows the README explains a scheduled task. `bridge` without a link and without a terminal now stops and says to run `link` first, instead of logging a QR code nobody sees.
 - **Read-only by default** ([#44](https://github.com/erwinvaneijk/whatsapp-mcp/issues/44)). **Changes behaviour:** nothing is sent unless `full_control` (or `WHATSAPP_FULL_CONTROL`) is on. Without it, `serve` leaves out the send tools and the bridge refuses to send or react (HTTP 403); reading, searching and downloads keep working. The old `read_only` still works until 2.0, with a warning: `read_only: no` turns full control on. See [Full control (sending)](README.md#full-control-sending).
 - **Code comments after the Go removal:** tests and code no longer point to Go files, tests or functions that are gone. Each test says what it checks instead.
