@@ -29,10 +29,10 @@ Last updated: 2026-11-15 (phase 5, step 7: week of use; MCP and configuration ro
 | MCP interface | 20 | 0 | 0 | 0 | 19 | 1 |
 | Configuration | 15 | 0 | 0 | 0 | 15 | 0 |
 | Bridge: WhatsApp | 17 | 0 | 1 | 0 | 16 | 0 |
-| Bridge: API and security | 8 | 0 | 0 | 2 | 6 | 0 |
+| Bridge: API and security | 8 | 0 | 0 | 1 | 7 | 0 |
 | Bridge: storage | 6 | 0 | 0 | 0 | 6 | 0 |
 | Build, release, docs | 9 | 3 | 3 | 0 | 3 | 0 |
-| **Total** | **75** | **3** | **4** | **2** | **65** | **1** |
+| **Total** | **75** | **3** | **4** | **1** | **66** | **1** |
 
 ## MCP interface
 
@@ -118,7 +118,7 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | A05 | `store/` and its files readable by the user only | tests | verified | Phase 5: `messages.db` and its WAL files (step 1), the session in `session.db` with its WAL files (step 3), chat folders for downloads `0700` and downloaded files `0600` (step 4); step 5 ports the rest of `fsperm_test.go` (an existing world-readable folder or file is made private and keeps its content) and tests the session and downloads. Verified after the week of use (Claude, 2026-11-15): in the user's store the folder and chat folders are `0700`, `messages.db` and `session.db` `0600`, nothing readable by group or others. |
 | A06 | Message content out of logs unless `log_content`; media keys never logged | tests | done | Phase 5: the API's log lines as in Go, content only with `log_content` (`log_test.go` ported, step 2). Step 5: a review of every log line; control characters are removed from every value and error text, and from each whole line; upload results and media keys are never logged, and the library's own media errors carry only status codes. The library's warnings (stderr) name message IDs and JIDs, not content; `RUST_LOG=debug` logs more and is not for shared logs. |
 | A07 | No `unsafe` in our crates; `cargo audit` and `cargo deny` in CI | CI | verified | New in Rust. Since phase 2: `unsafe_code = "forbid"`, and `cargo deny` (which covers the RustSec database `cargo audit` uses) in CI. Verified 2026-11-15: `cargo deny check` passes in CI on `dev-main` at 86b5be4, after the SQLite fix for CVE-2026-119375 (#32). |
-| A08 | Every log line has a time (local, with offset), a level and its source, for `serve`, `bridge` and the library | tests | done | New in Rust; phase 5, step 6: every line through the `log` facade and `whatsapp-mcp-logging` (replaces `env_logger`), with local time, offset and milliseconds, level and source; control characters removed from each line. QR and pairing codes only on the terminal. |
+| A08 | Every log line has a time (local, with offset), a level and its source, for `serve`, `bridge` and the library | tests | verified | New in Rust; phase 5, step 6: every line through the `log` facade and `whatsapp-mcp-logging` (replaces `env_logger`), with local time, offset and milliseconds, level and source; control characters removed from each line. QR and pairing codes only on the terminal. Verified live (user, 2026-11-15): the bridge on the current build, logging to a file. |
 
 ## Bridge: storage
 
