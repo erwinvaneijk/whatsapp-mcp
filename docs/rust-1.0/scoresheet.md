@@ -140,7 +140,7 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | R01 | Parity harness and fixture database, passing against today's code | CI | done | Phase 0: [`parity/`](../../parity/README.md), 93 golden files, `Parity harness` CI job. |
 | R02 | CI: rustfmt, clippy, tests on macOS, Linux, Windows | CI | done | Phase 2: `Rust (…)` CI jobs on Linux x86_64 and arm64, macOS arm64 and x86_64, Windows x86_64 (macOS arm64 in a workflow of its own, `macos-arm64.yml`, because GitHub often has no runner for it); see [crates/README.md](../../crates/README.md). |
 | R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | wip | Phase 6: [`release.yml`](../../.github/workflows/release.yml) builds all five on their own runners (Linux on Ubuntu 22.04, for glibc 2.35 and newer) and, on a `v*` tag, attaches them and `SHA256SUMS` to a draft release. `done` after the first tag. |
-| R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | todo | |
+| R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | wip | Phase 6: [Upgrading to 1.0](../upgrading-to-1.0.md). `verified` once an upgrade has been done by following it. |
 | R05 | README rewritten for the single binary | review | wip | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. The full rewrite comes with the Rust bridge (1.0). |
 | R06 | `SECURITY.md` and the issue page updated | review | todo | |
 | R07 | Go and Python code removed | review | wip | 0.9: the Python server is removed. The Go bridge goes in 1.0, when everything else is `verified`. |
