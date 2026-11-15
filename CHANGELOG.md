@@ -1,6 +1,32 @@
 # Changelog
 
-## Unreleased
+## 1.0.0
+
+`whatsapp-mcp` is now one program: `whatsapp-mcp bridge` replaces the Go bridge, next to `whatsapp-mcp serve` from 0.9. There are release binaries for macOS (arm64, x86_64), Linux (x86_64, arm64) and Windows (x86_64, beta), with `SHA256SUMS`. Nothing is sent unless you turn on full control.
+
+### What you need to do
+
+Follow [Upgrading to 1.0](docs/upgrading-to-1.0.md). In short:
+
+1. Stop the Go bridge, and back up the store folder.
+2. Get the 1.0 program from the release, or build it with `cargo build --release`.
+3. Set `store_dir` in the configuration file to your store folder.
+4. Link WhatsApp again, once: `whatsapp-mcp link`. Your messages in `messages.db` stay.
+5. Run the bridge: `whatsapp-mcp service install` (macOS, Linux), or `whatsapp-mcp bridge` in a terminal.
+6. **To keep sending**, set `full_control: yes`. Without it, the model can read and search but not send.
+
+### What stays the same
+
+The MCP tools, their names, parameters and output; the configuration file and its settings (`read_only` still works until 2.0, with a warning); `messages.db` and its schema; the bridge's local API.
+
+### Known limits
+
+- **Windows is beta:** built and tested in CI, not yet tried with WhatsApp. `whatsapp-mcp service` is for macOS and Linux; on Windows the README shows a scheduled task.
+- **`whatsapp-mcp service`** was tested live on macOS; on Linux only by its tests.
+- **Expired media:** asking the sender's phone to upload media again (check 19, score sheet W17) is built and tested, but was not tried live.
+- **Linking again:** the Go bridge's link (`whatsapp.db`) can't be carried over.
+
+### All changes
 
 - **`store_dir` setting** ([#50](https://github.com/erwinvaneijk/whatsapp-mcp/issues/50)): the store folder can be set in the configuration file (or `WHATSAPP_STORE_DIR`), absolute or starting with `~/`. `bridge`, `serve`, `link` and `service install` use it, so `--store` can be left out, also from the MCP client's configuration; `--store` still overrides it. The startup log says where the store folder comes from.
 - **README:** "About this fork" is now [This server's origin story](README.md#this-servers-origin-story), and the example screenshot shows the Rust server (names changed).
@@ -14,7 +40,7 @@
 - **Upgrade guide:** [Upgrading to 1.0](docs/upgrading-to-1.0.md) moves a setup from the Go bridge to `whatsapp-mcp bridge`: what stays, what changes, linking again, and how to go back.
 - **Security: SQLite 3.54.1** in `whatsapp-mcp` and in the Go bridge, for [CVE-2026-119375](https://nvd.nist.gov/vuln/detail/CVE-2026-119375): older SQLite could return leftover memory when it opened a database together with a crafted `-wal` file. The Go bridge also builds with Go 1.27.4 (downloaded by `go` when needed), for [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) in `net/http`. Rebuild both programs; nothing else changes.
 - **syslog on macOS:** `log_output: syslog` now writes to macOS's unified log (subsystem `whatsapp-mcp`; see [Logs](README.md#logs)). Before, macOS accepted the lines and dropped them.
-- **`whatsapp-mcp bridge` (preview, test accounts only):** the Rust bridge links (QR code or `WHATSAPP_PAIR_PHONE`), keeps its session in `store/session.db`, and stores incoming messages, history sync, chat and group names, contacts and the LID map in `messages.db`. It sends text, replies, mentions, files and voice notes, reacts, and downloads media (asking the sender's phone again for expired media), with the same local API as the Go bridge. Keep using the Go bridge for your own account until 1.0. See [phase 5](docs/rust-1.0/phase5.md#step-4-live-test).
+- **`whatsapp-mcp bridge`:** the Rust bridge links (QR code or `WHATSAPP_PAIR_PHONE`), keeps its session in `store/session.db`, and stores incoming messages, history sync, chat and group names, contacts and the LID map in `messages.db`. It sends text, replies, mentions, files and voice notes, reacts, and downloads media (asking the sender's phone again for expired media), with the same local API as the Go bridge. See [phase 5](docs/rust-1.0/phase5.md).
 - **Startup log:** `whatsapp-mcp serve` and `whatsapp-mcp bridge` start by logging the version, the configuration file, each setting and where its value comes from (environment, file or default), and the store folder. `serve` also logs where contact names come from and the bridge address; `bridge` logs its session file and whether it is linked. The token and the pairing number are only shown as set or not set. See [phase 5, step 5](docs/rust-1.0/phase5.md#step-5-startup-log).
 - **Logging:** a stored message is logged as `← message stored` (or `→` for sent ones), without a second time in brackets; the line already starts with the time.
 - **Logging:** every line from `whatsapp-mcp serve` and `whatsapp-mcp bridge` has a time, a level and its source. New settings `log_output` (`stderr`, `stdout`, `syslog` or a file), `log_format` (`text` or `json`) and `log_level`; see [Logs](README.md#logs). **Changes behaviour:** the Rust bridge now logs to stderr instead of stdout by default; set `log_output: stdout` to keep the old place. The QR and pairing codes always go to the terminal. The Go bridge accepts the new settings in the shared file and ignores them.

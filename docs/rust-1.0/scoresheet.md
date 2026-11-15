@@ -22,17 +22,17 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-15 (C16 added: store_dir).
+Last updated: 2026-11-15 (release 1.0.0: C16 and R10 verified, R08 in progress).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
 | MCP interface | 20 | 0 | 0 | 0 | 18 | 2 |
-| Configuration | 16 | 0 | 0 | 1 | 14 | 1 |
+| Configuration | 16 | 0 | 0 | 0 | 15 | 1 |
 | Bridge: WhatsApp | 17 | 0 | 1 | 0 | 16 | 0 |
 | Bridge: API and security | 8 | 0 | 0 | 0 | 8 | 0 |
 | Bridge: storage | 6 | 0 | 0 | 0 | 6 | 0 |
-| Build, release, docs | 10 | 1 | 2 | 0 | 7 | 0 |
-| **Total** | **77** | **1** | **3** | **1** | **69** | **3** |
+| Build, release, docs | 10 | 0 | 2 | 0 | 8 | 0 |
+| **Total** | **77** | **0** | **3** | **0** | **71** | **3** |
 
 ## MCP interface
 
@@ -82,7 +82,7 @@ Same file, same environment variables, same rules. Today: `whatsapp-bridge/confi
 | C13 | `log_output` / `WHATSAPP_LOG_OUTPUT`: `stderr`, `stdout`, `syslog` or a file; never stdout for `serve` | tests | verified | New in Rust; phase 5, step 6: `Config::log_output`, `whatsapp-mcp-logging` (tests for stderr, a file and a syslog socket; `serve` refuses stdout). The Go bridge accepts and ignores it (shared case in `parity/config-cases.json`). Verified live (Claude, 2026-11-15) with `serve` on macOS: a log file is created `0600`, `json` gives one object per line, `warn` leaves out the info lines, an unknown level is refused; syslog reaches macOS's unified log (`log show`) and, in CI, Linux's journal. |
 | C14 | `log_format` / `WHATSAPP_LOG_FORMAT`: `text` or `json` | tests | verified | New in Rust; phase 5, step 6: `Config::log_format`; text and JSON lines tested. Verified live (Claude, 2026-11-15) with `serve` on macOS: a log file is created `0600`, `json` gives one object per line, `warn` leaves out the info lines, an unknown level is refused; syslog reaches macOS's unified log (`log show`) and, in CI, Linux's journal. |
 | C15 | `log_level` / `WHATSAPP_LOG_LEVEL`: `error`, `warn`, `info`, `debug` | tests | verified | New in Rust; phase 5, step 6: `Config::log_level`; our crates from the level, libraries from `warn`, `RUST_LOG` on top per module (tests). Verified live (Claude, 2026-11-15) with `serve` on macOS: a log file is created `0600`, `json` gives one object per line, `warn` leaves out the info lines, an unknown level is refused; syslog reaches macOS's unified log (`log show`) and, in CI, Linux's journal. |
-| C16 | `store_dir` / `WHATSAPP_STORE_DIR`: the store folder, absolute or `~/`; `--store` overrides it | tests | done | New in 1.0 ([#50](https://github.com/erwinvaneijk/whatsapp-mcp/issues/50)): `Config::store_dir`, used by `bridge`, `serve`, `link` and `service install`; the startup log says where the store comes from. Tests: `load.rs` (`~/`, relative refused), `main.rs` (flag, setting, default), shared cases. `verified` once CI passes on `dev-main`. |
+| C16 | `store_dir` / `WHATSAPP_STORE_DIR`: the store folder, absolute or `~/`; `--store` overrides it | tests | verified | New in 1.0 ([#50](https://github.com/erwinvaneijk/whatsapp-mcp/issues/50)): `Config::store_dir`, used by `bridge`, `serve`, `link` and `service install`; the startup log says where the store comes from. Tests: `load.rs` (`~/`, relative refused), `main.rs` (flag, setting, default), shared cases. Verified 2026-11-15: CI on `dev-main` (8a19dac) passes, Windows included. |
 
 ## Bridge: WhatsApp
 
@@ -145,6 +145,6 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 | R05 | README rewritten for the single binary | review | verified | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. 1.0: installation from a release or with `cargo`, `bridge` and `serve`, without Go; `main` is the release branch. Reviewed by the user, 2026-11-15. |
 | R06 | `SECURITY.md` and the issue page updated | review | verified | 1.0: SECURITY.md covers the latest release and `whatsapp-mcp` (bridge and serve); issue templates in `.github/ISSUE_TEMPLATE/`. Issues are turned off on the repository; they show once turned on. Reviewed by the user, 2026-11-15. |
 | R07 | Go and Python code removed | review | verified | 0.9: the Python server is removed. 1.0: the Go bridge and its CI job are removed; the parity harness (Python, test tooling only) stays. Reviewed by the user, 2026-11-15. |
-| R08 | `dev-main` merged into `main`, tagged `v1.0.0` | review | todo | |
+| R08 | `dev-main` merged into `main`, tagged `v1.0.0` | review | wip | Approved by the user, 2026-11-15. `done` once `v1.0.0` is tagged on `main`. |
 | R09 | Dependency checks (vulnerabilities, licenses, sources) and no `unsafe` code | CI | verified | Phase 2: `cargo deny check` in the `Rust dependencies` CI job ([deny.toml](../../deny.toml)); `unsafe_code = "forbid"` for every crate. Verified 2026-11-15: `cargo deny check` passes in CI on `dev-main` at 86b5be4. |
-| R10 | Link, then run the bridge as a service: `link` (`login`), `service install`, `status`, `uninstall` | live | wip | [#45](https://github.com/erwinvaneijk/whatsapp-mcp/issues/45). Tests: the launchd and systemd files (quoting, absolute paths), the token check for the service. Checked on macOS: `status` when not installed, `install` refuses an unlinked store. `verified` after a live run on macOS and Linux: link, install, log out and in, status, uninstall. |
+| R10 | Link, then run the bridge as a service: `link` (`login`), `service install`, `status`, `uninstall` | live | verified | [#45](https://github.com/erwinvaneijk/whatsapp-mcp/issues/45). Verified live on macOS by the user, 2026-11-15: `store_dir` set, `link`, `service install`, log out and in, `status`, `uninstall`. Linux: by the tests of the unit file only; noted in the 1.0 release notes. |
