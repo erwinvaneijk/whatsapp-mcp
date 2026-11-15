@@ -22,7 +22,7 @@ The **Check** column says how parity is shown:
 
 ## Totals
 
-Last updated: 2026-11-15 (release 1.0.0: C16 and R10 verified, R08 in progress).
+Last updated: 2026-11-15 (v1.0.0 tagged: R03 and R08 done).
 
 | Area | Rows | todo | wip | done | verified | changed / dropped |
 |---|---|---|---|---|---|---|
@@ -31,8 +31,8 @@ Last updated: 2026-11-15 (release 1.0.0: C16 and R10 verified, R08 in progress).
 | Bridge: WhatsApp | 17 | 0 | 1 | 0 | 16 | 0 |
 | Bridge: API and security | 8 | 0 | 0 | 0 | 8 | 0 |
 | Bridge: storage | 6 | 0 | 0 | 0 | 6 | 0 |
-| Build, release, docs | 10 | 0 | 2 | 0 | 8 | 0 |
-| **Total** | **77** | **0** | **3** | **0** | **71** | **3** |
+| Build, release, docs | 10 | 0 | 0 | 2 | 8 | 0 |
+| **Total** | **77** | **0** | **1** | **2** | **71** | **3** |
 
 ## MCP interface
 
@@ -140,11 +140,11 @@ Today: `whatsapp-bridge/main.go` and friends, on whatsmeow. Library rows are tes
 |---|---|---|---|---|
 | R01 | Parity harness and fixture database, passing against today's code | CI | verified | Phase 0: [`parity/`](../../parity/README.md), 93 golden files, `Parity harness` CI job. Verified 2026-11-15 (CI on `dev-main` at 86b5be4): the parity harness passes. |
 | R02 | CI: rustfmt, clippy, tests on macOS, Linux, Windows | CI | verified | Phase 2: `Rust (…)` CI jobs on Linux x86_64 and arm64, macOS arm64 and x86_64, Windows x86_64 (macOS arm64 in a workflow of its own, `macos-arm64.yml`, because GitHub often has no runner for it); see [crates/README.md](../../crates/README.md). Verified 2026-11-15: all five CI jobs pass on `dev-main` at 86b5be4. |
-| R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | wip | Phase 6: [`release.yml`](../../.github/workflows/release.yml) builds all five on their own runners (Linux on Ubuntu 22.04, for glibc 2.35 and newer) and, on a `v*` tag, attaches them and `SHA256SUMS` to a draft release. `done` after the first tag. |
+| R03 | Release binaries: macOS arm64 and x86_64, Linux x86_64 and arm64, Windows x86_64, with checksums | CI | done | Phase 6: [`release.yml`](../../.github/workflows/release.yml) builds all five on their own runners (Linux on Ubuntu 22.04, for glibc 2.35 and newer) and, on a `v*` tag, attaches them and `SHA256SUMS` to a draft release. Done 2026-11-15: `v1.0.0` built all five and `SHA256SUMS` into a draft release; the macOS arm64 binary checked against `SHA256SUMS` and run (`whatsapp-mcp 1.0.0`, system libraries only). |
 | R04 | Migration guide: client config, re-pairing, keeping `messages.db` | live | verified | Phase 6: [Upgrading to 1.0](../upgrading-to-1.0.md). The user's switch from the Go bridge for the week of use counts as the run (user, 2026-11-15). |
 | R05 | README rewritten for the single binary | review | verified | 0.9: installation, client configuration and an upgrade section rewritten for the Rust MCP server. 1.0: installation from a release or with `cargo`, `bridge` and `serve`, without Go; `main` is the release branch. Reviewed by the user, 2026-11-15. |
 | R06 | `SECURITY.md` and the issue page updated | review | verified | 1.0: SECURITY.md covers the latest release and `whatsapp-mcp` (bridge and serve); issue templates in `.github/ISSUE_TEMPLATE/`. Issues are turned off on the repository; they show once turned on. Reviewed by the user, 2026-11-15. |
 | R07 | Go and Python code removed | review | verified | 0.9: the Python server is removed. 1.0: the Go bridge and its CI job are removed; the parity harness (Python, test tooling only) stays. Reviewed by the user, 2026-11-15. |
-| R08 | `dev-main` merged into `main`, tagged `v1.0.0` | review | wip | Approved by the user, 2026-11-15. `done` once `v1.0.0` is tagged on `main`. |
+| R08 | `dev-main` merged into `main`, tagged `v1.0.0` | review | done | Approved by the user, 2026-11-15. `main` fast-forwarded to 733e7c6 and tagged `v1.0.0`. The draft release waits for the user to publish it. |
 | R09 | Dependency checks (vulnerabilities, licenses, sources) and no `unsafe` code | CI | verified | Phase 2: `cargo deny check` in the `Rust dependencies` CI job ([deny.toml](../../deny.toml)); `unsafe_code = "forbid"` for every crate. Verified 2026-11-15: `cargo deny check` passes in CI on `dev-main` at 86b5be4. |
 | R10 | Link, then run the bridge as a service: `link` (`login`), `service install`, `status`, `uninstall` | live | verified | [#45](https://github.com/erwinvaneijk/whatsapp-mcp/issues/45). Verified live on macOS by the user, 2026-11-15: `store_dir` set, `link`, `service install`, log out and in, `status`, `uninstall`. Linux: by the tests of the unit file only; noted in the 1.0 release notes. |
