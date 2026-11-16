@@ -21,3 +21,6 @@ __pycache__/
 # The phase 1 test program, removed from git; a local copy may still hold
 # a test account's WhatsApp session.
 spike/
+
+# Plugin eval results (claude plugin eval)
+plugin/evals/results/

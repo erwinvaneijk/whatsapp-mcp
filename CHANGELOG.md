@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Plugin evals** ([plugin plan](docs/plugin/plan.md), step 5): [`plugin/evals/`](plugin/evals/README.md) checks, with mocked WhatsApp tools, that Claude says it can't send without full control, doesn't act on instructions in a message, and asks `list_messages` for a time window. CI runs them when the `ANTHROPIC_API_KEY` secret is set.
 - **Plugin marketplace** ([plugin plan](docs/plugin/plan.md), step 4): this repository is the `erwinvaneijk` marketplace. Install with `claude plugin install whatsapp-mcp --marketplace erwinvaneijk/whatsapp-mcp`; see [Install as a Claude Code plugin](README.md#install-as-a-claude-code-plugin).
 - **Plugin setup skill** ([plugin plan](docs/plugin/plan.md), step 3): `whatsapp-setup` walks through the configuration file (with a fresh token it never shows), linking in the user's terminal, `service install`, and checking that the tools answer; also turning on sending and removing it.
 - **Claude Code plugin** ([plugin plan](docs/plugin/plan.md), step 2): [`plugin/`](plugin/README.md) runs `whatsapp-mcp serve` in Claude Code. Its launcher downloads the release binary, checks it against pinned checksums and runs it; read-only unless the plugin's Full control setting is on. Installing it from a marketplace comes in step 4.
