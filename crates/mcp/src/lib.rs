@@ -149,8 +149,10 @@ fn error_result(message: String) -> CallToolResult {
 /// Serves MCP over stdin and stdout until the client disconnects.
 pub fn serve_stdio(config: &Config, options: ServeOptions) -> std::io::Result<()> {
     let server = Server::new(config, options);
+    // Timers too: rmcp waits with a timeout when the client disconnects.
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
+        .enable_time()
         .build()?;
     runtime.block_on(async move {
         let running = server
