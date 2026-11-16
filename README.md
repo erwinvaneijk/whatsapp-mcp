@@ -153,6 +153,16 @@ One program, `whatsapp-mcp`, does both jobs:
 
    Or restart Cursor.
 
+### Install as a Claude Code plugin
+
+In Claude Code, the plugin does steps 1 and 5 for you: it downloads the program, checks it, and runs the MCP server.
+
+```sh
+claude plugin install whatsapp-mcp --marketplace erwinvaneijk/whatsapp-mcp
+```
+
+Then ask Claude to set up WhatsApp: the plugin's `whatsapp-setup` skill writes the configuration file, has you link WhatsApp, and installs the bridge as a service. See the [plugin's README](plugin/README.md) for what it downloads, runs and stores.
+
 ### Upgrading to 1.0
 
 From 1.0 the Go bridge is replaced by `whatsapp-mcp bridge`. Your messages and configuration stay; you link WhatsApp again once. See [Upgrading to 1.0](docs/upgrading-to-1.0.md).

@@ -1,0 +1,18 @@
+{
+  "name": "erwinvaneijk",
+  "owner": {
+    "name": "Erwin van Eijk",
+    "url": "https://github.com/erwinvaneijk"
+  },
+  "metadata": {
+    "description": "Claude Code plugins by Erwin van Eijk."
+  },
+  "plugins": [
+    {
+      "name": "whatsapp-mcp",
+      "source": "./plugin",
+      "description": "Search, read and (with full control) send your WhatsApp messages from Claude Code, through a bridge on your own computer. Read-only by default.",
+      "category": "productivity"
+    }
+  ]
+}
