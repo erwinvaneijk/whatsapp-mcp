@@ -8,10 +8,10 @@ name: Plugin
 on:
   push:
     branches: [main, dev-main]
-    paths: ["plugin/**", ".claude-plugin/**", ".github/workflows/plugin.yml"]
+    paths: ["plugin/**", ".claude-plugin/**", "scripts/bump-plugin.sh", ".github/workflows/plugin.yml"]
   pull_request:
     branches: [main, dev-main]
-    paths: ["plugin/**", ".claude-plugin/**", ".github/workflows/plugin.yml"]
+    paths: ["plugin/**", ".claude-plugin/**", "scripts/bump-plugin.sh", ".github/workflows/plugin.yml"]
   workflow_dispatch:
 
 jobs:
@@ -29,6 +29,13 @@ jobs:
         run: claude plugin validate plugin --strict
       - name: Validate the marketplace
         run: claude plugin validate . --strict
+      # scripts/bump-plugin.sh sets both; the launcher downloads VERSION.
+      - name: plugin.json and the launcher name the same version
+        run: |
+          manifest="$(jq -r .version plugin/.claude-plugin/plugin.json)"
+          launcher="$(sed -n 's/^VERSION="\(.*\)"$/\1/p' plugin/scripts/launch.sh)"
+          echo "plugin.json $manifest, launch.sh $launcher"
+          test "$manifest" = "$launcher"
 
   evals:
     name: Evals

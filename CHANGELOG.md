@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Plugin releases** ([plugin plan](docs/plugin/plan.md), step 6): [Releasing](docs/releasing.md) describes a release, binaries first and then the plugin; `scripts/bump-plugin.sh X.Y.Z` points the plugin at a published release (version, launcher, pinned checksums), and CI checks that the plugin and its launcher name the same version. The plugin README says how to update, bridge included.
 - **Plugin evals** ([plugin plan](docs/plugin/plan.md), step 5): [`plugin/evals/`](plugin/evals/README.md) checks, with mocked WhatsApp tools, that Claude says it can't send without full control, doesn't act on instructions in a message, and asks `list_messages` for a time window. CI runs them when the `ANTHROPIC_API_KEY` secret is set.
 - **Dependency check**: `cargo deny` ignores [RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543) (`chrono` unmaintained, not a vulnerability), since rmcp, schemars and whatsapp-rust need it; [#59](https://github.com/erwinvaneijk/whatsapp-mcp/issues/59) tracks moving off it.
 - **`serve` no longer panics when the session ends**: the MCP server ended every session with a panic ("timers are disabled") when Claude Code closed its input, since 0.9.
