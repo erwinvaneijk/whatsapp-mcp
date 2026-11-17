@@ -2,7 +2,8 @@ name: Plugin
 
 # The Claude Code plugin in plugin/ (docs/plugin/plan.md): the manifest is
 # valid, and the launcher downloads the pinned release binary, checks it,
-# runs it, and refuses one with a wrong checksum, on every platform.
+# runs it, and refuses one with a wrong checksum, on every platform; and
+# the evals in plugin/evals pass, with mocked WhatsApp tools.
 
 on:
   push:
@@ -28,6 +29,39 @@ jobs:
         run: claude plugin validate plugin --strict
       - name: Validate the marketplace
         run: claude plugin validate . --strict
+
+  evals:
+    name: Evals
+    runs-on: ubuntu-latest
+    env:
+      # Without the secret (forks, or before it is set) the job is skipped.
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+        if: env.ANTHROPIC_API_KEY != ''
+      - uses: actions/setup-node@v6
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          node-version: 22
+      - name: Install Claude Code
+        if: env.ANTHROPIC_API_KEY != ''
+        run: npm install --global @anthropic-ai/claude-code@2.1.311
+      - name: Run the evals
+        if: env.ANTHROPIC_API_KEY != ''
+        working-directory: plugin
+        # Mocked tools only: no WhatsApp account, and the real server is not
+        # started. With the plugin only (no baseline arm), within $3.
+        run: >-
+          claude plugin eval . --trust-plugin --no-scaffold --no-publish
+          --ablation none --concurrency 3 --max-cost-usd 3
+      - uses: actions/upload-artifact@v7
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        with:
+          name: plugin-evals
+          path: plugin/evals/results/
+      - name: Skipped
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "::notice::Plugin evals skipped; set the ANTHROPIC_API_KEY secret to run them."
 
   launcher:
     name: Launcher (${{ matrix.os }})
