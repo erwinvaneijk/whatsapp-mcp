@@ -10,7 +10,11 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
-ignore = []
+ignore = [
+  # chrono is unmaintained (not a vulnerability). rmcp, schemars and
+  # whatsapp-rust depend on it too, so it can't go yet: issue #59.
+  { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained; needed by rmcp, schemars and whatsapp-rust (#59)" },
+]
 
 # Only licenses that let us ship a binary under this project's license.
 [licenses]

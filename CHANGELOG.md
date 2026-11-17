@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Dependency check**: `cargo deny` ignores [RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543) (`chrono` unmaintained, not a vulnerability), since rmcp, schemars and whatsapp-rust need it; [#59](https://github.com/erwinvaneijk/whatsapp-mcp/issues/59) tracks moving off it.
 - **`serve` no longer panics when the session ends**: the MCP server ended every session with a panic ("timers are disabled") when Claude Code closed its input, since 0.9.
 - **Plugin marketplace** ([plugin plan](docs/plugin/plan.md), step 4): this repository is the `erwinvaneijk` marketplace. Install with `claude plugin install whatsapp-mcp --marketplace erwinvaneijk/whatsapp-mcp`; see [Install as a Claude Code plugin](README.md#install-as-a-claude-code-plugin).
 - **Plugin setup skill** ([plugin plan](docs/plugin/plan.md), step 3): `whatsapp-setup` walks through the configuration file (with a fresh token it never shows), linking in the user's terminal, `service install`, and checking that the tools answer; also turning on sending and removing it.
