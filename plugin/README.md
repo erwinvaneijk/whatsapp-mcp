@@ -43,6 +43,14 @@ Or ask Claude to set it up: the plugin's `whatsapp-setup` skill walks through th
 | Full control (sending) | off | Offer the tools that send messages and reactions. The bridge also needs `full_control: yes` in the configuration file before it sends. |
 | Configuration file | `~/.config/whatsapp-mcp/config.yaml` | The file shared with the bridge. |
 
+## Updating
+
+```sh
+claude plugin update whatsapp-mcp@erwinvaneijk
+```
+
+Then start a new Claude Code session: the launcher downloads the new version's program and checks it. The bridge keeps running the old one until it restarts: run `whatsapp-mcp service install` again (it stops the running bridge first).
+
 ## Removing it
 
 Uninstall the plugin, then stop the bridge with `whatsapp-mcp service uninstall`. Your store folder (messages and session) stays until you delete it; also remove the linked device on your phone under WhatsApp > Linked devices.
