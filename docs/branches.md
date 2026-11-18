@@ -58,6 +58,7 @@ Fixes and speed:
 - `feat/plugin-evals` — fork change, step 5 of the [plugin plan](plugin/plan.md): `claude plugin eval` cases in [`plugin/evals/`](../plugin/evals/README.md), with mocked WhatsApp tools.
 - `feat/plugin-release` — fork change, step 6 of the [plugin plan](plugin/plan.md): the [release process](releasing.md) and `scripts/bump-plugin.sh`, which points the plugin at a published release.
 - `release/plugin-1.1.0` — fork change: the plugin points at the 1.1.0 release (`scripts/bump-plugin.sh 1.1.0`).
+- `docs/plugin-step6-done` — fork change: step 6 of the [plugin plan](plugin/plan.md) marked done, after the 1.1.0 plugin update from GitHub.
 - `fix/serve-shutdown-panic` — fork fix: `whatsapp-mcp serve` exits cleanly when the client disconnects, instead of panicking because its runtime had no timers.
 - `fix/deny-chrono-unmaintained` — fork fix: `cargo deny` ignores RUSTSEC-2026-0543 (`chrono` unmaintained), which rmcp, schemars and whatsapp-rust also depend on; issue [#59](https://github.com/erwinvaneijk/whatsapp-mcp/issues/59).
 - `feat/rust-bridge-plan` — fork change, phase 5 step 1 of the [Rust rewrite plan](rust-1.0/plan.md) ([steps](rust-1.0/phase5.md)): the Rust store writes `messages.db` exactly as the Go bridge does (same schema text, migrations, full-text index, time format), with two new tables for contact names that the MCP server reads when they exist.
