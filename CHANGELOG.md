@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## 1.1.0
+
+whatsapp-mcp is now also a Claude Code plugin: `claude plugin install whatsapp-mcp --marketplace erwinvaneijk/whatsapp-mcp` installs the MCP server, and its `whatsapp-setup` skill walks through linking and the bridge service. Read-only unless you turn on Full control in the plugin's settings. Also: `serve` no longer ends every session with a panic.
+
+### What you need to do
+
+Nothing, if you run `whatsapp-mcp` yourself: replace the binary (from the release, or `cargo build --release`) and restart the bridge (`whatsapp-mcp service install`). The configuration, store and tools are unchanged.
+
+To use the plugin, see [Install as a Claude Code plugin](README.md#install-as-a-claude-code-plugin). Right after this release the plugin still downloads the 1.0.0 binary; a plugin update to 1.1.0 follows once these binaries are published ([Releasing](docs/releasing.md)).
+
+### Known limits
+
+- **The setup skill** was not yet tried live on a clean macOS or Linux user account; the plugin itself was installed and checked under a throwaway home folder.
+- **Plugin evals** pass locally; in CI they wait for an API key ([#61](https://github.com/erwinvaneijk/whatsapp-mcp/issues/61)).
+- The 1.0.0 limits still hold: Windows is beta, `service` was tested live on macOS only, and expired-media retry was not tried live.
+
+### All changes
 
 - **Plugin releases** ([plugin plan](docs/plugin/plan.md), step 6): [Releasing](docs/releasing.md) describes a release, binaries first and then the plugin; `scripts/bump-plugin.sh X.Y.Z` points the plugin at a published release (version, launcher, pinned checksums), and CI checks that the plugin and its launcher name the same version. The plugin README says how to update, bridge included.
 - **Plugin evals** ([plugin plan](docs/plugin/plan.md), step 5): [`plugin/evals/`](plugin/evals/README.md) checks, with mocked WhatsApp tools, that Claude says it can't send without full control, doesn't act on instructions in a message, and asks `list_messages` for a time window. CI runs them when the `ANTHROPIC_API_KEY` secret is set.
