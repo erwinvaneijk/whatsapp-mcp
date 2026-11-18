@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Plugin 1.1.0**: the plugin downloads the 1.1.0 binaries (pinned checksums updated with `scripts/bump-plugin.sh`). After `claude plugin update`, start a new session and run `whatsapp-mcp service install` to restart the bridge on it.
+
 ## 1.1.0
 
 whatsapp-mcp is now also a Claude Code plugin: `claude plugin install whatsapp-mcp --marketplace erwinvaneijk/whatsapp-mcp` installs the MCP server, and its `whatsapp-setup` skill walks through linking and the bridge service. Read-only unless you turn on Full control in the plugin's settings. Also: `serve` no longer ends every session with a panic.
