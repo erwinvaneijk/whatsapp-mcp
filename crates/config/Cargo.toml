@@ -1,6 +1,6 @@
 [package]
 name = "whatsapp-mcp-config"
-description = "Reads config.yaml and the environment variables, with the same rules as the Go bridge and the Python server."
+description = "Reads config.yaml and the WHATSAPP_* environment variables."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

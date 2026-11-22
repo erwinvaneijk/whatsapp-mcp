@@ -1,7 +1,5 @@
 //! The API's backend on the WhatsApp connection: sending text and files,
-//! reactions, and downloading media, with the Go bridge's answers. Ported
-//! from `sendWhatsAppMessage`, `sendReaction`, `downloadMedia` and
-//! `media_retry.go`; the plain parts are in [`crate::send`].
+//! reactions, and downloading media. The plain parts are in [`crate::send`].
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -22,8 +20,8 @@ use crate::receive;
 use crate::run::Shared;
 use crate::send::{self, Kind, SenderError, Uploaded};
 
-/// How long the sender's phone gets to upload expired media again, as in
-/// the Go bridge (45 s, plus 15 s for the download).
+/// How long the sender's phone gets to upload expired media again: 45 s,
+/// plus 15 s for the download.
 const MEDIA_RETRY_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub(crate) struct Live {

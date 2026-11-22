@@ -1,9 +1,7 @@
 //! What the bridge sends and how it stores what it sent: replies and
 //! mentions, media messages, voice note details, the chat a sent message is
-//! stored in, and where downloads go. Ported from the Go bridge's
-//! `sendWhatsAppMessage`, `outgoing.go`, `reaction.go`, `media_retry.go` and
-//! `downloadMedia`. Plain functions, so they are tested without a
-//! connection; `run` calls them around whatsapp-rust.
+//! stored in, and where downloads go. Plain functions, so they are tested
+//! without a connection; `run` calls them around whatsapp-rust.
 
 use std::path::{Path, PathBuf};
 
@@ -99,10 +97,10 @@ pub enum Kind {
     Document,
 }
 
-/// The kind and MIME type of a file, from its extension, as in the Go
-/// bridge. Anything that is not a known image, video or Ogg file is a
-/// document; its MIME type comes from the extension, because without one
-/// WhatsApp shows the document as `.bin`.
+/// The kind and MIME type of a file, from its extension. Anything that is
+/// not a known image, video or Ogg file is a document; its MIME type comes
+/// from the extension, because without one WhatsApp shows the document as
+/// `.bin`.
 pub fn media_kind(path: &Path) -> (Kind, String) {
     let ext = path
         .extension()
@@ -214,11 +212,9 @@ const OPUS_RATE: u64 = 48_000;
 
 /// A voice note's length in seconds (1 to 300) and a waveform, from an Ogg
 /// Opus file: the last page's granule position less the pre-skip, at
-/// 48 kHz. Like the Go bridge, the file is only checked for the Ogg
-/// signature, and without a granule position the length is estimated from
-/// the size. Unlike it, the pre-skip is read from its place in the Opus
-/// header and the rate is always 48 kHz, as RFC 7845 says; the Go bridge
-/// read both a few bytes too far on.
+/// 48 kHz (RFC 7845). The file is only checked for the Ogg signature, not
+/// decoded; without a granule position the length is estimated from the
+/// size.
 pub fn analyze_ogg_opus(data: &[u8]) -> Result<Voice, String> {
     if data.len() < 4 || &data[..4] != b"OggS" {
         return Err("not a valid Ogg file (missing OggS signature)".into());
@@ -265,7 +261,7 @@ pub fn analyze_ogg_opus(data: &[u8]) -> Result<Voice, String> {
     let seconds = if last_granule > 0 {
         last_granule.saturating_sub(pre_skip).div_ceil(OPUS_RATE)
     } else {
-        // A very rough estimate, as in the Go bridge.
+        // A very rough estimate: about 16 kbit/s.
         (data.len() / 2000) as u64
     };
     let seconds = u32::try_from(seconds.clamp(1, 300)).unwrap_or(300);
@@ -276,7 +272,7 @@ pub fn analyze_ogg_opus(data: &[u8]) -> Result<Voice, String> {
 }
 
 /// A made-up waveform of 64 values from 0 to 100, the same for the same
-/// length, as the Go bridge makes one: two sine waves with some noise,
+/// length: two sine waves with some noise,
 /// softer at the start and end. WhatsApp needs a waveform to draw the voice
 /// note; the bridge does not decode the audio.
 pub fn placeholder_waveform(seconds: u32) -> Vec<u8> {

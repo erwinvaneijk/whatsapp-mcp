@@ -29,7 +29,7 @@ use crate::live::Live;
 use crate::log;
 use crate::receive::{self, ChatName};
 
-/// Where the local API listens, as in the Go bridge.
+/// Where the local API listens; `serve`'s default `--bridge-url` points here.
 pub const API_ADDRESS: ([u8; 4], u16) = ([127, 0, 0, 1], 8080);
 
 /// What `bridge` needs to start.
@@ -164,7 +164,7 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
         history_done: AtomicBool::new(false),
     });
 
-    // Bind before connecting: a second bridge (or the Go bridge) on the
+    // Bind before connecting: a second bridge (or an old Go bridge) on the
     // port is found before this one links or stores anything.
     let address = SocketAddr::from(API_ADDRESS);
     let listener = if options.link_only {

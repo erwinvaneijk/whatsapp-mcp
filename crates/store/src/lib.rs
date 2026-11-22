@@ -1,6 +1,6 @@
-//! `messages.db`: the queries the MCP tools need, with the same SQL as the
-//! Python server had before 0.9, so results match row for row. The bridge
-//! writes the database; this crate only reads it.
+//! `messages.db`: the queries the MCP tools need. The parity harness checks
+//! their results against its golden files. The bridge writes the database;
+//! this crate only reads it.
 //!
 //! SQLite is bundled, so full-text search (FTS5) is always available. The
 //! bridge's FTS5 index is only used when it is kept up to date (see
@@ -27,8 +27,8 @@ pub use write::{
 pub type Error = rusqlite::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// One message, as the tools return it. Field order is the Python
-/// dataclass's, which is the order of the JSON text.
+/// One message, as the tools return it. Field order is the order of the
+/// JSON output, which the parity golden files check.
 #[derive(Debug, Clone, Serialize)]
 pub struct Message {
     pub timestamp: Timestamp,
@@ -43,7 +43,7 @@ pub struct Message {
     pub quoted_message_id: Option<String>,
 }
 
-/// One chat. Field order is the Python dataclass's.
+/// One chat. Field order is the order of the JSON output.
 #[derive(Debug, Clone, Serialize)]
 pub struct Chat {
     pub jid: String,
@@ -54,7 +54,7 @@ pub struct Chat {
     pub last_is_from_me: Option<bool>,
 }
 
-/// One contact. Field order is the Python dataclass's.
+/// One contact. Field order is the order of the JSON output.
 #[derive(Debug, Clone, Serialize)]
 pub struct Contact {
     pub phone_number: String,
@@ -422,7 +422,7 @@ impl Db {
 
     /// The name to show for a message's sender: the chat stored under that
     /// JID (or containing its number), resolved like a chat name, else the
-    /// JID itself. A database error gives the JID too, as in Python.
+    /// JID itself. A database error gives the JID too.
     pub fn sender_name(&self, sender: &str) -> String {
         let stored = self.stored_sender_name(sender).unwrap_or_else(|e| {
             log::warn!("Database error while getting sender name: {e}");

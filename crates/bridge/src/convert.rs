@@ -1,8 +1,8 @@
 //! Incoming WhatsApp messages to what `messages.db` stores: the text (with
 //! captions, and a short bracketed form for non-text messages), the quoted
-//! message ID and the media details. The text is the same as the Go bridge
-//! stored, because the MCP tools, and anything built on them, read it, also in
-//! messages stored before 1.0.
+//! message ID and the media details. Keep the text format as it is: the MCP
+//! tools, and anything built on them, read it, also in messages stored by
+//! the Go bridge before 1.0.
 
 use whatsapp_rust::prelude::wa;
 use whatsapp_rust::prelude::wa::message::protocol_message::Type as ProtocolType;
@@ -196,8 +196,8 @@ pub fn quoted_message_id(msg: &wa::Message) -> String {
             )*
         };
     }
-    // Every part of a Message whose type has a contextInfo, in field order
-    // (the Go bridge finds them by reflection).
+    // Every part of a Message whose type has a contextInfo, in field order;
+    // the first one with a quote wins.
     first_quote!(
         image_message,
         contact_message,
@@ -260,7 +260,7 @@ pub struct Media {
 }
 
 /// The media in a message. File names other than a document's are made up
-/// from `now`, as the Go bridge does (`image_20261104_220052.jpg`).
+/// from `now` (`image_20261104_220052.jpg`).
 pub fn media(msg: &wa::Message, now: chrono::DateTime<chrono::Local>) -> Media {
     let msg = unwrap(msg);
     let stamp = now.format("%Y%m%d_%H%M%S");

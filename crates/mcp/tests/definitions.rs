@@ -1,5 +1,5 @@
-//! The tool definitions and server instructions must stay exactly what the
-//! Python server publishes, as recorded in the parity harness's golden files.
+//! The tool definitions and server instructions must stay exactly as
+//! recorded in the parity harness's golden files.
 
 use std::collections::BTreeMap;
 

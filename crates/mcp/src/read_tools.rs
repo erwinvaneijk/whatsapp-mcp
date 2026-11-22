@@ -1,7 +1,5 @@
 //! The read tools: they read `messages.db` (and contact names from
-//! `whatsapp.db`) and never contact the bridge. Same queries, formatting and
-//! error handling as the Python server, except that errors now say what was
-//! wrong (see `docs/rust-1.0/interface.md`, section 5).
+//! `whatsapp.db`) and never contact the bridge. Errors say what was wrong.
 
 use whatsapp_mcp_store::{
     Chat, Contact, Db, Message, MessageContext, MessageFilter, Store, moment_for_sql,
@@ -32,8 +30,8 @@ pub fn call(store: &Store, name: &str, args: &Args<'_>) -> Option<Result<Output,
     })
 }
 
-/// A database error in a tool that, like its Python original, answers with
-/// an empty result instead of failing.
+/// A database error in a tool that answers with an empty result instead of
+/// failing (issue #69).
 fn log_db_error(e: &whatsapp_mcp_store::Error) {
     log::warn!("Database error: {e}");
 }
@@ -67,7 +65,7 @@ fn list_messages(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
         ("context_before", context_before),
         ("context_after", context_after),
     ])?;
-    // Empty text filters count as not given, as in Python (`if after:`).
+    // Empty text filters count as not given.
     let filter = MessageFilter {
         after: non_empty(after)
             .map(|v| moment_for_sql(&v, "after"))

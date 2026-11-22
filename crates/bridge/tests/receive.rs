@@ -1,5 +1,6 @@
-//! What the bridge stores for live messages and history sync, with the Go
-//! bridge's rules (handleMessage, handleHistorySync, GetChatName).
+//! What the bridge stores for live messages and history sync: senders,
+//! skipped messages and chat names. Rows stored by the Go bridge before 1.0
+//! follow the same rules.
 
 use chrono::{DateTime, Local, TimeZone, Utc};
 use whatsapp_mcp_bridge::Jid;
@@ -151,7 +152,7 @@ fn history_sender_rules() {
     assert_eq!(
         senders,
         vec![
-            // A participant is stored as the full JID, as the Go bridge does.
+            // A participant is stored as the full JID.
             ("a", "31600000002@s.whatsapp.net", false),
             ("b", "31600000009", true),
             ("c", "120363000000000001", false),

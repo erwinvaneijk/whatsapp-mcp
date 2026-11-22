@@ -1,7 +1,7 @@
-//! Reads tool arguments the way the Python server's pydantic does, in lax
-//! mode: an integer may also come as a whole float or as text (`"5"`), a
-//! yes/no value as `0`/`1` or text (`"true"`, `"yes"`, `"off"`, …). Unknown
-//! arguments are ignored.
+//! Reads tool arguments leniently, because models do not always send the
+//! exact JSON type: an integer may also come as a whole float or as text
+//! (`"5"`), a yes/no value as `0`/`1` or text (`"true"`, `"yes"`, `"off"`,
+//! …). Unknown arguments are ignored.
 
 use serde_json::{Map, Value};
 

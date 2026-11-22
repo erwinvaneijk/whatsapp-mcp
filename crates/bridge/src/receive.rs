@@ -1,7 +1,7 @@
 //! What the bridge stores for what arrives: live messages, history sync
-//! conversations, chat names and LID mappings. The values are the ones the Go
-//! bridge stored (sender rules, times in local time, the order of name
-//! sources), so old and new rows in messages.db read the same.
+//! conversations, chat names and LID mappings. Keep the values as they are
+//! (sender rules, times in local time, the order of name sources): rows the
+//! Go bridge stored before 1.0 follow them too, and must read the same.
 //! Plain functions over the store, so they are tested without a connection;
 //! `run` feeds them from whatsapp-rust's events.
 
@@ -12,13 +12,13 @@ use whatsapp_rust::prelude::wa;
 use crate::convert;
 use crate::jid::{GROUP_SERVER, Jid, LID_SERVER, USER_SERVER};
 
-/// A time in local time, as the Go bridge stores it.
+/// A time in local time, with its offset, as `messages.db` stores times.
 pub fn local(moment: DateTime<Utc>) -> DateTime<FixedOffset> {
     moment.with_timezone(&Local).fixed_offset()
 }
 
-/// A Unix time in seconds, in local time; `None` for 0 (no time), as the Go
-/// bridge skips messages without one.
+/// A Unix time in seconds, in local time; `None` for 0 (no time), so a
+/// message without one is skipped.
 pub fn unix_local(seconds: u64) -> Option<DateTime<FixedOffset>> {
     if seconds == 0 {
         return None;
@@ -52,7 +52,7 @@ fn message_row(msg: Option<&wa::Message>, now: DateTime<Local>) -> NewMessage {
 }
 
 /// A live message as stored: the sender is the user part of the sender's
-/// JID, as in the Go bridge. Text and media may both be empty; such a
+/// JID. Text and media may both be empty; such a
 /// message is not stored (see [`NewMessage`] and `Writer::store_message`).
 pub fn live_message(
     id: &str,
@@ -82,7 +82,7 @@ pub struct HistoryChat {
     pub messages: Vec<NewMessage>,
 }
 
-/// The messages of a history sync conversation, with the Go bridge's rules:
+/// The messages of a history sync conversation, by these rules:
 /// nothing when the conversation has no messages, or its first message has
 /// no time; messages without text and media, or without a time, are left
 /// out. The sender of a message from someone else is the key's participant

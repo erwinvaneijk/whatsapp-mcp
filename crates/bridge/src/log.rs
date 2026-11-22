@@ -22,7 +22,8 @@ pub fn terminal(text: &str) {
     eprintln!("{text}");
 }
 
-/// Removes control characters (Go's `unicode.IsControl`: C0, DEL and C1).
+/// Removes control characters (C0, DEL and C1), so text from others cannot
+/// move the cursor or fake extra lines in a terminal or log.
 pub fn clean(text: &str) -> String {
     text.chars().filter(|c| !c.is_control()).collect()
 }

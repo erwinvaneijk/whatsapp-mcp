@@ -1,5 +1,4 @@
-//! Tool results in the shape mcp 2.x (the Python SDK) gives them, so clients
-//! see the same thing:
+//! Tool results, in the shape the parity golden files record:
 //!
 //! - **Text content:** a string as it is; an object as pretty-printed JSON
 //!   (fields in declared order); a list as one text block per item; `None`
@@ -87,7 +86,7 @@ fn to_value<T: Serialize>(value: &T) -> Result<Value, ToolError> {
 }
 
 /// How one item appears as text content: a string as it is, anything else
-/// as JSON with two-space indentation, as pydantic writes it.
+/// as JSON with two-space indentation.
 fn content_text(value: &Value) -> Result<String, ToolError> {
     match value {
         Value::String(s) => Ok(s.clone()),

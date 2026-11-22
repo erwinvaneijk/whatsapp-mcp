@@ -1,7 +1,7 @@
 //! The tools that go through the bridge: send_message, send_file,
-//! send_audio_message, react_to_message and download_media. Same checks,
-//! requests and results as the Python server, except that a failure now
-//! gives the bridge's reason (see `docs/rust-1.0/interface.md`, section 5).
+//! send_audio_message, react_to_message and download_media. They check
+//! their arguments, post to the bridge, and turn its answer into the tool
+//! result; a failure gives the bridge's reason.
 
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
@@ -152,7 +152,7 @@ fn download_media(ctx: &SendContext<'_>, args: &Args<'_>) -> Result<Output, Tool
     }
 }
 
-/// The checks before sending a file, in the Python server's order.
+/// The checks before sending a file. The first that fails gives the message.
 fn check_file(ctx: &SendContext<'_>, recipient: &str, media_path: &str) -> Result<(), String> {
     if recipient.is_empty() {
         return Err("Recipient must be provided".into());
@@ -182,8 +182,8 @@ pub fn inside_media_dir(media_dir: Option<&str>, path: &str) -> bool {
     real_path(Path::new(path)).starts_with(&root)
 }
 
-/// Like Python's `os.path.realpath`: symlinks resolved as far as the path
-/// exists, `.` and `..` resolved after that.
+/// The real path: symlinks resolved as far as the path exists, `.` and `..`
+/// resolved after that, so a file that does not exist yet still resolves.
 fn real_path(path: &Path) -> PathBuf {
     let components: Vec<Component<'_>> = path.components().collect();
     // The longest prefix that exists, resolved by the file system.
@@ -208,8 +208,8 @@ fn real_path(path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
-/// Converts audio to Opus in an Ogg container with ffmpeg, as the Python
-/// server does: 32 kbit/s, 24 kHz, tuned for voice.
+/// Converts audio to Opus in an Ogg container with ffmpeg, as WhatsApp
+/// voice notes need: 32 kbit/s, 24 kHz, tuned for voice.
 fn convert_to_opus_ogg(input: &str, dir: &str) -> Result<tempfile::TempPath, String> {
     let file = tempfile::Builder::new()
         .prefix("tmp")

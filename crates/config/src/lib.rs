@@ -1,6 +1,6 @@
 //! Configuration: `config.yaml` (or the file in `WHATSAPP_MCP_CONFIG`) and the
-//! `WHATSAPP_*` environment variables, with the same rules as the Go bridge
-//! and the Python server (see `docs/rust-1.0/interface.md`, section 2).
+//! `WHATSAPP_*` environment variables, by the rules in
+//! `docs/rust-1.0/interface.md`, section 2.
 //!
 //! - **File:** `~/.config/whatsapp-mcp/config.yaml`, or the path in
 //!   `WHATSAPP_MCP_CONFIG`. A file named that way must exist; the default
@@ -14,8 +14,7 @@
 //! - **Permissions:** a file that others can read or change is refused,
 //!   except on Windows.
 //!
-//! Unlike the Go and Python code, this never changes the process environment:
-//! [`Config`] holds the result.
+//! This never changes the process environment: [`Config`] holds the result.
 
 mod allowlist;
 mod error;
@@ -122,9 +121,9 @@ pub fn flag(value: &str) -> bool {
         .any(|yes| value.eq_ignore_ascii_case(yes))
 }
 
-/// Reads a configuration file's text into its values, by environment variable
-/// (as the Go and Python code do). A setting the file leaves empty is not in
-/// the map. Used by the tests shared with the Go and Python code.
+/// Reads a configuration file's text into its values, by environment
+/// variable name. A setting the file leaves empty is not in the map. Used by
+/// the shared test cases in `parity/config-cases.json`.
 pub fn parse_config(text: &str) -> Result<BTreeMap<&'static str, String>, ConfigError> {
     Ok(parse::parse(text)?
         .into_iter()
@@ -232,7 +231,7 @@ impl Config {
     }
 
     /// The bridge token. Both programs need it; the bridge refuses one that
-    /// is shorter than [`MIN_BRIDGE_TOKEN_LEN`] bytes, as the Go bridge does.
+    /// is shorter than [`MIN_BRIDGE_TOKEN_LEN`] bytes, as too easy to guess.
     pub fn bridge_token(&self) -> Result<&str, ConfigError> {
         match self.get(Setting::BridgeToken) {
             Some(token) if token.len() >= MIN_BRIDGE_TOKEN_LEN => Ok(token),
