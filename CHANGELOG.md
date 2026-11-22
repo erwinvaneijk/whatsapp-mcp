@@ -8,6 +8,7 @@
 - **Searches take `%` and `_` literally** ([#67](https://github.com/erwinvaneijk/whatsapp-mcp/issues/67)). In `list_chats`, `search_contacts`, and `list_messages` without the full-text index, a `_` matched any character and a `%` any text. They now only match themselves.
 - **`list_messages` shows each message once** ([#68](https://github.com/erwinvaneijk/whatsapp-mcp/issues/68)). With context (the default), matches close together in a chat repeated the messages around them: the default call showed 51 lines for 21 messages. Overlapping context is now merged, and each stretch of a chat reads oldest to newest; before, the messages before a match came newest first.
 - **Read tools report database errors** ([#69](https://github.com/erwinvaneijk/whatsapp-mcp/issues/69)). When `messages.db` was missing or could not be read, most read tools answered with an empty list or `null`, so the model reported "no messages". Every read tool now gives an error with the reason; for a missing database it says to check that the bridge has run and that `store_dir` is right.
+- **Voice notes check the audio, not just the name** ([#70](https://github.com/erwinvaneijk/whatsapp-mcp/issues/70)). `send_audio_message` sent any file ending in `.ogg` as it was, also Ogg Vorbis, which WhatsApp cannot play as a voice note; and it converted `.OGG` files that needed nothing. It now sends a file as it is only when it is Opus in an `.ogg` file (any case), and converts anything else with ffmpeg.
 
 ## 1.1.0
 

@@ -84,9 +84,9 @@ fn send_audio_message(ctx: &SendContext<'_>, args: &Args<'_>) -> Result<Output, 
     if let Err(problem) = check_file(ctx, &recipient, &media_path) {
         return status(false, problem);
     }
-    // Anything but Ogg is converted to Opus in Ogg first, in a temporary
+    // Anything but Opus in an .ogg file is converted first, in a temporary
     // file in the media folder (so the bridge may read it), removed after.
-    let converted = if media_path.ends_with(".ogg") {
+    let converted = if is_opus_ogg(&media_path) {
         None
     } else {
         match convert_to_opus_ogg(&media_path, ctx.media_dir.unwrap_or(".")) {
@@ -208,6 +208,33 @@ fn real_path(path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
+/// Whether a file can be sent as a voice note as it is: its extension is
+/// `.ogg`, in any case (the bridge picks voice notes by extension), and its
+/// first Ogg page holds an Opus header. Ogg Vorbis, `.opus` files and
+/// anything else are converted (issue #70).
+fn is_opus_ogg(path: &str) -> bool {
+    let ogg = Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("ogg"));
+    ogg && starts_with_opus_head(Path::new(path))
+}
+
+/// Whether the file starts with an Ogg page whose data begins with
+/// `OpusHead` (RFC 7845, section 5.1). The page header is 27 bytes, the
+/// last of them the number of segments; the segment table follows.
+fn starts_with_opus_head(path: &Path) -> bool {
+    use std::io::Read;
+    let mut start = Vec::new();
+    let read =
+        std::fs::File::open(path).and_then(|file| file.take(27 + 255 + 8).read_to_end(&mut start));
+    if read.is_err() || start.len() < 27 || &start[..4] != b"OggS" {
+        return false;
+    }
+    let data = 27 + usize::from(start[26]);
+    start.get(data..data + 8) == Some(b"OpusHead".as_slice())
+}
+
 /// Converts audio to Opus in an Ogg container with ffmpeg, as WhatsApp
 /// voice notes need: 32 kbit/s, 24 kHz, tuned for voice.
 fn convert_to_opus_ogg(input: &str, dir: &str) -> Result<tempfile::TempPath, String> {
@@ -314,6 +341,47 @@ fn bridge_error(status: u16, json: Option<&Map<String, Value>>, text: &str) -> S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// An Ogg page holding `data`, as the first page of a file.
+    fn ogg_page(data: &[u8]) -> Vec<u8> {
+        let mut page = b"OggS".to_vec();
+        page.extend([0u8; 22]); // version, flags, granule, serial, sequence, CRC
+        page.push(1); // one segment
+        page.push(u8::try_from(data.len()).unwrap());
+        page.extend(data);
+        page
+    }
+
+    #[test]
+    fn only_opus_in_an_ogg_file_is_sent_as_it_is() {
+        let dir = tempfile::tempdir().unwrap();
+        let opus = ogg_page(b"OpusHead\x01\x01\x38\x01\x80\xbb\x00\x00\x00\x00\x00");
+        let vorbis = ogg_page(b"\x01vorbis\x00\x00\x00\x00\x01\x44\xac\x00\x00");
+        let file = |name: &str, bytes: &[u8]| {
+            let path = dir.path().join(name);
+            std::fs::write(&path, bytes).unwrap();
+            path.to_str().unwrap().to_string()
+        };
+        assert!(is_opus_ogg(&file("voice.ogg", &opus)));
+        assert!(
+            is_opus_ogg(&file("VOICE.OGG", &opus)),
+            "extension in any case"
+        );
+        assert!(
+            !is_opus_ogg(&file("music.ogg", &vorbis)),
+            "Vorbis is converted"
+        );
+        assert!(
+            !is_opus_ogg(&file("voice.opus", &opus)),
+            "the bridge only sends .ogg as a voice note"
+        );
+        assert!(!is_opus_ogg(&file("fake.ogg", b"OggS not really")));
+        assert!(!is_opus_ogg(&file("empty.ogg", b"")));
+        assert!(!is_opus_ogg(&file("song.mp3", b"ID3")));
+        assert!(!is_opus_ogg(
+            dir.path().join("missing.ogg").to_str().unwrap()
+        ));
+    }
 
     #[test]
     fn media_dir_checks() {

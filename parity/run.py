@@ -48,6 +48,18 @@ DEFAULT_BRIDGE_RESPONSES = {
 }
 
 
+# The first Ogg page of an Opus file (RFC 7845): page header, one segment,
+# the 19-byte OpusHead. Enough for the server to send it as a voice note
+# as it is, without converting it.
+OPUS_OGG = (
+    b"OggS"
+    + bytes(22)
+    + bytes([1, 19])
+    + b"OpusHead"
+    + bytes([1, 1, 0x38, 0x01, 0x80, 0xBB, 0, 0, 0, 0, 0])
+)
+
+
 class Workspace:
     """A temporary folder with the test databases, media folder and config file."""
 
@@ -61,7 +73,7 @@ class Workspace:
             self._messages_db(fts=profile.get("fts", True))
         self._run_sql(self.store / "whatsapp.db", (FIXTURE / "whatsmeow.sql").read_text("utf-8"))
         (self.media / "photo.jpg").write_bytes(b"\xff\xd8\xff\xe0 parity test image")
-        (self.media / "voice.ogg").write_bytes(b"OggS parity test audio")
+        (self.media / "voice.ogg").write_bytes(OPUS_OGG)
         (root / "outside.txt").write_text("outside the media folder\n")
         self.config = root / "config.yaml"
         self.config.write_text(profile.get("config", ""))
