@@ -57,7 +57,8 @@ class Workspace:
         self.media = root / "media"
         self.store.mkdir()
         self.media.mkdir()
-        self._messages_db(fts=profile.get("fts", True))
+        if profile.get("messages_db", True):
+            self._messages_db(fts=profile.get("fts", True))
         self._run_sql(self.store / "whatsapp.db", (FIXTURE / "whatsmeow.sql").read_text("utf-8"))
         (self.media / "photo.jpg").write_bytes(b"\xff\xd8\xff\xe0 parity test image")
         (self.media / "voice.ogg").write_bytes(b"OggS parity test audio")

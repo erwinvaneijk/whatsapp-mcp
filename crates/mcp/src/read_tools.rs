@@ -32,21 +32,33 @@ pub fn call(store: &Store, name: &str, args: &Args<'_>) -> Option<Result<Output,
     })
 }
 
-/// A database error in a tool that answers with an empty result instead of
-/// failing (issue #69).
-fn log_db_error(e: &whatsapp_mcp_store::Error) {
-    log::warn!("Database error: {e}");
+/// Opens `messages.db`. When that fails, the error says where it was
+/// looking, so a missing store or a wrong `store_dir` is not mistaken for
+/// "no results" (issue #69).
+fn open(store: &Store) -> Result<Db, ToolError> {
+    store.open().map_err(|e| {
+        let path = store.messages_db().display().to_string();
+        let mut reason = e.to_string();
+        // SQLite's message usually names the file already.
+        if !reason.contains(&path) {
+            reason = format!("{path}: {reason}");
+        }
+        log::warn!("Cannot open the message database: {reason}");
+        ToolError(format!(
+            "Cannot open the message database: {reason}. Check that the bridge has run and that store_dir points to its store folder."
+        ))
+    })
+}
+
+/// A query's result, or a tool error with the reason, so a broken database
+/// is not mistaken for "no results" (issue #69).
+fn checked<T>(result: whatsapp_mcp_store::Result<T>) -> Result<T, ToolError> {
+    result.map_err(|e| ToolError(database_error(&e)))
 }
 
 fn search_contacts(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
     let query = args.string("query")?;
-    let contacts = store
-        .open()
-        .and_then(|db| db.search_contacts(&query))
-        .unwrap_or_else(|e| {
-            log_db_error(&e);
-            Vec::new()
-        });
+    let contacts = checked(open(store)?.search_contacts(&query))?;
     Output::list(contacts.into_iter().map(mark_contact))
 }
 
@@ -83,22 +95,13 @@ fn list_messages(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
         limit,
         page,
     };
-    let db = match store.open() {
-        Ok(db) => db,
-        Err(e) => return Output::text(database_error(&e)),
-    };
-    let messages = match db.list_messages(&filter) {
-        Ok(messages) => messages,
-        Err(e) => return Output::text(database_error(&e)),
-    };
+    let db = open(store)?;
+    let messages = checked(db.list_messages(&filter))?;
     let shown = if include_context && !messages.is_empty() {
         let mut windows = Vec::new();
         for message in &messages {
-            let context = match db.message_context(&message.id, context_before, context_after) {
-                Ok(Some(context)) => context,
-                Ok(None) => return Err(not_found(&message.id)),
-                Err(e) => return Output::text(database_error(&e)),
-            };
+            let context = checked(db.message_context(&message.id, context_before, context_after))?
+                .ok_or_else(|| not_found(&message.id))?;
             // `before` comes newest first; a window reads oldest first.
             let mut window: Vec<Message> = context.before.into_iter().rev().collect();
             window.push(context.message);
@@ -120,46 +123,26 @@ fn list_chats(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
     let sort_by = args.string_or("sort_by", "last_active")?;
     check_non_negative(&[("limit", limit), ("page", page)])?;
     let query = non_empty(query);
-    let chats = store
-        .open()
-        .and_then(|db| {
-            db.list_chats(
-                query.as_deref(),
-                limit,
-                page,
-                include_last_message,
-                &sort_by,
-            )
-        })
-        .unwrap_or_else(|e| {
-            log_db_error(&e);
-            Vec::new()
-        });
+    let chats = checked(open(store)?.list_chats(
+        query.as_deref(),
+        limit,
+        page,
+        include_last_message,
+        &sort_by,
+    ))?;
     Output::list(chats.into_iter().map(mark_chat))
 }
 
 fn get_chat(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
     let chat_jid = args.string("chat_jid")?;
     let include_last_message = args.bool_or("include_last_message", true)?;
-    let chat = store
-        .open()
-        .and_then(|db| db.chat(&chat_jid, include_last_message))
-        .unwrap_or_else(|e| {
-            log_db_error(&e);
-            None
-        });
+    let chat = checked(open(store)?.chat(&chat_jid, include_last_message))?;
     Output::optional(chat.map(mark_chat))
 }
 
 fn get_direct_chat_by_contact(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
     let phone = args.string("sender_phone_number")?;
-    let chat = store
-        .open()
-        .and_then(|db| db.direct_chat_by_contact(&phone))
-        .unwrap_or_else(|e| {
-            log_db_error(&e);
-            None
-        });
+    let chat = checked(open(store)?.direct_chat_by_contact(&phone))?;
     Output::optional(chat.map(mark_chat))
 }
 
@@ -168,29 +151,15 @@ fn get_contact_chats(store: &Store, args: &Args<'_>) -> Result<Output, ToolError
     let limit = args.int_or("limit", 20)?;
     let page = args.int_or("page", 0)?;
     check_non_negative(&[("limit", limit), ("page", page)])?;
-    let chats = store
-        .open()
-        .and_then(|db| db.contact_chats(&jid, limit, page))
-        .unwrap_or_else(|e| {
-            log_db_error(&e);
-            Vec::new()
-        });
+    let chats = checked(open(store)?.contact_chats(&jid, limit, page))?;
     Output::list(chats.into_iter().map(mark_chat))
 }
 
 fn get_last_interaction(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
     let jid = args.string("jid")?;
-    let text = store
-        .open()
-        .and_then(|db| {
-            Ok(db
-                .last_interaction(&jid)?
-                .map(|message| format_message(&db, &message, true)))
-        })
-        .unwrap_or_else(|e| {
-            log_db_error(&e);
-            None
-        });
+    let db = open(store)?;
+    let text =
+        checked(db.last_interaction(&jid))?.map(|message| format_message(&db, &message, true));
     Output::optional(text)
 }
 
@@ -199,10 +168,7 @@ fn get_message_context(store: &Store, args: &Args<'_>) -> Result<Output, ToolErr
     let before = args.int_or("before", 5)?;
     let after = args.int_or("after", 5)?;
     check_non_negative(&[("before", before), ("after", after)])?;
-    let context = store
-        .open()
-        .and_then(|db| db.message_context(&message_id, before, after))
-        .map_err(|e| ToolError(database_error(&e)))?
+    let context = checked(open(store)?.message_context(&message_id, before, after))?
         .ok_or_else(|| not_found(&message_id))?;
     Output::object(&mark_context(context))
 }
@@ -349,6 +315,39 @@ mod tests {
 
     fn ids(messages: &[Message]) -> Vec<&str> {
         messages.iter().map(|m| m.id.as_str()).collect()
+    }
+
+    /// Issue #69: a database that opens but cannot be read is an error in
+    /// every read tool, not an empty result.
+    #[test]
+    fn database_errors_are_tool_errors() {
+        let dir = tempfile::tempdir().unwrap();
+        // An empty file is a valid SQLite database without any tables.
+        std::fs::write(dir.path().join("messages.db"), b"").unwrap();
+        let store = Store::new(dir.path());
+        let args: serde_json::Map<String, serde_json::Value> = serde_json::from_str(
+            r#"{"query":"x","chat_jid":"1@s.whatsapp.net","sender_phone_number":"1","jid":"1@s.whatsapp.net","message_id":"M1"}"#,
+        )
+        .unwrap();
+        for tool in [
+            "search_contacts",
+            "list_messages",
+            "list_chats",
+            "get_chat",
+            "get_direct_chat_by_contact",
+            "get_contact_chats",
+            "get_last_interaction",
+            "get_message_context",
+        ] {
+            let result = call(&store, tool, &Args::new(Some(&args))).unwrap();
+            let Err(ToolError(message)) = result else {
+                panic!("{tool}: not an error");
+            };
+            assert!(
+                message.starts_with("Database error: no such table"),
+                "{tool}: {message}"
+            );
+        }
     }
 
     #[test]

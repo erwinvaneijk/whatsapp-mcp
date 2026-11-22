@@ -1,0 +1,17 @@
+{
+  "args": {
+    "sender_phone_number": "31600000001"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "Cannot open the message database: unable to open database file: <STORE>/messages.db. Check that the bridge has run and that store_dir points to its store folder.",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "get_direct_chat_by_contact"
+}

@@ -7,6 +7,7 @@
 - **Sender names from the right chat** ([#66](https://github.com/erwinvaneijk/whatsapp-mcp/issues/66)). A message's sender could be shown with the name of another chat whose ID contained their number, such as an older group (`<number>-<time>@g.us`) or a longer number. Only the sender's own chat is used now.
 - **Searches take `%` and `_` literally** ([#67](https://github.com/erwinvaneijk/whatsapp-mcp/issues/67)). In `list_chats`, `search_contacts`, and `list_messages` without the full-text index, a `_` matched any character and a `%` any text. They now only match themselves.
 - **`list_messages` shows each message once** ([#68](https://github.com/erwinvaneijk/whatsapp-mcp/issues/68)). With context (the default), matches close together in a chat repeated the messages around them: the default call showed 51 lines for 21 messages. Overlapping context is now merged, and each stretch of a chat reads oldest to newest; before, the messages before a match came newest first.
+- **Read tools report database errors** ([#69](https://github.com/erwinvaneijk/whatsapp-mcp/issues/69)). When `messages.db` was missing or could not be read, most read tools answered with an empty list or `null`, so the model reported "no messages". Every read tool now gives an error with the reason; for a missing database it says to check that the bridge has run and that `store_dir` is right.
 
 ## 1.1.0
 
