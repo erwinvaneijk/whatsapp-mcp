@@ -517,34 +517,42 @@ mod tests {
 
     #[test]
     fn default_store_is_in_the_data_folder() {
-        let home = Some(PathBuf::from("/home/me"));
-        assert_eq!(
-            default_store_from(false, None, None, home.clone()),
-            Some(PathBuf::from("/home/me/.local/share/whatsapp-mcp/store"))
-        );
-        assert_eq!(
-            default_store_from(false, None, Some(PathBuf::from("/data")), home.clone()),
-            Some(PathBuf::from("/data/whatsapp-mcp/store"))
-        );
-        // A relative XDG_DATA_HOME is ignored, as the XDG spec says.
-        assert_eq!(
-            default_store_from(false, None, Some(PathBuf::from("data")), home.clone()),
-            Some(PathBuf::from("/home/me/.local/share/whatsapp-mcp/store"))
-        );
         assert_eq!(default_store_from(false, None, None, None), None);
-        #[cfg(windows)]
-        assert_eq!(
-            default_store_from(
-                true,
-                Some(PathBuf::from(r"C:\Users\me\AppData\Local")),
-                None,
-                home
-            ),
-            Some(PathBuf::from(
-                r"C:\Users\me\AppData\Local\whatsapp-mcp\store"
-            ))
-        );
         assert_eq!(default_store_from(true, None, None, None), None);
+        // Each platform's paths only count as absolute on that platform, so
+        // each branch is checked where it runs.
+        #[cfg(unix)]
+        {
+            let home = Some(PathBuf::from("/home/me"));
+            assert_eq!(
+                default_store_from(false, None, None, home.clone()),
+                Some(PathBuf::from("/home/me/.local/share/whatsapp-mcp/store"))
+            );
+            assert_eq!(
+                default_store_from(false, None, Some(PathBuf::from("/data")), home.clone()),
+                Some(PathBuf::from("/data/whatsapp-mcp/store"))
+            );
+            // A relative XDG_DATA_HOME is ignored, as the XDG spec says.
+            assert_eq!(
+                default_store_from(false, None, Some(PathBuf::from("data")), home),
+                Some(PathBuf::from("/home/me/.local/share/whatsapp-mcp/store"))
+            );
+        }
+        #[cfg(windows)]
+        {
+            let local = Some(PathBuf::from(r"C:\Users\me\AppData\Local"));
+            assert_eq!(
+                default_store_from(true, local, None, Some(PathBuf::from(r"C:\Users\me"))),
+                Some(PathBuf::from(
+                    r"C:\Users\me\AppData\Local\whatsapp-mcp\store"
+                ))
+            );
+            // A relative LOCALAPPDATA is not used.
+            assert_eq!(
+                default_store_from(true, Some(PathBuf::from("Local")), None, None),
+                None
+            );
+        }
     }
 
     #[test]
