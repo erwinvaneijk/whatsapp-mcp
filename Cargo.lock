@@ -2688,7 +2688,9 @@ version = "1.1.0"
 dependencies = [
  "clap",
  "log",
+ "serde_json",
  "tempfile",
+ "tokio",
  "whatsapp-mcp-bridge",
  "whatsapp-mcp-config",
  "whatsapp-mcp-logging",
