@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Plugin 1.1.0**: the plugin downloads the 1.1.0 binaries (pinned checksums updated with `scripts/bump-plugin.sh`). After `claude plugin update`, start a new session and run `whatsapp-mcp service install` to restart the bridge on it.
+- **Sender names from the right chat** ([#66](https://github.com/erwinvaneijk/whatsapp-mcp/issues/66)). A message's sender could be shown with the name of another chat whose ID contained their number, such as an older group (`<number>-<time>@g.us`) or a longer number. Only the sender's own chat is used now.
 
 ## 1.1.0
 
