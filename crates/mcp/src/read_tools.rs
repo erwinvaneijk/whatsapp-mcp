@@ -32,9 +32,9 @@ pub fn call(store: &Store, name: &str, args: &Args<'_>) -> Option<Result<Output,
     })
 }
 
-/// Opens `messages.db`. When that fails, the error says where it was looked
-/// for, so a missing store or a wrong `store_dir` is not mistaken for "no
-/// results" (issue #69).
+/// Opens `messages.db`. When that fails, the error says where it was
+/// looking, so a missing store or a wrong `store_dir` is not mistaken for
+/// "no results" (issue #69).
 fn open(store: &Store) -> Result<Db, ToolError> {
     store.open().map_err(|e| {
         let path = store.messages_db().display().to_string();
