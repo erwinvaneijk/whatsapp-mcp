@@ -434,28 +434,33 @@ impl Db {
             .unwrap_or_else(|| sender.to_string())
     }
 
+    /// The stored name of the sender's own chat. Only exact JIDs are tried:
+    /// the sender as stored, then its user as a phone number and as a LID.
+    /// A pattern match would also find a group JID that contains the number
+    /// (`<creator>-<time>@g.us`) or a longer number (issue #66).
     fn stored_sender_name(&self, sender: &str) -> Result<Option<String>> {
-        let exact = self
+        let user = bare_user(sender);
+        let row = self
             .conn
             .query_row(
-                "SELECT name FROM chats WHERE jid = ? LIMIT 1",
-                [sender],
+                "SELECT name FROM chats WHERE jid IN (?1, ?2, ?3) ORDER BY CASE jid WHEN ?1 THEN 0 WHEN ?2 THEN 1 ELSE 2 END LIMIT 1",
+                [
+                    sender.to_string(),
+                    format!("{user}@s.whatsapp.net"),
+                    format!("{user}@lid"),
+                ],
                 |row| row.get::<_, Option<String>>(0),
             )
             .optional()?;
-        let row = match exact {
-            Some(name) => Some(name),
-            None => self
-                .conn
-                .query_row(
-                    "SELECT name FROM chats WHERE jid LIKE ? LIMIT 1",
-                    [format!("%{}%", user_part(sender))],
-                    |row| row.get::<_, Option<String>>(0),
-                )
-                .optional()?,
-        };
         Ok(row.flatten().filter(|name| !name.is_empty()))
     }
+}
+
+/// The user of a JID or a stored sender, without agent or device:
+/// `31600000001` for `31600000001:5@s.whatsapp.net`.
+fn bare_user(sender: &str) -> &str {
+    let user = user_part(sender);
+    user.split([':', '.']).next().unwrap_or(user)
 }
 
 /// A message row; the inner error is a timestamp that cannot be read.
