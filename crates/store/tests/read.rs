@@ -2,7 +2,7 @@
 //! [`Writer`]. No names tables, so only stored chat names count.
 
 use chrono::{DateTime, FixedOffset};
-use whatsapp_mcp_store::{Store, Writer};
+use whatsapp_mcp_store::{MessageFilter, NewMessage, Store, Writer};
 
 fn time(text: &str) -> DateTime<FixedOffset> {
     DateTime::parse_from_rfc3339(text).unwrap()
@@ -57,4 +57,88 @@ fn sender_name_finds_the_senders_own_chat() {
     // A LID sender, as the user part or as the JID.
     assert_eq!(db.sender_name("200000000000002"), "Tom");
     assert_eq!(db.sender_name("200000000000002@lid"), "Tom");
+}
+
+/// Issue #67: `%`, `_` and `\` in a search are literal, not wildcards.
+#[test]
+fn chat_and_contact_searches_take_wildcards_literally() {
+    let (_dir, store) = store_with_chats(&[
+        ("31600000001@s.whatsapp.net", "Maria_x"),
+        ("31600000002@s.whatsapp.net", "Mariaxx"),
+        ("31600000003@s.whatsapp.net", "50% off"),
+        ("31600000004@s.whatsapp.net", "500 off"),
+        ("31600000005@s.whatsapp.net", "back\\slash"),
+    ]);
+    let db = store.open().unwrap();
+    let chats = |query: &str| -> Vec<String> {
+        db.list_chats(Some(query), 20, 0, false, "name")
+            .unwrap()
+            .into_iter()
+            .filter_map(|c| c.name)
+            .collect()
+    };
+    assert_eq!(chats("a_x"), ["Maria_x"]);
+    assert_eq!(chats("0%"), ["50% off"]);
+    assert_eq!(chats("k\\s"), ["back\\slash"]);
+    assert_eq!(chats("_"), ["Maria_x"]);
+    let contacts = |query: &str| -> Vec<String> {
+        db.search_contacts(query)
+            .unwrap()
+            .into_iter()
+            .filter_map(|c| c.name)
+            .collect()
+    };
+    assert_eq!(contacts("a_x"), ["Maria_x"]);
+    assert_eq!(contacts("0%"), ["50% off"]);
+    // Plain text still matches anywhere, in any case.
+    assert_eq!(contacts("MARIA"), ["Maria_x", "Mariaxx"]);
+}
+
+#[test]
+fn message_search_without_fts_takes_wildcards_literally() {
+    let dir = tempfile::tempdir().unwrap();
+    let writer = Writer::open(dir.path()).unwrap();
+    let now = time("2026-11-04T22:00:52+01:00");
+    writer
+        .store_chat("31600000001@s.whatsapp.net", "Maria", now)
+        .unwrap();
+    for (id, content) in [
+        ("M1", "100% sure"),
+        ("M2", "1000 euros"),
+        ("M3", "a_b"),
+        ("M4", "axb"),
+    ] {
+        writer
+            .store_message(&NewMessage {
+                id: id.into(),
+                chat_jid: "31600000001@s.whatsapp.net".into(),
+                sender: "31600000001".into(),
+                content: content.into(),
+                timestamp: Some(now),
+                ..Default::default()
+            })
+            .unwrap();
+    }
+    // Without the insert trigger the FTS index counts as stale, so the
+    // search falls back to LIKE.
+    writer
+        .connection()
+        .execute_batch("DROP TRIGGER messages_ai")
+        .unwrap();
+    drop(writer);
+    let db = Store::new(dir.path()).open().unwrap();
+    assert!(!db.fts_ready().unwrap());
+    let search = |query: &str| -> Vec<String> {
+        db.list_messages(&MessageFilter {
+            query: Some(query.into()),
+            limit: 10,
+            ..Default::default()
+        })
+        .unwrap()
+        .into_iter()
+        .map(|m| m.id)
+        .collect()
+    };
+    assert_eq!(search("100%"), ["M1"]);
+    assert_eq!(search("a_b"), ["M3"]);
 }

@@ -5,6 +5,7 @@
 - **Bridge API reads requests strictly** ([#76](https://github.com/erwinvaneijk/whatsapp-mcp/issues/76)). The API (`/api/send`, `/api/react`, `/api/download`) no longer copies the Go bridge's JSON handling. A field name in another case, an unknown field, a field given twice, `null`, or text after the JSON is now refused with `400 Invalid request format: ` and the reason. Answers are plain JSON (`<`, `>` and `&` are no longer escaped), and an unknown path answers `Not found`. `whatsapp-mcp serve` is unaffected; this only matters for scripts that call the API by hand.
 - **Plugin 1.1.0**: the plugin downloads the 1.1.0 binaries (pinned checksums updated with `scripts/bump-plugin.sh`). After `claude plugin update`, start a new session and run `whatsapp-mcp service install` to restart the bridge on it.
 - **Sender names from the right chat** ([#66](https://github.com/erwinvaneijk/whatsapp-mcp/issues/66)). A message's sender could be shown with the name of another chat whose ID contained their number, such as an older group (`<number>-<time>@g.us`) or a longer number. Only the sender's own chat is used now.
+- **Searches take `%` and `_` literally** ([#67](https://github.com/erwinvaneijk/whatsapp-mcp/issues/67)). In `list_chats`, `search_contacts`, and `list_messages` without the full-text index, a `_` matched any character and a `%` any text. They now only match themselves.
 
 ## 1.1.0
 
