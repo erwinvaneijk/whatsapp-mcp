@@ -49,9 +49,10 @@ enum Command {
         /// in the configuration file, else whatsapp-bridge/store]
         #[arg(long, value_name = "DIR")]
         store: Option<PathBuf>,
-        /// The bridge's local API.
-        #[arg(long, value_name = "URL", default_value = "http://127.0.0.1:8080/api")]
-        bridge_url: String,
+        /// The bridge's local API. [default: from bridge_address in the
+        /// configuration file, else http://127.0.0.1:8080/api]
+        #[arg(long, value_name = "URL")]
+        bridge_url: Option<String>,
     },
 }
 
@@ -124,7 +125,14 @@ fn main() -> ExitCode {
                 Ok(found) => found,
                 Err(code) => return code,
             };
-            for line in serve_startup_lines(&config, &store, &source, &bridge_url) {
+            let (bridge_url, url_source) = match bridge_url_from(bridge_url, &config) {
+                Ok(found) => found,
+                Err(e) => {
+                    log::error!("{e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            for line in serve_startup_lines(&config, &store, &source, &bridge_url, &url_source) {
                 log::info!("{line}");
             }
             let options = whatsapp_mcp_server::ServeOptions {
@@ -182,6 +190,21 @@ fn store_folder(flag: Option<PathBuf>, config: &Config) -> Result<(PathBuf, Stri
     })
 }
 
+/// The bridge's API for `serve`, and where it comes from for the startup
+/// log: `--bridge-url`, else `bridge_address` (or its default).
+fn bridge_url_from(flag: Option<String>, config: &Config) -> Result<(String, String), String> {
+    if let Some(url) = flag {
+        return Ok((url, "from --bridge-url".to_string()));
+    }
+    let url = config.bridge_url().map_err(|e| e.to_string())?;
+    let source = match config.source(Setting::BridgeAddress) {
+        Source::Environment => format!("from {}", Setting::BridgeAddress.env()),
+        Source::File => "from bridge_address in the configuration file".to_string(),
+        Source::Default => "default".to_string(),
+    };
+    Ok((url, source))
+}
+
 /// What `serve` logs on start, on stderr: the version, the settings and
 /// where each comes from, the store, where names come from and the bridge.
 /// A missing `messages.db` is said here: serving goes on, as the bridge may
@@ -191,6 +214,7 @@ fn serve_startup_lines(
     store: &Path,
     source: &str,
     bridge_url: &str,
+    url_source: &str,
 ) -> Vec<String> {
     let mut lines = vec![format!("whatsapp-mcp {} serve", env!("CARGO_PKG_VERSION"))];
     lines.extend(config.startup_lines(&[
@@ -224,7 +248,7 @@ fn serve_startup_lines(
         }
         .to_string(),
     );
-    lines.push(format!("Bridge: {}", clean(bridge_url)));
+    lines.push(format!("Bridge: {} ({url_source})", clean(bridge_url)));
     lines
 }
 
@@ -273,7 +297,7 @@ mod tests {
             panic!("not serve");
         };
         assert_eq!(store, None, "store_dir or the default decide");
-        assert_eq!(bridge_url, "http://127.0.0.1:8080/api");
+        assert_eq!(bridge_url, None, "bridge_address or the default decide");
     }
 
     #[test]
@@ -292,8 +316,13 @@ mod tests {
         .unwrap();
         let dir = tempfile::tempdir().unwrap();
 
-        let lines =
-            serve_startup_lines(&config, dir.path(), "default", "http://127.0.0.1:8080/api");
+        let lines = serve_startup_lines(
+            &config,
+            dir.path(),
+            "default",
+            "http://127.0.0.1:8080/api",
+            "default",
+        );
         assert_eq!(
             lines[0],
             format!("whatsapp-mcp {} serve", env!("CARGO_PKG_VERSION"))
@@ -311,12 +340,20 @@ mod tests {
         assert!(
             lines.contains(&"Names: none found; chats and senders show as numbers".to_string())
         );
-        assert_eq!(lines.last().unwrap(), "Bridge: http://127.0.0.1:8080/api");
+        assert_eq!(
+            lines.last().unwrap(),
+            "Bridge: http://127.0.0.1:8080/api (default)"
+        );
         assert!(!lines.join("\n").contains("s3cr3t"));
 
         whatsapp_mcp_store::Writer::open(dir.path()).unwrap();
-        let lines =
-            serve_startup_lines(&config, dir.path(), "default", "http://127.0.0.1:8080/api");
+        let lines = serve_startup_lines(
+            &config,
+            dir.path(),
+            "default",
+            "http://127.0.0.1:8080/api",
+            "default",
+        );
         assert!(
             lines
                 .iter()
@@ -358,5 +395,41 @@ mod tests {
         );
         let err = store_folder(None, &load(Some("relative/store"))).unwrap_err();
         assert!(err.contains("use an absolute path"), "{err}");
+    }
+
+    #[test]
+    fn bridge_url_from_flag_setting_or_default() {
+        let load = |value: Option<&str>| {
+            Config::load_from(
+                |name| {
+                    Ok((name == "WHATSAPP_BRIDGE_ADDRESS")
+                        .then(|| value.map(str::to_string))
+                        .flatten())
+                },
+                None,
+            )
+            .unwrap()
+        };
+        assert_eq!(
+            bridge_url_from(None, &load(None)).unwrap(),
+            (
+                "http://127.0.0.1:8080/api".to_string(),
+                "default".to_string()
+            )
+        );
+        let set = load(Some("9090"));
+        assert_eq!(
+            bridge_url_from(None, &set).unwrap(),
+            (
+                "http://127.0.0.1:9090/api".to_string(),
+                "from WHATSAPP_BRIDGE_ADDRESS".to_string()
+            )
+        );
+        assert_eq!(
+            bridge_url_from(Some("http://h/api".to_string()), &set).unwrap(),
+            ("http://h/api".to_string(), "from --bridge-url".to_string())
+        );
+        let err = bridge_url_from(None, &load(Some("0.0.0.0:80"))).unwrap_err();
+        assert!(err.contains("only a loopback address"), "{err}");
     }
 }

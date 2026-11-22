@@ -133,7 +133,7 @@ One program, `whatsapp-mcp`, does both jobs:
    }
    ```
 
-   The server reads the store folder, the token and the media folder from the configuration file; without the file, add them in an `"env"` block as `WHATSAPP_STORE_DIR`, `WHATSAPP_BRIDGE_TOKEN` and `WHATSAPP_MEDIA_DIR`. If the bridge's API is not at `http://127.0.0.1:8080/api`, add `"--bridge-url", "http://…/api"` to the arguments.
+   The server reads the store folder, the token and the media folder from the configuration file; without the file, add them in an `"env"` block as `WHATSAPP_STORE_DIR`, `WHATSAPP_BRIDGE_TOKEN` and `WHATSAPP_MEDIA_DIR`. If you moved the bridge to another port with [`bridge_address`](#configuration), `serve` reads that too; `"--bridge-url", "http://…/api"` in the arguments overrides it.
 
    For **Claude**, save this as `claude_desktop_config.json` in your Claude Desktop configuration directory at:
 
@@ -195,6 +195,7 @@ The bridge and the MCP server read their settings from environment variables, or
 | Setting in the file | Environment variable | Used by | Meaning |
 |---|---|---|---|
 | `bridge_token` | `WHATSAPP_BRIDGE_TOKEN` | both | Shared secret, at least 32 characters. Required. |
+| `bridge_address` | `WHATSAPP_BRIDGE_ADDRESS` | both | Where the bridge's local API listens, and where `serve` reaches it: `127.0.0.1:8080` by default. `IP:PORT`, `localhost:PORT` or a port alone; only addresses on this computer (loopback) are accepted. |
 | `store_dir` | `WHATSAPP_STORE_DIR` | both | The store folder, absolute or starting with `~/`. `--store` overrides it; without either, `whatsapp-bridge/store` in the current folder. |
 | `media_dir` | `WHATSAPP_MEDIA_DIR` | both | The only folder files can be sent from. |
 | `send_allowlist` | `WHATSAPP_SEND_ALLOWLIST` | bridge | Chats the bridge may send to; a YAML list in the file. See [Control whom the bridge is allowed to send to](#control-whom-the-bridge-is-allowed-to-send-to). |
@@ -220,7 +221,7 @@ The bridge's REST API is locked down. It refuses to start unless the bridge and 
 
 - `WHATSAPP_BRIDGE_TOKEN`: a random secret of at least 32 characters. Set the same value for the bridge and for the MCP server. Every request must carry it in an `X-Bridge-Token` header. Generate one with `head -c 32 /dev/urandom | base64`.
 - `WHATSAPP_MEDIA_DIR`: the only directory `send_file` and `send_audio_message` may read from. Sending files is refused when it is unset.
-- The API listens on `127.0.0.1` only, and only accepts `Content-Type: application/json`.
+- The API listens on `127.0.0.1` only (port 8080, or the one in `bridge_address`; addresses reachable from the network are refused), and only accepts `Content-Type: application/json`.
 - Downloaded media filenames and chat IDs are sanitised, so a sender cannot write outside `store/`.
 - Message text is stripped of control characters before it is printed to the terminal.
 - The store folder (session keys, messages and media) is readable by your user only.
@@ -301,7 +302,7 @@ To see message content in the logs while debugging, start the bridge with `WHATS
 
 `whatsapp-mcp` is one Rust program, built from [`crates/`](crates/README.md), with two commands:
 
-1. **Bridge** (`whatsapp-mcp bridge`): connects to WhatsApp's web API with [whatsapp-rust](https://github.com/oxidezap/whatsapp-rust), handles linking with a QR or pairing code, and stores message history in SQLite. It serves a local API on `127.0.0.1:8080` for sending and downloading. Before version 1.0 this was a Go program.
+1. **Bridge** (`whatsapp-mcp bridge`): connects to WhatsApp's web API with [whatsapp-rust](https://github.com/oxidezap/whatsapp-rust), handles linking with a QR or pairing code, and stores message history in SQLite. It serves a local API on `127.0.0.1:8080` (or [`bridge_address`](#configuration)) for sending and downloading. Before version 1.0 this was a Go program.
 
 2. **MCP Server** (`whatsapp-mcp serve`): implements the Model Context Protocol (MCP), which provides standardized tools for Claude to interact with WhatsApp data and send/receive messages. It reads `messages.db` directly and sends through the bridge's local API. Before version 0.9 this was a Python server.
 

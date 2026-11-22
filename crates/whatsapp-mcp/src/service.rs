@@ -14,6 +14,7 @@
 // carries the MCP protocol.
 #![allow(clippy::print_stdout)]
 
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::process::Command;
@@ -132,7 +133,7 @@ fn systemd_quote(text: &str) -> String {
 /// The settings the service will run with: the configuration file only,
 /// since the service does not get the environment variables set here.
 /// The bridge must be able to start with them.
-pub fn check_config(config_file: Option<&Path>, home: Option<&Path>) -> Result<(), String> {
+pub fn check_config(config_file: Option<&Path>, home: Option<&Path>) -> Result<Config, String> {
     let config = Config::load_from(
         |name| {
             Ok(match (name, config_file) {
@@ -144,12 +145,14 @@ pub fn check_config(config_file: Option<&Path>, home: Option<&Path>) -> Result<(
     )
     .map_err(|e| e.to_string())?;
     match config.bridge_token() {
-        Ok(_) => Ok(()),
-        Err(ConfigError::BridgeToken) => Err(
+        Ok(_) => {}
+        Err(ConfigError::BridgeToken) => return Err(
             "The service gets its settings from the configuration file only, and bridge_token is not set there (or shorter than 32 characters). Environment variables set here do not reach the service.".to_string(),
         ),
-        Err(e) => Err(e.to_string()),
+        Err(e) => return Err(e.to_string()),
     }
+    config.bridge_address().map_err(|e| e.to_string())?;
+    Ok(config)
 }
 
 /// `service install`: checks, writes the file and starts the service.
@@ -163,7 +166,7 @@ pub fn install(store: &Path) -> Result<(), String> {
         ));
     }
     let config_file = std::env::var_os(CONFIG_PATH_ENV).map(PathBuf::from);
-    check_config(config_file.as_deref(), std::env::home_dir().as_deref())?;
+    let config = check_config(config_file.as_deref(), std::env::home_dir().as_deref())?;
     let exe = std::env::current_exe()
         .and_then(|exe| exe.canonicalize())
         .map_err(|e| format!("Cannot find this program's own path: {e}"))?;
@@ -173,7 +176,9 @@ pub fn install(store: &Path) -> Result<(), String> {
         config_file,
         log_file: None,
     };
-    platform::install(service)
+    // Checked by check_config.
+    let address = config.bridge_address().map_err(|e| e.to_string())?;
+    platform::install(service, address)
 }
 
 /// `service uninstall`: stops the service and removes its file.
@@ -186,14 +191,14 @@ pub fn status() -> Result<(), String> {
     platform::status()
 }
 
-/// The API port must be free once an older service is stopped: a bridge
-/// in a terminal would make the service fail and restart over and over.
+/// The API's address must be free once an older service is stopped: a
+/// bridge in a terminal would make the service fail and restart over and
+/// over.
 #[cfg(any(target_os = "macos", target_os = "linux"))]
-fn check_port_free() -> Result<(), String> {
-    let address = std::net::SocketAddr::from(whatsapp_mcp_bridge::run::API_ADDRESS);
+fn check_port_free(address: SocketAddr) -> Result<(), String> {
     std::net::TcpListener::bind(address).map(drop).map_err(|_| {
         format!(
-            "Something already listens on {address}: stop the bridge running in a terminal first."
+            "Something already listens on {address}: stop the bridge running in a terminal first, or set bridge_address to another port."
         )
     })
 }
@@ -243,7 +248,7 @@ mod platform {
         Ok(format!("gui/{}", run("id", &["-u"])?.trim()))
     }
 
-    pub fn install(mut service: Service) -> Result<(), String> {
+    pub fn install(mut service: Service, address: SocketAddr) -> Result<(), String> {
         let path = plist_path()?;
         let log_file = home()?.join("Library/Logs/whatsapp-mcp/bridge.log");
         service.log_file = Some(log_file.clone());
@@ -253,7 +258,7 @@ mod platform {
             "launchctl",
             &["bootout", &format!("{domain}/{LAUNCHD_LABEL}")],
         );
-        check_port_free()?;
+        check_port_free(address)?;
         if let Some(dir) = log_file.parent() {
             whatsapp_mcp_store::ensure_private_dir(dir)
                 .map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -324,10 +329,10 @@ mod platform {
         Ok(home()?.join(".config/systemd/user").join(SYSTEMD_UNIT))
     }
 
-    pub fn install(service: Service) -> Result<(), String> {
+    pub fn install(service: Service, address: SocketAddr) -> Result<(), String> {
         let path = unit_path()?;
         let _ = run("systemctl", &["--user", "stop", SYSTEMD_UNIT]);
-        check_port_free()?;
+        check_port_free(address)?;
         write_file(&path, &systemd_unit(&service))?;
         run("systemctl", &["--user", "daemon-reload"])?;
         run("systemctl", &["--user", "enable", "--now", SYSTEMD_UNIT])?;
@@ -378,7 +383,7 @@ mod platform {
 
     const NOT_HERE: &str = "`whatsapp-mcp service` is for macOS and Linux. On Windows, run the bridge as a scheduled task: see the README.";
 
-    pub fn install(_service: Service) -> Result<(), String> {
+    pub fn install(_service: Service, _address: SocketAddr) -> Result<(), String> {
         Err(NOT_HERE.to_string())
     }
 
@@ -455,5 +460,17 @@ mod tests {
 
         std::fs::write(&file, format!("bridge_token: {}\n", "t".repeat(32))).unwrap();
         check_config(Some(&file), None).unwrap();
+
+        // The address the service will listen on comes from the file too.
+        let token = format!("bridge_token: {}\n", "t".repeat(32));
+        std::fs::write(&file, format!("{token}bridge_address: 9090\n")).unwrap();
+        let config = check_config(Some(&file), None).unwrap();
+        assert_eq!(
+            config.bridge_address().unwrap().to_string(),
+            "127.0.0.1:9090"
+        );
+        std::fs::write(&file, format!("{token}bridge_address: 0.0.0.0:9090\n")).unwrap();
+        let err = check_config(Some(&file), None).unwrap_err();
+        assert!(err.contains("only a loopback address"), "{err}");
     }
 }
