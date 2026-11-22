@@ -226,8 +226,8 @@ impl Db {
                 // the trailing * makes the last word a prefix.
                 params.push(format!("\"{}\"*", query.replace('"', "\"\"")).into());
             } else {
-                wheres.push("LOWER(messages.content) LIKE LOWER(?)");
-                params.push(format!("%{query}%").into());
+                wheres.push("LOWER(messages.content) LIKE LOWER(?) ESCAPE '\\'");
+                params.push(contains_pattern(query).into());
             }
         }
         if !wheres.is_empty() {
@@ -316,11 +316,11 @@ impl Db {
         let mut params: Vec<rusqlite::types::Value> = Vec::new();
         if let Some(query) = query {
             sql.push(
-                "WHERE (LOWER(display_name(chats.jid, chats.name)) LIKE LOWER(?) OR chats.jid LIKE ?)"
+                "WHERE (LOWER(display_name(chats.jid, chats.name)) LIKE LOWER(?) ESCAPE '\\' OR chats.jid LIKE ? ESCAPE '\\')"
                     .into(),
             );
-            params.push(format!("%{query}%").into());
-            params.push(format!("%{query}%").into());
+            params.push(contains_pattern(query).into());
+            params.push(contains_pattern(query).into());
         }
         sql.push(format!(
             "ORDER BY {}",
@@ -340,9 +340,9 @@ impl Db {
 
     /// Contacts (not groups) whose name, JID or mapped number matches.
     pub fn search_contacts(&self, query: &str) -> Result<Vec<Contact>> {
-        let pattern = format!("%{query}%");
+        let pattern = contains_pattern(query);
         let mut statement = self.conn.prepare(
-            "SELECT DISTINCT jid, display_name(jid, name) AS resolved_name FROM chats WHERE (LOWER(display_name(jid, name)) LIKE LOWER(?) OR LOWER(jid) LIKE LOWER(?) OR jid_matches(jid, ?)) AND jid NOT LIKE '%@g.us' ORDER BY resolved_name, jid LIMIT 50",
+            "SELECT DISTINCT jid, display_name(jid, name) AS resolved_name FROM chats WHERE (LOWER(display_name(jid, name)) LIKE LOWER(?) ESCAPE '\\' OR LOWER(jid) LIKE LOWER(?) ESCAPE '\\' OR jid_matches(jid, ?)) AND jid NOT LIKE '%@g.us' ORDER BY resolved_name, jid LIMIT 50",
         )?;
         let rows = statement.query_map(rusqlite::params![pattern, pattern, query], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
@@ -454,6 +454,22 @@ impl Db {
             .optional()?;
         Ok(row.flatten().filter(|name| !name.is_empty()))
     }
+}
+
+/// A `LIKE` pattern (with `ESCAPE '\'`) for text that contains `text`
+/// literally: its `%`, `_` and `\` are escaped, so they are not wildcards
+/// (issue #67).
+fn contains_pattern(text: &str) -> String {
+    let mut pattern = String::with_capacity(text.len() + 2);
+    pattern.push('%');
+    for c in text.chars() {
+        if matches!(c, '%' | '_' | '\\') {
+            pattern.push('\\');
+        }
+        pattern.push(c);
+    }
+    pattern.push('%');
+    pattern
 }
 
 /// The user of a JID or a stored sender, without agent or device:
