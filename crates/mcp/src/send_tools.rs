@@ -161,7 +161,9 @@ fn check_file(ctx: &SendContext<'_>, recipient: &str, media_path: &str) -> Resul
         return Err("Media path must be provided".into());
     }
     if !inside_media_dir(ctx.media_dir, media_path) {
-        return Err("Media path must be an absolute path inside WHATSAPP_MEDIA_DIR".into());
+        return Err(
+            "Media path must be an absolute path inside media_dir (WHATSAPP_MEDIA_DIR)".into(),
+        );
     }
     if !Path::new(media_path).is_file() {
         return Err(format!("Media file not found: {media_path}"));

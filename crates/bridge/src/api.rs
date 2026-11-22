@@ -119,7 +119,7 @@ impl<B: Backend> Api<B> {
                 StatusCode::FORBIDDEN,
                 &Status {
                     success: false,
-                    message: "Sending is off: set full_control (or WHATSAPP_FULL_CONTROL) to yes for the bridge to send.".into(),
+                    message: "Sending is off: set full_control (WHATSAPP_FULL_CONTROL) to yes for the bridge to send.".into(),
                 },
             );
         }
@@ -257,13 +257,13 @@ impl<B: Backend> Api<B> {
         if allows(self.allowlist.as_ref(), self.backend.as_ref(), chat) {
             return None;
         }
-        log::warning("Refused to send: chat is not in WHATSAPP_SEND_ALLOWLIST");
+        log::warning("Refused to send: chat is not in send_allowlist (WHATSAPP_SEND_ALLOWLIST)");
         Some(json(
             StatusCode::FORBIDDEN,
             &Status {
                 success: false,
                 message:
-                    "This chat is not in WHATSAPP_SEND_ALLOWLIST, so the bridge will not send to it."
+                    "This chat is not in send_allowlist (WHATSAPP_SEND_ALLOWLIST), so the bridge will not send to it."
                         .into(),
             },
         ))
@@ -292,14 +292,14 @@ pub fn allows<B: Backend>(allowlist: Option<&SendAllowlist>, backend: &B, chat: 
 /// it lies inside the media folder.
 pub fn allowed_media_path(media_dir: Option<&str>, path: &str) -> Result<PathBuf, String> {
     let Some(media_dir) = media_dir.filter(|d| !d.is_empty()) else {
-        return Err("media sending is disabled: WHATSAPP_MEDIA_DIR is not set".into());
+        return Err("media sending is disabled: media_dir (WHATSAPP_MEDIA_DIR) is not set".into());
     };
     let root = std::fs::canonicalize(media_dir)
-        .map_err(|e| format!("cannot resolve WHATSAPP_MEDIA_DIR: {e}"))?;
+        .map_err(|e| format!("cannot resolve media_dir (WHATSAPP_MEDIA_DIR): {e}"))?;
     let real =
         std::fs::canonicalize(path).map_err(|e| format!("cannot resolve media path: {e}"))?;
     if !real.starts_with(&root) {
-        return Err("media path is outside WHATSAPP_MEDIA_DIR".into());
+        return Err("media path is outside media_dir (WHATSAPP_MEDIA_DIR)".into());
     }
     Ok(real)
 }

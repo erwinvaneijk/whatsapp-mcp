@@ -95,9 +95,5 @@ impl Config {
 
 fn invalid(setting: Setting, value: &str, expected: &str) -> ConfigError {
     let value: String = value.chars().filter(|c| !c.is_control()).collect();
-    ConfigError::invalid(format!(
-        "{} (or {} in the configuration file) is {value:?}; use {expected}",
-        setting.env(),
-        setting.name()
-    ))
+    ConfigError::invalid(format!("{} is {value:?}; use {expected}", setting.label()))
 }

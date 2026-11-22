@@ -7,14 +7,14 @@
   "result": {
     "content": [
       {
-        "text": "{\n  \"success\": false,\n  \"message\": \"Request error: WHATSAPP_BRIDGE_TOKEN is not set\"\n}",
+        "text": "{\n  \"success\": false,\n  \"message\": \"Request error: bridge_token (WHATSAPP_BRIDGE_TOKEN) is not set\"\n}",
         "type": "text"
       }
     ],
     "isError": false,
     "resultType": "complete",
     "structuredContent": {
-      "message": "Request error: WHATSAPP_BRIDGE_TOKEN is not set",
+      "message": "Request error: bridge_token (WHATSAPP_BRIDGE_TOKEN) is not set",
       "success": false
     }
   },

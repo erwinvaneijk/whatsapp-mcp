@@ -111,6 +111,12 @@ impl Setting {
         }
     }
 
+    /// How messages name the setting, so it is found in the configuration
+    /// file and in the environment alike: `media_dir (WHATSAPP_MEDIA_DIR)`.
+    pub fn label(self) -> String {
+        format!("{} ({})", self.name(), self.env())
+    }
+
     pub fn from_name(name: &str) -> Option<Setting> {
         Setting::ALL.into_iter().find(|s| s.name() == name)
     }
@@ -262,9 +268,8 @@ impl Config {
         let invalid = |why: &str| {
             let value: String = value.chars().filter(|c| !c.is_control()).collect();
             ConfigError::invalid(format!(
-                "{} (or {} in the configuration file) is {value:?}: {why}; use {expected}",
-                Setting::BridgeAddress.env(),
-                Setting::BridgeAddress.name()
+                "{} is {value:?}: {why}; use {expected}",
+                Setting::BridgeAddress.label()
             ))
         };
         let localhost = |port: &str| {
@@ -311,9 +316,8 @@ impl Config {
         } else {
             let value: String = value.chars().filter(|c| !c.is_control()).collect();
             Err(ConfigError::invalid(format!(
-                "{} (or {} in the configuration file) is {value:?}; use an absolute path, or one starting with ~/",
-                Setting::StoreDir.env(),
-                Setting::StoreDir.name()
+                "{} is {value:?}; use an absolute path, or one starting with ~/",
+                Setting::StoreDir.label()
             )))
         }
     }
@@ -352,11 +356,7 @@ impl Config {
         let fix = if flag(read_only) {
             "read-only is now the default; remove it".to_string()
         } else {
-            format!(
-                "remove it and set {} (or {}) to yes",
-                Setting::FullControl.name(),
-                Setting::FullControl.env()
-            )
+            format!("remove it and set {} to yes", Setting::FullControl.label())
         };
         vec![format!(
             "{name} is replaced by full_control and will stop working in 2.0: {fix}"

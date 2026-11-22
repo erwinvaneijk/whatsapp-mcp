@@ -36,7 +36,7 @@ pub fn result_line(what: &str, success: bool, status: &str, with_content: bool) 
     } else if success {
         format!("{what} true")
     } else {
-        format!("{what} false (set WHATSAPP_LOG_CONTENT=1 to log the error)")
+        format!("{what} false (set log_content (WHATSAPP_LOG_CONTENT) to yes to log the error)")
     }
 }
 
@@ -58,7 +58,7 @@ mod tests {
                 "Error reading media file: open /home/me/outbox/salary.pdf",
                 false
             ),
-            "Message sent false (set WHATSAPP_LOG_CONTENT=1 to log the error)"
+            "Message sent false (set log_content (WHATSAPP_LOG_CONTENT) to yes to log the error)"
         );
         assert_eq!(
             result_line("Reaction sent", true, "Reaction 👍 sent", true),

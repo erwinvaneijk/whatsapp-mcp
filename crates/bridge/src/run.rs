@@ -86,12 +86,12 @@ pub fn pair_phone(raw: &str) -> Result<String, String> {
         .collect();
     if digits.is_empty() || !digits.chars().all(|c| c.is_ascii_digit()) {
         return Err(format!(
-            "WHATSAPP_PAIR_PHONE {raw:?}: use digits only, with the country code, such as 316..."
+            "pair_phone (WHATSAPP_PAIR_PHONE) {raw:?}: use digits only, with the country code, such as 316..."
         ));
     }
     if digits.starts_with('0') {
         return Err(format!(
-            "WHATSAPP_PAIR_PHONE {raw:?}: start with the country code, not 0 (for the Netherlands: 316... instead of 06...)"
+            "pair_phone (WHATSAPP_PAIR_PHONE) {raw:?}: start with the country code, not 0 (for the Netherlands: 316... instead of 06...)"
         ));
     }
     Ok(digits)

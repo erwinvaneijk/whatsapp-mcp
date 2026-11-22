@@ -91,7 +91,7 @@ Plain-text errors with `400`:
 | `/api/react` | `message_id and chat_jid are required`, `Invalid chat_jid` |
 | `/api/download` | `Message ID and Chat JID are required` |
 
-A chat outside the send allowlist gets `403 {"success":false,"message":"This chat is not in WHATSAPP_SEND_ALLOWLIST, so the bridge will not send to it."}`.
+A chat outside the send allowlist gets `403 {"success":false,"message":"This chat is not in send_allowlist (WHATSAPP_SEND_ALLOWLIST), so the bridge will not send to it."}`.
 
 `media_path` must resolve, symlinks included, to a file inside `media_dir`.
 
