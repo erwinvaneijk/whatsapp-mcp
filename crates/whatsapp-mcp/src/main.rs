@@ -26,7 +26,7 @@ enum Command {
     Bridge {
         /// The store folder: messages.db, and the WhatsApp session in
         /// session.db. Created when missing. [default: store_dir in the
-        /// configuration file, else whatsapp-bridge/store]
+        /// configuration file, else ~/.local/share/whatsapp-mcp/store]
         #[arg(long, value_name = "DIR")]
         store: Option<PathBuf>,
     },
@@ -46,7 +46,7 @@ enum Command {
     /// Serve the MCP tools over stdio, for an MCP client such as Claude Desktop.
     Serve {
         /// The bridge's store folder, with messages.db. [default: store_dir
-        /// in the configuration file, else whatsapp-bridge/store]
+        /// in the configuration file, else ~/.local/share/whatsapp-mcp/store]
         #[arg(long, value_name = "DIR")]
         store: Option<PathBuf>,
         /// The bridge's local API. [default: from bridge_address in the
@@ -78,8 +78,20 @@ fn main() -> ExitCode {
         let result = match action {
             ServiceAction::Install { store } => whatsapp_mcp_config::Config::load()
                 .map_err(|e| e.to_string())
-                .and_then(|config| store_folder(store, &config))
-                .and_then(|(store, _)| service::install(&store)),
+                .and_then(|config| {
+                    store_folder(
+                        store,
+                        &config,
+                        default_store(),
+                        Path::new(OLD_DEFAULT_STORE),
+                    )
+                })
+                .and_then(|found| {
+                    if let Some(warning) = &found.warning {
+                        eprintln!("whatsapp-mcp service: {warning}");
+                    }
+                    service::install(&found.path)
+                }),
             ServiceAction::Uninstall => service::uninstall(),
             ServiceAction::Status => service::status(),
         };
@@ -112,13 +124,19 @@ fn main() -> ExitCode {
         log::warn!("{warning}");
     }
     let link_only = matches!(cli.command, Command::Link { .. });
-    let resolve = |flag| match store_folder(flag, &config) {
-        Ok(found) => Ok(found),
-        Err(e) => {
-            log::error!("{e}");
-            Err(ExitCode::FAILURE)
-        }
-    };
+    let resolve =
+        |flag| match store_folder(flag, &config, default_store(), Path::new(OLD_DEFAULT_STORE)) {
+            Ok(found) => {
+                if let Some(warning) = &found.warning {
+                    log::warn!("{warning}");
+                }
+                Ok((found.path, found.source))
+            }
+            Err(e) => {
+                log::error!("{e}");
+                Err(ExitCode::FAILURE)
+            }
+        };
     match cli.command {
         Command::Serve { store, bridge_url } => {
             let (store, source) = match resolve(store) {
@@ -169,25 +187,103 @@ fn main() -> ExitCode {
     }
 }
 
-/// The store folder when `--store` is not given.
-const DEFAULT_STORE: &str = "whatsapp-bridge/store";
+/// The store folder before 1.2, relative to the current folder. Still used
+/// when it holds a store and the new default does not (issue #74).
+const OLD_DEFAULT_STORE: &str = "whatsapp-bridge/store";
 
-/// The store folder, and where it comes from for the startup log: `--store`,
-/// then `store_dir` (or `WHATSAPP_STORE_DIR`), then [`DEFAULT_STORE`].
-fn store_folder(flag: Option<PathBuf>, config: &Config) -> Result<(PathBuf, String), String> {
-    if let Some(dir) = flag {
-        return Ok((dir, "from --store".to_string()));
-    }
-    Ok(match config.store_dir().map_err(|e| e.to_string())? {
-        Some(dir) => {
-            let source = match config.source(Setting::StoreDir) {
-                Source::Environment => format!("from {}", Setting::StoreDir.env()),
-                _ => "from store_dir in the configuration file".to_string(),
-            };
-            (dir, source)
+/// The store folder, where it comes from (for the startup log), and a
+/// warning when it is the old default.
+#[derive(Debug, PartialEq, Eq)]
+struct StoreFolder {
+    path: PathBuf,
+    source: String,
+    warning: Option<String>,
+}
+
+/// The default store folder: in the user's data folder, so it does not
+/// depend on the folder a program is started in. `None` without a home
+/// folder (or `LOCALAPPDATA` on Windows).
+fn default_store() -> Option<PathBuf> {
+    let var = |name| std::env::var_os(name).map(PathBuf::from);
+    default_store_from(
+        cfg!(windows),
+        var("LOCALAPPDATA"),
+        var("XDG_DATA_HOME"),
+        std::env::home_dir(),
+    )
+}
+
+/// [`default_store`], with the environment given: on Windows
+/// `%LOCALAPPDATA%\whatsapp-mcp\store`, else
+/// `$XDG_DATA_HOME/whatsapp-mcp/store` (when absolute), else
+/// `~/.local/share/whatsapp-mcp/store`.
+fn default_store_from(
+    windows: bool,
+    local_app_data: Option<PathBuf>,
+    xdg_data_home: Option<PathBuf>,
+    home: Option<PathBuf>,
+) -> Option<PathBuf> {
+    let data = if windows {
+        local_app_data.filter(|d| d.is_absolute())?
+    } else {
+        match xdg_data_home.filter(|d| d.is_absolute()) {
+            Some(dir) => dir,
+            None => home?.join(".local").join("share"),
         }
-        None => (PathBuf::from(DEFAULT_STORE), "default".to_string()),
-    })
+    };
+    Some(data.join("whatsapp-mcp").join("store"))
+}
+
+/// Whether a folder holds a store: messages or a WhatsApp session.
+fn holds_store(dir: &Path) -> bool {
+    dir.join("messages.db").is_file() || dir.join("session.db").is_file()
+}
+
+/// The store folder: `--store`, then `store_dir` (or `WHATSAPP_STORE_DIR`),
+/// then the default. The old default, `whatsapp-bridge/store` in the current
+/// folder, is used instead when it holds a store and the default does not,
+/// with a warning, so an existing setup keeps its history.
+fn store_folder(
+    flag: Option<PathBuf>,
+    config: &Config,
+    default: Option<PathBuf>,
+    old: &Path,
+) -> Result<StoreFolder, String> {
+    let found = |path, source: &str| StoreFolder {
+        path,
+        source: source.to_string(),
+        warning: None,
+    };
+    if let Some(dir) = flag {
+        return Ok(found(dir, "from --store"));
+    }
+    if let Some(dir) = config.store_dir().map_err(|e| e.to_string())? {
+        let source = match config.source(Setting::StoreDir) {
+            Source::Environment => format!("from {}", Setting::StoreDir.env()),
+            _ => "from store_dir in the configuration file".to_string(),
+        };
+        return Ok(found(dir, &source));
+    }
+    match default {
+        Some(new) if holds_store(&new) || !holds_store(old) => Ok(found(new, "default")),
+        Some(new) => {
+            let shown = std::path::absolute(old).unwrap_or_else(|_| old.to_path_buf());
+            Ok(StoreFolder {
+                warning: Some(format!(
+                    "Using the store in the current folder, {}, because the default store folder {} is empty. Set store_dir in the configuration file to the store's absolute path, so every command finds it whatever folder it starts in.",
+                    clean(&shown.display().to_string()),
+                    clean(&new.display().to_string()),
+                )),
+                path: old.to_path_buf(),
+                source: "the old default: whatsapp-bridge/store in the current folder".to_string(),
+            })
+        }
+        // No home folder: only the old default is left.
+        None => Ok(found(
+            old.to_path_buf(),
+            "default: no home folder, so in the current folder",
+        )),
+    }
 }
 
 /// The bridge's API for `serve`, and where it comes from for the startup
@@ -376,25 +472,87 @@ mod tests {
             )
             .unwrap()
         };
+        let default = home.path().join("data/whatsapp-mcp/store");
+        let old = home.path().join("cwd/whatsapp-bridge/store");
         let none = load(None);
+        let found = store_folder(None, &none, Some(default.clone()), &old).unwrap();
         assert_eq!(
-            store_folder(None, &none).unwrap(),
-            (PathBuf::from(DEFAULT_STORE), "default".to_string())
+            (found.path, found.source.as_str()),
+            (default.clone(), "default")
         );
+        assert_eq!(found.warning, None);
         let set = load(Some("~/wa/store"));
+        let found = store_folder(None, &set, Some(default.clone()), &old).unwrap();
         assert_eq!(
-            store_folder(None, &set).unwrap(),
-            (
-                home.path().join("wa/store"),
-                "from WHATSAPP_STORE_DIR".to_string()
-            )
+            (found.path, found.source.as_str()),
+            (home.path().join("wa/store"), "from WHATSAPP_STORE_DIR")
         );
+        let found =
+            store_folder(Some(PathBuf::from("/x")), &set, Some(default.clone()), &old).unwrap();
         assert_eq!(
-            store_folder(Some(PathBuf::from("/x")), &set).unwrap(),
-            (PathBuf::from("/x"), "from --store".to_string())
+            (found.path, found.source.as_str()),
+            (PathBuf::from("/x"), "from --store")
         );
-        let err = store_folder(None, &load(Some("relative/store"))).unwrap_err();
+        let err = store_folder(None, &load(Some("relative/store")), None, &old).unwrap_err();
         assert!(err.contains("use an absolute path"), "{err}");
+        // No home folder: the old default.
+        let found = store_folder(None, &none, None, &old).unwrap();
+        assert_eq!(found.path, old);
+        assert_eq!(found.warning, None);
+
+        // Issue #74: an existing store in the old place is still found, with
+        // a warning, while the new default is empty.
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(old.join("messages.db"), b"").unwrap();
+        let found = store_folder(None, &none, Some(default.clone()), &old).unwrap();
+        assert_eq!(found.path, old);
+        let warning = found.warning.unwrap();
+        assert!(warning.contains("Set store_dir"), "{warning}");
+        // Once the new default holds a store, it wins.
+        std::fs::create_dir_all(&default).unwrap();
+        std::fs::write(default.join("session.db"), b"").unwrap();
+        let found = store_folder(None, &none, Some(default.clone()), &old).unwrap();
+        assert_eq!((found.path, found.warning), (default, None));
+    }
+
+    #[test]
+    fn default_store_is_in_the_data_folder() {
+        assert_eq!(default_store_from(false, None, None, None), None);
+        assert_eq!(default_store_from(true, None, None, None), None);
+        // Each platform's paths only count as absolute on that platform, so
+        // each branch is checked where it runs.
+        #[cfg(unix)]
+        {
+            let home = Some(PathBuf::from("/home/me"));
+            assert_eq!(
+                default_store_from(false, None, None, home.clone()),
+                Some(PathBuf::from("/home/me/.local/share/whatsapp-mcp/store"))
+            );
+            assert_eq!(
+                default_store_from(false, None, Some(PathBuf::from("/data")), home.clone()),
+                Some(PathBuf::from("/data/whatsapp-mcp/store"))
+            );
+            // A relative XDG_DATA_HOME is ignored, as the XDG spec says.
+            assert_eq!(
+                default_store_from(false, None, Some(PathBuf::from("data")), home),
+                Some(PathBuf::from("/home/me/.local/share/whatsapp-mcp/store"))
+            );
+        }
+        #[cfg(windows)]
+        {
+            let local = Some(PathBuf::from(r"C:\Users\me\AppData\Local"));
+            assert_eq!(
+                default_store_from(true, local, None, Some(PathBuf::from(r"C:\Users\me"))),
+                Some(PathBuf::from(
+                    r"C:\Users\me\AppData\Local\whatsapp-mcp\store"
+                ))
+            );
+            // A relative LOCALAPPDATA is not used.
+            assert_eq!(
+                default_store_from(true, Some(PathBuf::from("Local")), None, None),
+                None
+            );
+        }
     }
 
     #[test]

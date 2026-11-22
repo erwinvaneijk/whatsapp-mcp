@@ -86,7 +86,7 @@ One program, `whatsapp-mcp`, does both jobs:
 
    Set `media_dir` to the folder you will send files from, or leave it empty to turn sending files off.
 
-   `store_dir` is the store folder: it holds your messages (`messages.db`), the WhatsApp session (`session.db`) and downloaded media, and is created when missing. The example sets it to `~/.local/share/whatsapp-mcp/store`. Every command reads it from the file, so you don't need `--store`; `--store DIR` still overrides it for one command. Without either, the commands use `whatsapp-bridge/store` in the current folder.
+   `store_dir` is the store folder: it holds your messages (`messages.db`), the WhatsApp session (`session.db`) and downloaded media, and is created when missing. The example sets it to `~/.local/share/whatsapp-mcp/store`, which is also the default when `store_dir` is empty (`%LOCALAPPDATA%\whatsapp-mcp\store` on Windows; `$XDG_DATA_HOME/whatsapp-mcp/store` when that is set). Every command reads it from the file, so you don't need `--store`; `--store DIR` still overrides it for one command.
 
    Environment variables work too, instead of the file or on top of it; see [Configuration](#configuration).
 
@@ -196,7 +196,7 @@ The bridge and the MCP server read their settings from environment variables, or
 |---|---|---|---|
 | `bridge_token` | `WHATSAPP_BRIDGE_TOKEN` | both | Shared secret, at least 32 characters. Required. |
 | `bridge_address` | `WHATSAPP_BRIDGE_ADDRESS` | both | Where the bridge's local API listens, and where `serve` reaches it: `127.0.0.1:8080` by default. `IP:PORT`, `localhost:PORT` or a port alone; only addresses on this computer (loopback) are accepted. |
-| `store_dir` | `WHATSAPP_STORE_DIR` | both | The store folder, absolute or starting with `~/`. `--store` overrides it; without either, `whatsapp-bridge/store` in the current folder. |
+| `store_dir` | `WHATSAPP_STORE_DIR` | both | The store folder, absolute or starting with `~/`. `--store` overrides it. Default: `~/.local/share/whatsapp-mcp/store` (`$XDG_DATA_HOME/whatsapp-mcp/store` when set; `%LOCALAPPDATA%\whatsapp-mcp\store` on Windows). |
 | `media_dir` | `WHATSAPP_MEDIA_DIR` | both | The only folder files can be sent from. |
 | `send_allowlist` | `WHATSAPP_SEND_ALLOWLIST` | bridge | Chats the bridge may send to; a YAML list in the file. See [Control whom the bridge is allowed to send to](#control-whom-the-bridge-is-allowed-to-send-to). |
 | `full_control` | `WHATSAPP_FULL_CONTROL` | both | Allow sending; off by default. See [Full control (sending)](#full-control-sending). Replaces `read_only` (`WHATSAPP_MCP_READ_ONLY`), which still works until 2.0. |
