@@ -27,7 +27,9 @@ bridge_address:
 # The store folder: your messages (messages.db), the WhatsApp session
 # (session.db) and downloaded media. Used by bridge, serve, link and service
 # install, so --store can be left out. Absolute, or starting with ~/.
-# Leave empty for whatsapp-bridge/store in the current folder.
+# Leave empty for the default: ~/.local/share/whatsapp-mcp/store
+# ($XDG_DATA_HOME/whatsapp-mcp/store when that is set; on Windows
+# %LOCALAPPDATA%\whatsapp-mcp\store).
 # WHATSAPP_STORE_DIR
 store_dir: ~/.local/share/whatsapp-mcp/store
 
