@@ -236,9 +236,10 @@ fn settings_match_the_documented_names() {
     );
 }
 
-/// Stricter than the Go and Python code: these were silently accepted there.
+/// Ambiguous files are refused with the line number, not guessed at (the Go
+/// bridge and the Python server accepted them silently).
 #[test]
-fn rust_refuses_ambiguous_files() {
+fn refuses_ambiguous_files() {
     for (text, fragment) in [
         (
             "media_dir: /a\nmedia_dir: /b\n",

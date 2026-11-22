@@ -1,6 +1,6 @@
-//! Contact names and the LID-to-phone map, read from the bridge's whatsmeow
-//! store (`whatsapp.db`). Same rules as `_load_contacts` and
-//! `_build_resolvers` in the Python server.
+//! Contact names and the LID-to-phone map: from the bridge's tables in
+//! `messages.db`, or from `whatsapp.db` for a store the Go bridge wrote
+//! before 1.0.
 //!
 //! `messages.db` only has names for groups and a few contacts, so without
 //! these a chat under a LID shows up as a bare number.
@@ -24,7 +24,7 @@ const OWN_TABLES: Tables = Tables {
     lid_map: "lid_map",
 };
 
-/// whatsmeow's tables in `whatsapp.db` (the Go bridge).
+/// whatsmeow's tables in `whatsapp.db`, written by the Go bridge before 1.0.
 const WHATSMEOW_TABLES: Tables = Tables {
     contacts: "whatsmeow_contacts",
     jid_column: "their_jid",
@@ -43,7 +43,7 @@ fn open_read_only(path: &Path) -> rusqlite::Result<Connection> {
 pub enum NamesSource {
     /// The Rust bridge's tables `contacts` and `lid_map` in `messages.db`.
     MessagesDb,
-    /// whatsmeow's tables in the Go bridge's `whatsapp.db`.
+    /// whatsmeow's tables in `whatsapp.db`, from the Go bridge before 1.0.
     WhatsappDb,
     /// Neither: chats and senders show as numbers.
     None,
@@ -87,7 +87,7 @@ impl Names {
     /// Reads the names. With the Rust bridge they are in `messages.db`
     /// (tables `contacts` and `lid_map`); with the Go bridge they are only in
     /// whatsmeow's `whatsapp.db`. Any problem (no file, no tables) gives no
-    /// names, with a note on stderr, as in the Python server.
+    /// names, with a note on stderr.
     pub fn load(messages_db: &Path, whatsapp_db: &Path) -> Names {
         let result = match Names::own_tables(messages_db) {
             Some(conn) => Names::from_tables(&conn, &OWN_TABLES),
@@ -132,8 +132,7 @@ impl Names {
         for row in rows {
             let (jid, first, full, push, business) = row?;
             let user = user_part(jid.as_deref().unwrap_or("")).to_string();
-            // The first non-empty value wins, like Python's `or`; the first
-            // row for a user wins, like `setdefault`.
+            // The first non-empty value wins; the first row for a user wins.
             if let Some(name) = non_empty(&full).or(non_empty(&first)) {
                 names.saved.entry(user).or_insert_with(|| name.to_string());
             } else if let Some(name) = non_empty(&push).or(non_empty(&business)) {

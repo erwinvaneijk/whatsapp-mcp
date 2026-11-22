@@ -83,8 +83,8 @@ fn parse_entry(entry: &str) -> Result<String, &'static str> {
     Ok(format!("{digits}@{USER_SERVER}"))
 }
 
-/// A JID as whatsmeow's `ParseJID` reads it (`user[.agent][:device]@server`),
-/// returned without agent and device.
+/// A JID (`user[.agent][:device]@server`), returned without agent and
+/// device.
 fn parse_jid(entry: &str) -> Result<String, &'static str> {
     let mut parts = entry.split('@');
     let (Some(user), Some(server), None) = (parts.next(), parts.next(), parts.next()) else {

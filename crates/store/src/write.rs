@@ -1,8 +1,7 @@
-//! Writing `messages.db`, as the bridge does: the schema and migrations the
-//! Go bridge applies on start, and storing chats, messages and media details
-//! with the same SQL and the same values. Times are stored as Go's database
-//! driver writes them, so the Go bridge, the Rust bridge and the MCP server
-//! can share one database.
+//! Writing `messages.db`, as the bridge does: the schema and migrations it
+//! applies on start, and storing chats, messages and media details. The
+//! schema and the time format are the ones the Go bridge used before 1.0, so
+//! existing databases keep working unchanged.
 
 use std::path::Path;
 
@@ -16,7 +15,7 @@ const FTS_SQL: &str = include_str!("schema/fts.sql");
 const NAMES_SQL: &str = include_str!("schema/names.sql");
 
 /// A message to store. Text fields are empty, not absent, when there is
-/// nothing, as in the Go bridge.
+/// nothing.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NewMessage {
     pub id: String,
@@ -55,7 +54,7 @@ pub struct StoredSender {
     pub is_from_me: Option<bool>,
 }
 
-/// A contact's names, as whatsmeow keeps them.
+/// A contact's names: saved first and full name, push name and business name.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ContactNames {
     pub first_name: String,
@@ -83,7 +82,8 @@ impl Writer {
 
     /// Like [`Writer::open`], for a connection opened elsewhere (tests).
     pub fn from_connection(conn: Connection) -> Result<Writer> {
-        // As the Go bridge: foreign keys on, WAL, normal sync, 5 s busy wait.
+        // Foreign keys on; WAL with normal sync, so `serve` can read while the
+        // bridge writes; wait up to 5 s for a lock.
         conn.pragma_update(None, "foreign_keys", "on")?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "synchronous", "NORMAL")?;
@@ -301,8 +301,9 @@ pub fn migrate(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// A time as Go's SQLite driver writes it (`2006-01-02 15:04:05.999999999-07:00`):
-/// a fraction only when there is one, without trailing zeros.
+/// A time as `messages.db` stores it, the form Go's SQLite driver wrote
+/// (`2006-01-02 15:04:05.999999999-07:00`): a fraction only when there is
+/// one, without trailing zeros.
 pub fn go_time(moment: &DateTime<FixedOffset>) -> String {
     let mut text = moment.format("%Y-%m-%d %H:%M:%S").to_string();
     let nanos = moment.nanosecond() % 1_000_000_000;

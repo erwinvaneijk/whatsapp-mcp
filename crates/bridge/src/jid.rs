@@ -1,5 +1,4 @@
-//! WhatsApp IDs (JIDs) as the Go bridge reads them, with whatsmeow's rules:
-//! `user[.agent][:device]@server`, or a bare server.
+//! WhatsApp IDs (JIDs): `user[.agent][:device]@server`, or a bare server.
 
 use std::fmt;
 
@@ -36,10 +35,10 @@ impl Jid {
         }
     }
 
-    /// whatsmeow's `ParseJID`, but stricter: with an `@` there must be
-    /// exactly one, with a user before it and a server after it (whatsmeow
-    /// accepts `a@b@c` as `a@b`, and `@s.whatsapp.net`). Without `@` the
-    /// whole text is the server, as in whatsmeow.
+    /// Reads a JID. With an `@` there must be exactly one, with a user
+    /// before it and a server after it, so `a@b@c` and `@s.whatsapp.net` are
+    /// refused here rather than failing later when sending. Without `@` the
+    /// whole text is the server.
     pub fn parse(text: &str) -> Result<Jid, InvalidJid> {
         let mut parts = text.split('@');
         let first = parts.next().unwrap_or("");
@@ -117,7 +116,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_like_whatsmeow() {
+    fn parses_jids() {
         let j = Jid::parse("31612345678:3@s.whatsapp.net").unwrap();
         assert_eq!((j.user.as_str(), j.device), ("31612345678", 3));
         assert_eq!(j.to_non_ad().to_string(), "31612345678@s.whatsapp.net");
@@ -129,7 +128,7 @@ mod tests {
         assert_eq!(Jid::parse("g.us").unwrap().to_string(), "g.us");
         assert!(Jid::parse("1:x@s.whatsapp.net").is_err());
         assert!(Jid::parse("a.b.c@s.whatsapp.net").is_err());
-        // Stricter than whatsmeow.
+        // Malformed: more than one @, or no user or server.
         for bad in ["a@b@c", "@s.whatsapp.net", "31612345678@", "@"] {
             assert!(Jid::parse(bad).is_err(), "{bad}");
         }

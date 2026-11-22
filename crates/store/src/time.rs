@@ -17,7 +17,7 @@ pub struct Timestamp(pub DateTime<FixedOffset>);
 
 impl Timestamp {
     /// Reads a time as `messages.db` stores it, such as
-    /// `2026-11-04 22:00:52+01:00` (Go's database driver writes this form).
+    /// `2026-11-04 22:00:52+01:00`.
     pub fn parse_stored(text: &str) -> Option<Timestamp> {
         match parse_iso(text)? {
             Parsed::WithZone(moment) => Some(Timestamp(moment)),
@@ -38,7 +38,7 @@ impl Timestamp {
         )
     }
 
-    /// For JSON, as pydantic writes a datetime: `2026-11-04T22:00:52+01:00`,
+    /// For JSON: `2026-11-04T22:00:52+01:00`,
     /// with six digits of fraction when there is one, and `Z` for UTC.
     pub fn iso(&self) -> String {
         let mut text = self.0.format("%Y-%m-%dT%H:%M:%S").to_string();
@@ -93,7 +93,7 @@ impl std::error::Error for BadMoment {}
 /// An ISO-8601 date, or date and time, as UTC text for `julianday()`
 /// (`2026-11-04 20:00:00.000000`). A time on its own is refused: it does
 /// not say which day. Without a zone it is local time on this computer; a
-/// date alone means midnight. Accepts what Python's `fromisoformat` accepts.
+/// date alone means midnight. The forms accepted are listed at `parse_iso`.
 pub fn moment_for_sql(value: &str, name: &'static str) -> Result<String, BadMoment> {
     let bad = || BadMoment {
         name,
@@ -106,7 +106,7 @@ pub fn moment_for_sql(value: &str, name: &'static str) -> Result<String, BadMome
     Ok(moment.format("%Y-%m-%d %H:%M:%S%.6f").to_string())
 }
 
-/// Local time to UTC, as Python's `naive.astimezone()` does: an ambiguous
+/// Local time to UTC: an ambiguous
 /// time (the hour repeated when clocks go back) is the first one; a time that
 /// does not exist (skipped when clocks go forward) uses the offset before
 /// the change.
@@ -133,7 +133,7 @@ enum Parsed {
     Naive(NaiveDateTime),
 }
 
-/// Python 3.11's `datetime.fromisoformat`: a date (`2026-11-04`,
+/// An ISO-8601 time: a date (`2026-11-04`,
 /// `20261104`, `2026-W45-3`), then optionally any one character and a time
 /// (`21`, `21:00`, `21:00:00`, `210000`, with a fraction after `.` or `,`),
 /// then optionally `Z` or an offset (`+01`, `+01:00`, `+0100`,
@@ -237,7 +237,7 @@ fn parse_time(text: &str) -> Option<NaiveTime> {
     let nanos = match fraction {
         None => 0,
         Some(f) => {
-            // Only after seconds, 1 to 9 digits; Python keeps microseconds.
+            // Only after seconds, 1 to 9 digits; microseconds are kept.
             if parts.len() != 3
                 || f.is_empty()
                 || f.len() > 9

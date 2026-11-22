@@ -1,8 +1,8 @@
 //! Reads the YAML text into setting values, keeping each value's exact text.
 //!
 //! A YAML library that builds typed values would read `pair_phone: 0612` as
-//! the number 612, and `1e3` as 1000. Like the Go and Python code, this works
-//! on the parser's events instead and keeps the text as written.
+//! the number 612, and `1e3` as 1000. So this works on the parser's events
+//! instead and keeps the text as written.
 
 use std::collections::BTreeMap;
 
@@ -132,7 +132,7 @@ fn read_value(events: &mut Events<'_>, setting: Setting) -> Result<Option<String
 }
 
 /// Whether a scalar is YAML's null: empty, `~` or `null` without quotes, or
-/// tagged `!!null`. Go's yaml.v3 and Python's PyYAML agree on this.
+/// tagged `!!null`, as in YAML's core schema.
 fn is_null(text: &str, style: TScalarStyle, tag: Option<&yaml_rust2::parser::Tag>) -> bool {
     match tag {
         Some(tag) => tag.suffix == "null",

@@ -1,10 +1,8 @@
-//! The MCP server: the same tools, descriptions and output as the Python
-//! server, served over stdio.
+//! The MCP server, served over stdio.
 //!
 //! The tool definitions (names, descriptions, input and output schemas,
-//! annotations) are data, in `tools.json`: the exact definitions the Python
-//! server publishes, recorded by the parity harness. A test keeps the two the
-//! same, so MCP clients see no difference.
+//! annotations) are data, in `tools.json`. The parity harness checks them
+//! against its golden files, so a change is deliberate.
 
 mod args;
 mod bridge;
@@ -47,7 +45,7 @@ pub const SEND_TOOLS: [&str; 4] = [
 
 const TOOLS_JSON: &str = include_str!("tools.json");
 
-/// The tool definitions, in the order the Python server registers them.
+/// The tool definitions, in the order clients list them.
 pub fn all_tools() -> Vec<Tool> {
     serde_json::from_str(TOOLS_JSON).expect("tools.json is valid")
 }

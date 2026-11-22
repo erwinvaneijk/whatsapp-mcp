@@ -1,6 +1,6 @@
 //! Sending and media, without a connection: replies and mentions, storing
 //! sent messages, the sender of a stored message, media URLs and downloads,
-//! voice notes. Most cases come from the Go bridge's tests.
+//! voice notes.
 
 use std::path::Path;
 
