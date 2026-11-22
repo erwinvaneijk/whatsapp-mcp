@@ -5,6 +5,7 @@
 - **Plugin 1.1.0**: the plugin downloads the 1.1.0 binaries (pinned checksums updated with `scripts/bump-plugin.sh`). After `claude plugin update`, start a new session and run `whatsapp-mcp service install` to restart the bridge on it.
 - **Sender names from the right chat** ([#66](https://github.com/erwinvaneijk/whatsapp-mcp/issues/66)). A message's sender could be shown with the name of another chat whose ID contained their number, such as an older group (`<number>-<time>@g.us`) or a longer number. Only the sender's own chat is used now.
 - **Searches take `%` and `_` literally** ([#67](https://github.com/erwinvaneijk/whatsapp-mcp/issues/67)). In `list_chats`, `search_contacts`, and `list_messages` without the full-text index, a `_` matched any character and a `%` any text. They now only match themselves.
+- **`list_messages` shows each message once** ([#68](https://github.com/erwinvaneijk/whatsapp-mcp/issues/68)). With context (the default), matches close together in a chat repeated the messages around them: the default call showed 51 lines for 21 messages. Overlapping context is now merged, and each stretch of a chat reads oldest to newest; before, the messages before a match came newest first.
 
 ## 1.1.0
 
