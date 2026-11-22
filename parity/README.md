@@ -32,7 +32,7 @@ All names, numbers and messages are invented. Never put real contact or chat dat
 | [`fixture/messages.sql`](fixture/messages.sql) | Chats and messages: direct, group and LID chats, one person under two chats, replies, captions, media, reactions, edits, times in summer and winter time and in UTC, text that tries prompt injection. |
 | [`fixture/whatsmeow.sql`](fixture/whatsmeow.sql) | The two whatsmeow tables the server reads from `whatsapp.db` for names: contacts and the LID-to-phone map. |
 
-The media folder gets `photo.jpg` and `voice.ogg`; the workspace also has `outside.txt`, outside the media folder.
+The media folder gets `photo.jpg` and `voice.ogg` (the first page of a real Opus file, so it is sent without converting); the workspace also has `outside.txt`, outside the media folder.
 
 ## Profiles
 
