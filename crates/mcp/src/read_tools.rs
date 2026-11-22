@@ -1,6 +1,8 @@
 //! The read tools: they read `messages.db` (and contact names from
 //! `whatsapp.db`) and never contact the bridge. Errors say what was wrong.
 
+use std::collections::HashSet;
+
 use whatsapp_mcp_store::{
     Chat, Contact, Db, Message, MessageContext, MessageFilter, Store, moment_for_sql,
 };
@@ -90,18 +92,20 @@ fn list_messages(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
         Err(e) => return Output::text(database_error(&e)),
     };
     let shown = if include_context && !messages.is_empty() {
-        let mut shown = Vec::new();
+        let mut windows = Vec::new();
         for message in &messages {
             let context = match db.message_context(&message.id, context_before, context_after) {
                 Ok(Some(context)) => context,
                 Ok(None) => return Err(not_found(&message.id)),
                 Err(e) => return Output::text(database_error(&e)),
             };
-            shown.extend(context.before);
-            shown.push(context.message);
-            shown.extend(context.after);
+            // `before` comes newest first; a window reads oldest first.
+            let mut window: Vec<Message> = context.before.into_iter().rev().collect();
+            window.push(context.message);
+            window.extend(context.after);
+            windows.push(window);
         }
-        shown
+        merge_windows(windows)
     } else {
         messages
     };
@@ -203,6 +207,37 @@ fn get_message_context(store: &Store, args: &Args<'_>) -> Result<Output, ToolErr
     Output::object(&mark_context(context))
 }
 
+/// Context windows, one per match, as the messages to show: windows in the
+/// same chat that share a message become one, so no message is shown twice
+/// (issue #68). Each merged window is in time order; the windows keep the
+/// order of their first match.
+fn merge_windows(windows: Vec<Vec<Message>>) -> Vec<Message> {
+    let key = |m: &Message| (m.chat_jid.clone(), m.id.clone());
+    let mut merged: Vec<Vec<Message>> = Vec::new();
+    for window in windows {
+        let ids: HashSet<_> = window.iter().map(key).collect();
+        // Every earlier window this one overlaps joins the first of them.
+        let overlapping: Vec<usize> = (0..merged.len())
+            .filter(|&i| merged[i].iter().any(|m| ids.contains(&key(m))))
+            .collect();
+        let Some((&first, rest)) = overlapping.split_first() else {
+            merged.push(window);
+            continue;
+        };
+        for &i in rest.iter().rev() {
+            let other = merged.remove(i);
+            merged[first].extend(other);
+        }
+        merged[first].extend(window);
+        let target = &mut merged[first];
+        let mut seen = HashSet::new();
+        target.retain(|m| seen.insert(key(m)));
+        // Stable: messages with the same time keep their order.
+        target.sort_by_key(|m| m.timestamp.0);
+    }
+    merged.into_iter().flatten().collect()
+}
+
 fn not_found(message_id: &str) -> ToolError {
     ToolError(format!("Message with ID {message_id} not found"))
 }
@@ -290,4 +325,61 @@ fn format_messages(db: &Db, messages: &[Message], show_chat_info: bool) -> Strin
         .iter()
         .map(|m| format_message(db, m, show_chat_info))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use whatsapp_mcp_store::Timestamp;
+
+    fn m(chat: &str, id: &str, minute: u32) -> Message {
+        Message {
+            timestamp: Timestamp::parse_stored(&format!("2026-11-02 19:{minute:02}:00+01:00"))
+                .unwrap(),
+            sender: None,
+            content: None,
+            is_from_me: false,
+            chat_jid: chat.into(),
+            id: id.into(),
+            chat_name: None,
+            media_type: None,
+            quoted_message_id: None,
+        }
+    }
+
+    fn ids(messages: &[Message]) -> Vec<&str> {
+        messages.iter().map(|m| m.id.as_str()).collect()
+    }
+
+    #[test]
+    fn overlapping_windows_merge_in_time_order() {
+        let a = |id: &str, minute| m("a@g.us", id, minute);
+        let shown = merge_windows(vec![
+            vec![a("7", 7), a("8", 8), a("9", 9)],
+            vec![a("2", 2), a("3", 3), a("4", 4)],
+            vec![a("6", 6), a("7", 7), a("8", 8)],
+        ]);
+        assert_eq!(ids(&shown), ["6", "7", "8", "9", "2", "3", "4"]);
+    }
+
+    #[test]
+    fn a_window_can_join_two_earlier_ones() {
+        let a = |id: &str, minute| m("a@g.us", id, minute);
+        let shown = merge_windows(vec![
+            vec![a("5", 5), a("6", 6)],
+            vec![a("1", 1), a("2", 2)],
+            vec![a("2", 2), a("3", 3), a("4", 4), a("5", 5)],
+        ]);
+        assert_eq!(ids(&shown), ["1", "2", "3", "4", "5", "6"]);
+    }
+
+    #[test]
+    fn the_same_id_in_another_chat_is_another_message() {
+        let shown = merge_windows(vec![
+            vec![m("a@g.us", "1", 1), m("a@g.us", "2", 2)],
+            vec![m("b@g.us", "2", 2), m("b@g.us", "3", 3)],
+        ]);
+        assert_eq!(ids(&shown), ["1", "2", "2", "3"]);
+        assert_eq!(shown[2].chat_jid, "b@g.us");
+    }
 }
