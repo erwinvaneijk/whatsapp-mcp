@@ -73,6 +73,10 @@ impl Config {
                 }
                 Some(_) => "set".into(),
             },
+            Setting::BridgeAddress => match self.bridge_address() {
+                Ok(address) => address.to_string(),
+                Err(_) => "invalid".into(),
+            },
             Setting::PairPhone => if value.is_some() { "set" } else { "not set" }.into(),
             Setting::FullControl => if self.full_control() {
                 "on (the send tools are offered and the bridge sends)"

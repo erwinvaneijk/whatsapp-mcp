@@ -1,6 +1,7 @@
 //! `whatsapp-mcp bridge`: links and keeps the WhatsApp connection
 //! (whatsapp-rust, session in `<store>/session.db`), stores what arrives in
-//! `<store>/messages.db`, and serves the local API on `127.0.0.1:8080`.
+//! `<store>/messages.db`, and serves the local API on `bridge_address`
+//! (`127.0.0.1:8080` by default).
 //!
 //! Events are taken from the library as they are dispatched and handled one
 //! at a time, in order, by one task: the library's own callback delivery
@@ -29,9 +30,6 @@ use crate::live::Live;
 use crate::log;
 use crate::receive::{self, ChatName};
 
-/// Where the local API listens; `serve`'s default `--bridge-url` points here.
-pub const API_ADDRESS: ([u8; 4], u16) = ([127, 0, 0, 1], 8080);
-
 /// What `bridge` needs to start.
 pub struct Options {
     /// The store folder: `messages.db` and `session.db`.
@@ -55,6 +53,8 @@ struct Settings {
     log_content: bool,
     pair_phone: Option<String>,
     media_dir: Option<String>,
+    /// Where the local API listens (`bridge_address`).
+    address: SocketAddr,
 }
 
 impl Settings {
@@ -72,6 +72,7 @@ impl Settings {
             log_content: config.log_content(),
             pair_phone,
             media_dir: config.media_dir().map(str::to_string),
+            address: config.bridge_address().map_err(|e| e.to_string())?,
         })
     }
 }
@@ -166,7 +167,7 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
 
     // Bind before connecting: a second bridge (or an old Go bridge) on the
     // port is found before this one links or stores anything.
-    let address = SocketAddr::from(API_ADDRESS);
+    let address = settings.address;
     let listener = if options.link_only {
         None
     } else {
@@ -299,6 +300,7 @@ pub fn startup_lines(config: &Config, store: &Path, source: &str) -> Vec<String>
     let mut lines = vec![format!("whatsapp-mcp {} bridge", env!("CARGO_PKG_VERSION"))];
     lines.extend(config.startup_lines(&[
         Setting::BridgeToken,
+        Setting::BridgeAddress,
         Setting::MediaDir,
         Setting::FullControl,
         Setting::SendAllowlist,
@@ -877,10 +879,11 @@ mod tests {
             format!("whatsapp-mcp {} bridge", env!("CARGO_PKG_VERSION"))
         );
         assert_eq!(
-            &lines[1..11],
+            &lines[1..12],
             [
                 "Configuration file: none",
                 "  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)",
+                "  bridge_address: 127.0.0.1:8080 (default)",
                 "  media_dir: not set (sending files is disabled) (default)",
                 "  full_control: off (read-only: nothing is sent) (default)",
                 "  send_allowlist: 1 chat (from WHATSAPP_SEND_ALLOWLIST)",

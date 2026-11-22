@@ -24,6 +24,7 @@ mod startup;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 
 pub use allowlist::SendAllowlist;
@@ -34,6 +35,10 @@ pub use startup::Source;
 /// The environment variable that names the configuration file.
 pub const CONFIG_PATH_ENV: &str = "WHATSAPP_MCP_CONFIG";
 
+/// Where the bridge's local API listens when `bridge_address` is not set.
+pub const DEFAULT_BRIDGE_ADDRESS: SocketAddr =
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+
 /// The minimum length of the bridge token.
 pub const MIN_BRIDGE_TOKEN_LEN: usize = 32;
 
@@ -41,6 +46,7 @@ pub const MIN_BRIDGE_TOKEN_LEN: usize = 32;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Setting {
     BridgeToken,
+    BridgeAddress,
     StoreDir,
     MediaDir,
     SendAllowlist,
@@ -54,8 +60,9 @@ pub enum Setting {
 }
 
 impl Setting {
-    pub const ALL: [Setting; 11] = [
+    pub const ALL: [Setting; 12] = [
         Setting::BridgeToken,
+        Setting::BridgeAddress,
         Setting::StoreDir,
         Setting::MediaDir,
         Setting::SendAllowlist,
@@ -72,6 +79,7 @@ impl Setting {
     pub fn name(self) -> &'static str {
         match self {
             Setting::BridgeToken => "bridge_token",
+            Setting::BridgeAddress => "bridge_address",
             Setting::StoreDir => "store_dir",
             Setting::MediaDir => "media_dir",
             Setting::SendAllowlist => "send_allowlist",
@@ -89,6 +97,7 @@ impl Setting {
     pub fn env(self) -> &'static str {
         match self {
             Setting::BridgeToken => "WHATSAPP_BRIDGE_TOKEN",
+            Setting::BridgeAddress => "WHATSAPP_BRIDGE_ADDRESS",
             Setting::StoreDir => "WHATSAPP_STORE_DIR",
             Setting::MediaDir => "WHATSAPP_MEDIA_DIR",
             Setting::SendAllowlist => "WHATSAPP_SEND_ALLOWLIST",
@@ -237,6 +246,53 @@ impl Config {
             Some(token) if token.len() >= MIN_BRIDGE_TOKEN_LEN => Ok(token),
             _ => Err(ConfigError::BridgeToken),
         }
+    }
+
+    /// Where the bridge's local API listens, and so where `serve` reaches
+    /// it: [`DEFAULT_BRIDGE_ADDRESS`] when not set. The value is `IP:PORT`
+    /// (`[::1]:PORT` for IPv6), `localhost:PORT`, or a port alone, which
+    /// means `127.0.0.1:PORT`. Only loopback addresses are accepted: the API
+    /// sends messages for anyone who has the token, so it must not be
+    /// reachable from the network.
+    pub fn bridge_address(&self) -> Result<SocketAddr, ConfigError> {
+        let Some(value) = self.get(Setting::BridgeAddress).map(str::trim) else {
+            return Ok(DEFAULT_BRIDGE_ADDRESS);
+        };
+        let expected = "IP:PORT on this computer, such as 127.0.0.1:8090, or a port alone";
+        let invalid = |why: &str| {
+            let value: String = value.chars().filter(|c| !c.is_control()).collect();
+            ConfigError::invalid(format!(
+                "{} (or {} in the configuration file) is {value:?}: {why}; use {expected}",
+                Setting::BridgeAddress.env(),
+                Setting::BridgeAddress.name()
+            ))
+        };
+        let localhost = |port: &str| {
+            port.parse::<u16>()
+                .ok()
+                .map(|port| SocketAddr::new(DEFAULT_BRIDGE_ADDRESS.ip(), port))
+        };
+        let address = value
+            .parse::<SocketAddr>()
+            .ok()
+            .or_else(|| localhost(value))
+            .or_else(|| value.strip_prefix("localhost:").and_then(localhost))
+            .ok_or_else(|| invalid("not an address"))?;
+        if !address.ip().is_loopback() {
+            return Err(invalid(
+                "only a loopback address (127.x.x.x or ::1) is allowed, so the API cannot be reached from the network",
+            ));
+        }
+        if address.port() == 0 {
+            return Err(invalid("the port cannot be 0"));
+        }
+        Ok(address)
+    }
+
+    /// The bridge's local API as `serve` reaches it, from
+    /// [`Config::bridge_address`]: `http://127.0.0.1:8080/api` by default.
+    pub fn bridge_url(&self) -> Result<String, ConfigError> {
+        Ok(format!("http://{}/api", self.bridge_address()?))
     }
 
     /// The store folder (`messages.db`, `session.db`, media), when set. It

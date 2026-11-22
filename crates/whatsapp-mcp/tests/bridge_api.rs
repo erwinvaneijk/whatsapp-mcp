@@ -46,7 +46,7 @@ impl Backend for Fake {
 /// Calls `tools/call` for each `(name, arguments)` and returns the answers,
 /// one JSON-RPC line each.
 fn call_tools(
-    bridge_url: &str,
+    bridge_address: std::net::SocketAddr,
     media_dir: &std::path::Path,
     calls: &[(&str, &str)],
 ) -> Vec<String> {
@@ -55,7 +55,7 @@ fn call_tools(
     std::fs::write(
         &config,
         format!(
-            "bridge_token: {TOKEN}\nfull_control: yes\nmedia_dir: '{}'\nstore_dir: '{}'\n",
+            "bridge_token: {TOKEN}\nfull_control: yes\nmedia_dir: '{}'\nstore_dir: '{}'\nbridge_address: '{bridge_address}'\n",
             media_dir.display(),
             dir.path().display()
         ),
@@ -67,13 +67,15 @@ fn call_tools(
         std::fs::set_permissions(&config, std::fs::Permissions::from_mode(0o600)).unwrap();
     }
     let mut child = Command::new(env!("CARGO_BIN_EXE_whatsapp-mcp"))
-        .args(["serve", "--bridge-url", bridge_url])
+        // No --bridge-url: serve finds the bridge through bridge_address.
+        .arg("serve")
         .env("WHATSAPP_MCP_CONFIG", &config)
         .env_remove("WHATSAPP_FULL_CONTROL")
         .env_remove("WHATSAPP_MCP_READ_ONLY")
         .env_remove("WHATSAPP_BRIDGE_TOKEN")
         .env_remove("WHATSAPP_MEDIA_DIR")
         .env_remove("WHATSAPP_STORE_DIR")
+        .env_remove("WHATSAPP_BRIDGE_ADDRESS")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -129,7 +131,7 @@ fn every_bridge_tool_is_accepted_by_the_bridge() {
     let listener = runtime
         .block_on(tokio::net::TcpListener::bind("127.0.0.1:0"))
         .unwrap();
-    let url = format!("http://{}/api", listener.local_addr().unwrap());
+    let address = listener.local_addr().unwrap();
     runtime.spawn(whatsapp_mcp_bridge::api::serve_on(api, listener));
 
     let media = tempfile::tempdir().unwrap();
@@ -175,7 +177,7 @@ fn every_bridge_tool_is_accepted_by_the_bridge() {
             r#"{"message_id":"M1","chat_jid":"31612345678@s.whatsapp.net"}"#,
         ),
     ];
-    let answers = call_tools(&url, &media_dir, &calls);
+    let answers = call_tools(address, &media_dir, &calls);
     for ((name, _), answer) in calls.iter().zip(&answers) {
         assert!(
             answer.contains(r#"\"success\": true"#) || answer.contains(r#"\"success\":true"#),

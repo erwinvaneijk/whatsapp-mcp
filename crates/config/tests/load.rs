@@ -222,6 +222,7 @@ fn settings_match_the_documented_names() {
         pairs,
         [
             ("bridge_token", "WHATSAPP_BRIDGE_TOKEN"),
+            ("bridge_address", "WHATSAPP_BRIDGE_ADDRESS"),
             ("store_dir", "WHATSAPP_STORE_DIR"),
             ("media_dir", "WHATSAPP_MEDIA_DIR"),
             ("send_allowlist", "WHATSAPP_SEND_ALLOWLIST"),
@@ -304,6 +305,7 @@ fn startup_lines_show_settings_but_no_secrets() {
                 path.display()
             ),
             "  bridge_token: set (from WHATSAPP_BRIDGE_TOKEN)".to_string(),
+            "  bridge_address: 127.0.0.1:8080 (default)".to_string(),
             "  store_dir: not set (default)".to_string(),
             "  media_dir: /media[31m/out (from WHATSAPP_MEDIA_DIR)".to_string(),
             "  send_allowlist: 2 chats (from the configuration file)".to_string(),
@@ -512,4 +514,49 @@ fn store_dir_paths() {
         err.contains("WHATSAPP_STORE_DIR (or store_dir in the configuration file)"),
         "{err}"
     );
+}
+
+/// Issue #73: the bridge's address, for both programs.
+#[test]
+fn bridge_address_forms() {
+    let address = |value: &str| {
+        Config::load_from(env(&[("WHATSAPP_BRIDGE_ADDRESS", value)]), None)
+            .unwrap()
+            .bridge_address()
+    };
+    let ok = |value: &str| address(value).unwrap().to_string();
+    assert_eq!(
+        Config::load_from(env(&[]), None)
+            .unwrap()
+            .bridge_address()
+            .unwrap()
+            .to_string(),
+        "127.0.0.1:8080"
+    );
+    assert_eq!(ok("127.0.0.1:8090"), "127.0.0.1:8090");
+    assert_eq!(ok(" 9090 "), "127.0.0.1:9090");
+    assert_eq!(ok("localhost:9091"), "127.0.0.1:9091");
+    assert_eq!(ok("127.0.0.2:8080"), "127.0.0.2:8080");
+    assert_eq!(ok("[::1]:8080"), "[::1]:8080");
+    for (value, why) in [
+        ("0.0.0.0:8080", "only a loopback address"),
+        ("192.168.1.5:8080", "only a loopback address"),
+        ("[::]:8080", "only a loopback address"),
+        ("127.0.0.1:0", "the port cannot be 0"),
+        ("0", "the port cannot be 0"),
+        ("127.0.0.1", "not an address"),
+        ("example.com:8080", "not an address"),
+        ("70000", "not an address"),
+    ] {
+        let message = address(value).unwrap_err().to_string();
+        assert!(
+            message.starts_with(
+                "WHATSAPP_BRIDGE_ADDRESS (or bridge_address in the configuration file)"
+            ) && message.contains(why),
+            "{value}: {message}"
+        );
+    }
+    let config =
+        Config::load_from(env(&[("WHATSAPP_BRIDGE_ADDRESS", "[::1]:9000")]), None).unwrap();
+    assert_eq!(config.bridge_url().unwrap(), "http://[::1]:9000/api");
 }
