@@ -188,7 +188,7 @@ async fn json_content_type_is_required() {
 async fn unknown_paths_and_methods() {
     let a = api(Fake::default(), "");
     let r = post(&a, "/api/other", "{}").await;
-    assert_eq!((r.status, r.body.as_str()), (404, "404 page not found\n"));
+    assert_eq!((r.status, r.body.as_str()), (404, "Not found\n"));
     let r = post(&a, "/api/send/", "{}").await;
     assert_eq!(r.status, 404);
     for path in ["/api/send", "/api/react", "/api/download"] {
@@ -217,16 +217,8 @@ async fn plain_text_errors() {
         "text/plain; charset=utf-8"
     );
     for (path, body, want) in [
-        ("/api/send", "", "Invalid request format"),
-        ("/api/send", "[1]", "Invalid request format"),
-        ("/api/send", r#"{"recipient": 5}"#, "Invalid request format"),
-        (
-            "/api/send",
-            r#"{"mentions": "x"}"#,
-            "Invalid request format",
-        ),
         ("/api/send", r#"{"message":"hi"}"#, "Recipient is required"),
-        ("/api/send", "null", "Recipient is required"),
+        ("/api/send", "{}", "Recipient is required"),
         (
             "/api/send",
             r#"{"recipient":"316"}"#,
@@ -252,7 +244,6 @@ async fn plain_text_errors() {
             r#"{"chat_jid":"c@s.whatsapp.net"}"#,
             "Message ID and Chat JID are required",
         ),
-        ("/api/download", "{", "Invalid request format"),
     ] {
         let r = post(&a, path, body).await;
         assert_eq!(
@@ -260,6 +251,62 @@ async fn plain_text_errors() {
             (400, format!("{want}\n").as_str()),
             "{path} {body}"
         );
+    }
+    assert!(a.backend.calls.lock().unwrap().is_empty());
+}
+
+/// Bodies are read strictly: the only client is `serve`, so anything it
+/// would not send is a mistake, refused with the reason.
+#[tokio::test]
+async fn malformed_bodies_are_refused_with_the_reason() {
+    let a = api(Fake::default(), "");
+    for (path, body, reason) in [
+        ("/api/send", "", "EOF while parsing"),
+        ("/api/send", "null", "must be a JSON object"),
+        ("/api/send", "[1]", "must be a JSON object"),
+        ("/api/send", r#"["316","hi"]"#, "must be a JSON object"),
+        ("/api/send", r#"{"recipient": 5}"#, "invalid type: integer"),
+        ("/api/send", r#"{"mentions": "x"}"#, "invalid type: string"),
+        (
+            "/api/send",
+            r#"{"recipient":"316","message":null}"#,
+            "invalid type: null",
+        ),
+        (
+            "/api/send",
+            r#"{"Recipient":"316","message":"hi"}"#,
+            "unknown field `Recipient`",
+        ),
+        (
+            "/api/send",
+            r#"{"recipient":"316","message":"hi","extra":1}"#,
+            "unknown field `extra`",
+        ),
+        (
+            "/api/send",
+            r#"{"recipient":"a","recipient":"316","message":"hi"}"#,
+            "duplicate field `recipient`",
+        ),
+        (
+            "/api/send",
+            r#"{"recipient":"316","message":"hi"} trailing"#,
+            "trailing characters",
+        ),
+        (
+            "/api/react",
+            r#"{"message_id":"M1","chat_jid":"c@s.whatsapp.net","emoji":1}"#,
+            "invalid type: integer",
+        ),
+        ("/api/download", "{", "EOF while parsing"),
+    ] {
+        let r = post(&a, path, body).await;
+        assert_eq!(r.status, 400, "{path} {body}");
+        assert!(
+            r.body.starts_with("Invalid request format: ") && r.body.contains(reason),
+            "{path} {body}: {}",
+            r.body
+        );
+        assert!(r.body.ends_with('\n'), "{}", r.body);
     }
     assert!(a.backend.calls.lock().unwrap().is_empty());
 }
@@ -274,7 +321,10 @@ async fn body_over_one_mebibyte_is_refused() {
     let r = post(&a, "/api/send", &big).await;
     assert_eq!(
         (r.status, r.body.as_str()),
-        (400, "Invalid request format\n")
+        (
+            400,
+            "Invalid request format: the body is larger than 1 MiB\n"
+        )
     );
     let fits = format!(
         r#"{{"recipient":"316","message":"{}"}}"#,
@@ -284,14 +334,12 @@ async fn body_over_one_mebibyte_is_refused() {
 }
 
 #[tokio::test]
-async fn bodies_are_read_as_go_reads_them() {
+async fn send_request_fields() {
     let a = api(Fake::default(), "");
-    // Unknown fields ignored, names matched ignoring case, null leaves a
-    // field empty, only the first JSON value counts.
     let r = post(
         &a,
         "/api/send",
-        r#"{"Recipient":"316","message":"hi","extra":1,"media_path":null,"mentions":["31600000001"]} trailing"#,
+        r#"{"recipient":"316","message":"hi","reply_to_message_id":"M1","reply_to_sender_jid":"31600000002@s.whatsapp.net","mentions":["31600000001"]}"#,
     )
     .await;
     assert_eq!(r.status, 200);
@@ -301,39 +349,11 @@ async fn bodies_are_read_as_go_reads_them() {
         SendRequest {
             recipient: "316".into(),
             message: "hi".into(),
+            media_path: String::new(),
+            reply_to_message_id: "M1".into(),
+            reply_to_sender_jid: "31600000002@s.whatsapp.net".into(),
             mentions: vec!["31600000001".into()],
-            ..Default::default()
         }
-    );
-}
-
-#[tokio::test]
-async fn later_keys_overwrite_earlier_ones_as_in_go() {
-    let a = api(Fake::default(), "");
-    // Go applies every key that matches a field, in order: the last wins,
-    // whatever its case; null leaves the field as it is.
-    let r = post(
-        &a,
-        "/api/send",
-        r#"{"recipient":"a","Recipient":"316","message":"hi","MESSAGE":null}"#,
-    )
-    .await;
-    assert_eq!(r.status, 200);
-    let sent = a.backend.sent.lock().unwrap()[0].clone();
-    assert_eq!(
-        (sent.recipient.as_str(), sent.message.as_str()),
-        ("316", "hi")
-    );
-    // A wrong type is an error even when a later key would overwrite it.
-    let r = post(
-        &a,
-        "/api/send",
-        r#"{"recipient":5,"recipient":"316","message":"hi"}"#,
-    )
-    .await;
-    assert_eq!(
-        (r.status, r.body.as_str()),
-        (400, "Invalid request format\n")
     );
 }
 
@@ -436,7 +456,7 @@ async fn failed_send_is_500() {
 }
 
 #[tokio::test]
-async fn html_characters_are_escaped_as_go_does() {
+async fn html_characters_are_not_escaped() {
     let a = api(Fake::default(), "");
     let r = post(
         &a,
@@ -446,7 +466,7 @@ async fn html_characters_are_escaped_as_go_does() {
     .await;
     assert_eq!(
         r.body,
-        "{\"success\":true,\"message\":\"Reaction \\u003c\\u0026\\u003e sent\"}\n"
+        "{\"success\":true,\"message\":\"Reaction <&> sent\"}\n"
     );
 }
 

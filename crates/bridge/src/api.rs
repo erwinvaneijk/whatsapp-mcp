@@ -1,7 +1,9 @@
 //! The bridge's local API: `POST /api/send`, `/api/react` and
-//! `/api/download` on `127.0.0.1:8080`, exactly as the Go bridge serves them
-//! (docs/rust-1.0/interface.md, section 3). WhatsApp sits behind the
-//! [`Backend`] trait, so everything here is tested without a connection.
+//! `/api/download` on `127.0.0.1:8080` (docs/rust-1.0/interface.md,
+//! section 3). Its only client is `whatsapp-mcp serve`, so requests are read
+//! strictly: exact field names, no unknown fields, nothing after the JSON.
+//! WhatsApp sits behind the [`Backend`] trait, so everything here is tested
+//! without a connection.
 
 use std::future::Future;
 use std::net::SocketAddr;
@@ -9,22 +11,22 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use http_body_util::{BodyExt, Full, Limited};
+use http_body_util::{BodyExt, Full, LengthLimitError, Limited};
 use hyper::body::Body;
 use hyper::header::{CONTENT_TYPE, HeaderValue};
 use hyper::{Method, Request, Response, StatusCode};
-use serde::Serialize;
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
 use whatsapp_mcp_config::SendAllowlist;
 
 use crate::jid::{Jid, LID_SERVER, USER_SERVER};
 use crate::log;
 
-/// The largest request body accepted, as in the Go bridge.
+/// The largest request body accepted.
 pub const MAX_BODY: usize = 1 << 20;
 
-/// What `/api/send` asks for.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// What `/api/send` asks for. Missing fields are empty.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct SendRequest {
     pub recipient: String,
     pub message: String,
@@ -106,7 +108,7 @@ impl<B: Backend> Api<B> {
         }
         let path = request.uri().path().to_string();
         if !matches!(path.as_str(), "/api/send" | "/api/react" | "/api/download") {
-            return text(StatusCode::NOT_FOUND, "404 page not found");
+            return text(StatusCode::NOT_FOUND, "Not found");
         }
         if request.method() != Method::POST {
             return text(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed");
@@ -121,11 +123,13 @@ impl<B: Backend> Api<B> {
                 },
             );
         }
-        // A body over the limit fails to read, like any malformed body.
-        let Ok(body) = Limited::new(request.into_body(), MAX_BODY).collect().await else {
-            return invalid_request();
+        let body = match Limited::new(request.into_body(), MAX_BODY).collect().await {
+            Ok(body) => body.to_bytes(),
+            Err(e) if e.is::<LengthLimitError>() => {
+                return invalid_request("the body is larger than 1 MiB");
+            }
+            Err(e) => return invalid_request(&e.to_string()),
         };
-        let body = body.to_bytes();
         match path.as_str() {
             "/api/send" => self.send(&body).await,
             "/api/react" => self.react(&body).await,
@@ -134,21 +138,9 @@ impl<B: Backend> Api<B> {
     }
 
     async fn send(&self, body: &[u8]) -> Answer {
-        let Ok(fields) = GoJson::parse(body) else {
-            return invalid_request();
-        };
-        let request = match (|| -> Result<SendRequest, ()> {
-            Ok(SendRequest {
-                recipient: fields.string("recipient")?,
-                message: fields.string("message")?,
-                media_path: fields.string("media_path")?,
-                reply_to_message_id: fields.string("reply_to_message_id")?,
-                reply_to_sender_jid: fields.string("reply_to_sender_jid")?,
-                mentions: fields.strings("mentions")?,
-            })
-        })() {
+        let request: SendRequest = match parse(body) {
             Ok(request) => request,
-            Err(()) => return invalid_request(),
+            Err(reason) => return invalid_request(&reason),
         };
         if request.recipient.is_empty() {
             return text(StatusCode::BAD_REQUEST, "Recipient is required");
@@ -182,15 +174,13 @@ impl<B: Backend> Api<B> {
     }
 
     async fn react(&self, body: &[u8]) -> Answer {
-        let Ok(fields) = GoJson::parse(body) else {
-            return invalid_request();
-        };
-        let (Ok(message_id), Ok(chat_jid), Ok(emoji)) = (
-            fields.string("message_id"),
-            fields.string("chat_jid"),
-            fields.string("emoji"),
-        ) else {
-            return invalid_request();
+        let ReactRequest {
+            message_id,
+            chat_jid,
+            emoji,
+        } = match parse(body) {
+            Ok(request) => request,
+            Err(reason) => return invalid_request(&reason),
         };
         if message_id.is_empty() || chat_jid.is_empty() {
             return text(
@@ -227,13 +217,12 @@ impl<B: Backend> Api<B> {
     }
 
     async fn download(&self, body: &[u8]) -> Answer {
-        let Ok(fields) = GoJson::parse(body) else {
-            return invalid_request();
-        };
-        let (Ok(message_id), Ok(chat_jid)) =
-            (fields.string("message_id"), fields.string("chat_jid"))
-        else {
-            return invalid_request();
+        let DownloadRequest {
+            message_id,
+            chat_jid,
+        } = match parse(body) {
+            Ok(request) => request,
+            Err(reason) => return invalid_request(&reason),
         };
         if message_id.is_empty() || chat_jid.is_empty() {
             return text(
@@ -364,11 +353,42 @@ struct DownloadStatus {
     path: Option<String>,
 }
 
-fn invalid_request() -> Answer {
-    text(StatusCode::BAD_REQUEST, "Invalid request format")
+/// What `/api/react` asks for. Missing fields are empty.
+#[derive(Deserialize, Default)]
+#[serde(default, deny_unknown_fields)]
+struct ReactRequest {
+    message_id: String,
+    chat_jid: String,
+    /// Empty removes the reaction.
+    emoji: String,
 }
 
-/// A plain-text answer as Go's `http.Error` writes it.
+/// What `/api/download` asks for. Missing fields are empty.
+#[derive(Deserialize, Default)]
+#[serde(default, deny_unknown_fields)]
+struct DownloadRequest {
+    message_id: String,
+    chat_jid: String,
+}
+
+/// Reads a request body, or says what is wrong with it. The body must be a
+/// JSON object: serde would also read an array into a struct, field by field
+/// in order.
+fn parse<'a, T: Deserialize<'a>>(body: &'a [u8]) -> Result<T, String> {
+    if body.trim_ascii_start().first().is_some_and(|&b| b != b'{') {
+        return Err("the body must be a JSON object".into());
+    }
+    serde_json::from_slice(body).map_err(|e| e.to_string())
+}
+
+fn invalid_request(reason: &str) -> Answer {
+    text(
+        StatusCode::BAD_REQUEST,
+        &format!("Invalid request format: {}", log::clean(reason)),
+    )
+}
+
+/// A plain-text answer, ending with a newline.
 fn text(status: StatusCode, message: &str) -> Answer {
     let mut answer = Response::new(Full::new(Bytes::from(format!("{message}\n"))));
     *answer.status_mut() = status;
@@ -394,23 +414,11 @@ fn status_json(success: bool, body: &impl Serialize) -> Answer {
     json(status, body)
 }
 
-/// A JSON answer as Go's `json.Encoder` writes it: compact, a newline at the
-/// end, and `<`, `>`, `&`, U+2028 and U+2029 escaped.
+/// A compact JSON answer, ending with a newline.
 fn json(status: StatusCode, body: &impl Serialize) -> Answer {
-    let text = serde_json::to_string(body).unwrap_or_else(|_| "{}".into());
-    let mut escaped = String::with_capacity(text.len() + 1);
-    for c in text.chars() {
-        match c {
-            '<' => escaped.push_str("\\u003c"),
-            '>' => escaped.push_str("\\u003e"),
-            '&' => escaped.push_str("\\u0026"),
-            '\u{2028}' => escaped.push_str("\\u2028"),
-            '\u{2029}' => escaped.push_str("\\u2029"),
-            c => escaped.push(c),
-        }
-    }
-    escaped.push('\n');
-    let mut answer = Response::new(Full::new(Bytes::from(escaped)));
+    let mut text = serde_json::to_string(body).unwrap_or_else(|_| "{}".into());
+    text.push('\n');
+    let mut answer = Response::new(Full::new(Bytes::from(text)));
     *answer.status_mut() = status;
     answer
         .headers_mut()
@@ -425,102 +433,4 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
         return false;
     }
     a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
-}
-
-/// A request body read as Go's `encoding/json` reads it into a struct: the
-/// first JSON value only, unknown fields ignored. Every key that matches a
-/// field, exactly or ignoring case, is applied in order, so a later one
-/// overwrites an earlier one; `null` leaves the field as it is; a value of
-/// the wrong type makes the whole body invalid.
-struct GoJson {
-    /// The object's keys and values in order, duplicates kept; `None` for a
-    /// body that is `null`.
-    pairs: Option<Vec<(String, Value)>>,
-}
-
-impl GoJson {
-    fn parse(body: &[u8]) -> Result<GoJson, ()> {
-        let first = serde_json::Deserializer::from_slice(body)
-            .into_iter::<Pairs>()
-            .next();
-        match first {
-            Some(Ok(Pairs(pairs))) => Ok(GoJson { pairs }),
-            _ => Err(()),
-        }
-    }
-
-    /// The values given for a field, in order.
-    fn values<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a Value> + 'a {
-        self.pairs
-            .iter()
-            .flatten()
-            .filter(move |(key, _)| key.eq_ignore_ascii_case(name))
-            .map(|(_, value)| value)
-    }
-
-    fn string(&self, name: &str) -> Result<String, ()> {
-        let mut result = String::new();
-        for value in self.values(name) {
-            match value {
-                Value::Null => {}
-                Value::String(s) => result = s.clone(),
-                _ => return Err(()),
-            }
-        }
-        Ok(result)
-    }
-
-    fn strings(&self, name: &str) -> Result<Vec<String>, ()> {
-        let mut result = Vec::new();
-        for value in self.values(name) {
-            match value {
-                Value::Null => {}
-                Value::Array(items) => {
-                    result = items
-                        .iter()
-                        .map(|item| match item {
-                            Value::String(s) => Ok(s.clone()),
-                            Value::Null => Ok(String::new()),
-                            _ => Err(()),
-                        })
-                        .collect::<Result<_, _>>()?;
-                }
-                _ => return Err(()),
-            }
-        }
-        Ok(result)
-    }
-}
-
-/// A JSON object as its key and value pairs in order, duplicates kept, or
-/// `null`. Anything else does not decode into a struct in Go.
-struct Pairs(Option<Vec<(String, Value)>>);
-
-impl<'de> serde::Deserialize<'de> for Pairs {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct Visitor;
-        impl<'de> serde::de::Visitor<'de> for Visitor {
-            type Value = Pairs;
-
-            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str("a JSON object or null")
-            }
-
-            fn visit_unit<E: serde::de::Error>(self) -> Result<Pairs, E> {
-                Ok(Pairs(None))
-            }
-
-            fn visit_map<A: serde::de::MapAccess<'de>>(
-                self,
-                mut map: A,
-            ) -> Result<Pairs, A::Error> {
-                let mut pairs = Vec::new();
-                while let Some(pair) = map.next_entry::<String, Value>()? {
-                    pairs.push(pair);
-                }
-                Ok(Pairs(Some(pairs)))
-            }
-        }
-        deserializer.deserialize_any(Visitor)
-    }
 }

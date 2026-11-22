@@ -66,7 +66,7 @@ Yes/no settings accept `1`, `true`, `yes` and `on`, in any case; anything else m
 
 ## 3. Bridge API
 
-Internal, but kept for 1.0, so the Rust MCP server can run with the Go bridge (release 0.9).
+Internal: its only client is `whatsapp-mcp serve`. Kept as the Go bridge served it for 1.0, so the Rust MCP server could run with the Go bridge (release 0.9). **Since 1.2** ([#76](https://github.com/erwinvaneijk/whatsapp-mcp/issues/76)) requests are read strictly and answers are plain JSON; see the end of this section.
 
 The bridge listens on `127.0.0.1:8080` only. Every request must have:
 
@@ -94,6 +94,12 @@ Plain-text errors with `400`:
 A chat outside the send allowlist gets `403 {"success":false,"message":"This chat is not in WHATSAPP_SEND_ALLOWLIST, so the bridge will not send to it."}`.
 
 `media_path` must resolve, symlinks included, to a file inside `media_dir`.
+
+**Since 1.2** the API no longer copies Go's quirks:
+
+- The body must be a JSON object with the exact field names above. Field names in another case, unknown fields, a field given twice, `null` for a field, or anything after the object are refused with `400 Invalid request format: ` and the reason. A missing field is still empty, so the messages in the table above stay.
+- JSON answers no longer escape `<`, `>`, `&`, U+2028 and U+2029.
+- An unknown path gets `404 Not found` instead of `404 page not found`.
 
 ## 4. Files
 

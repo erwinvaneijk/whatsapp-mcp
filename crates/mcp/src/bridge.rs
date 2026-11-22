@@ -1,6 +1,7 @@
 //! The client for the bridge's local API (`/api/send`, `/api/react`,
-//! `/api/download`): POST with JSON and the bridge token, as the Python
-//! server does.
+//! `/api/download`): POST with JSON and the bridge token. The bridge reads
+//! requests strictly, so send only the fields it knows
+//! (`crates/bridge/src/api.rs`).
 
 use std::time::Duration;
 
