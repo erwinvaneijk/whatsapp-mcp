@@ -46,8 +46,9 @@ The media folder gets `photo.jpg` and `voice.ogg`; the workspace also has `outsi
 | `no_fts` | Database without the full-text index: search falls back to a scan. |
 | `bridge_down` | Nothing listens on the bridge address. |
 | `unconfigured` | No bridge token and no media folder. |
+| `no_database` | No `messages.db` in the store folder: the read tools give an error. |
 
-A profile can set `env`, `config` (text of the config file), `tz`, `fts`, `token`, `media_dir`, `full_control` (default `true`: `WHATSAPP_FULL_CONTROL=1`), `bridge` (`"down"`) and `normalize` (regular expressions applied to results, for text that differs per run, such as a connection error from the OS).
+A profile can set `env`, `config` (text of the config file), `tz`, `fts`, `messages_db` (default `true`; `false` leaves it out), `token`, `media_dir`, `full_control` (default `true`: `WHATSAPP_FULL_CONTROL=1`), `bridge` (`"down"`) and `normalize` (regular expressions applied to results, for text that differs per run, such as a connection error from the OS).
 
 ## Cases
 

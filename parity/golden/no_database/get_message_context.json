@@ -1,0 +1,17 @@
+{
+  "args": {
+    "message_id": "3EB0A0000000000000000001"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "Cannot open the message database: unable to open database file: <STORE>/messages.db. Check that the bridge has run and that store_dir points to its store folder.",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "get_message_context"
+}

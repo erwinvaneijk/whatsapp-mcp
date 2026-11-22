@@ -161,6 +161,20 @@
         "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "no token"}},
         "send_file-photo": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "<MEDIA>/photo.jpg"}}
       }
+    },
+    "no_database": {
+      "description": "No messages.db in the store folder: every read tool says so instead of returning nothing.",
+      "messages_db": false,
+      "cases": {
+        "search_contacts": {"tool": "search_contacts", "args": {"query": "maria"}},
+        "list_messages": {"tool": "list_messages", "args": {}},
+        "list_chats": {"tool": "list_chats", "args": {}},
+        "get_chat": {"tool": "get_chat", "args": {"chat_jid": "31600000001@s.whatsapp.net"}},
+        "get_direct_chat_by_contact": {"tool": "get_direct_chat_by_contact", "args": {"sender_phone_number": "31600000001"}},
+        "get_contact_chats": {"tool": "get_contact_chats", "args": {"jid": "31600000001@s.whatsapp.net"}},
+        "get_last_interaction": {"tool": "get_last_interaction", "args": {"jid": "31600000001@s.whatsapp.net"}},
+        "get_message_context": {"tool": "get_message_context", "args": {"message_id": "3EB0A0000000000000000001"}}
+      }
     }
   }
 }
