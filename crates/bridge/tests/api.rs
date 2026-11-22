@@ -489,7 +489,7 @@ async fn without_full_control_nothing_is_sent() {
         assert_eq!(r.status, 403, "{path} {body}");
         assert_eq!(
             r.body,
-            "{\"success\":false,\"message\":\"Sending is off: set full_control (or WHATSAPP_FULL_CONTROL) to yes for the bridge to send.\"}\n"
+            "{\"success\":false,\"message\":\"Sending is off: set full_control (WHATSAPP_FULL_CONTROL) to yes for the bridge to send.\"}\n"
         );
     }
     assert!(a.backend.calls.lock().unwrap().is_empty());
@@ -523,7 +523,7 @@ async fn unlisted_chats_are_refused_before_sending() {
         assert_eq!(r.status, 403, "{path} {body}");
         assert_eq!(
             r.body,
-            "{\"success\":false,\"message\":\"This chat is not in WHATSAPP_SEND_ALLOWLIST, so the bridge will not send to it.\"}\n"
+            "{\"success\":false,\"message\":\"This chat is not in send_allowlist (WHATSAPP_SEND_ALLOWLIST), so the bridge will not send to it.\"}\n"
         );
     }
     assert!(a.backend.calls.lock().unwrap().is_empty());
@@ -592,11 +592,11 @@ fn media_paths_must_be_inside_the_media_folder() {
     };
     assert_eq!(
         err(None, &media.join("a.jpg")),
-        "media sending is disabled: WHATSAPP_MEDIA_DIR is not set"
+        "media sending is disabled: media_dir (WHATSAPP_MEDIA_DIR) is not set"
     );
     assert_eq!(
         err(Some(m), &media.join("..").join("outside.txt")),
-        "media path is outside WHATSAPP_MEDIA_DIR"
+        "media path is outside media_dir (WHATSAPP_MEDIA_DIR)"
     );
     assert!(err(Some(m), &media.join("missing.jpg")).starts_with("cannot resolve media path: "));
     #[cfg(unix)]
@@ -604,7 +604,7 @@ fn media_paths_must_be_inside_the_media_folder() {
         std::os::unix::fs::symlink(dir.path().join("outside.txt"), media.join("link")).unwrap();
         assert_eq!(
             err(Some(m), &media.join("link")),
-            "media path is outside WHATSAPP_MEDIA_DIR"
+            "media path is outside media_dir (WHATSAPP_MEDIA_DIR)"
         );
     }
 }

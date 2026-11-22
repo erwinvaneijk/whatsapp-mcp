@@ -96,7 +96,7 @@ impl Logger {
             LogOutput::Stderr => Sink::Stderr,
             LogOutput::Stdout if program == Program::Serve => {
                 return Err(
-                    "WHATSAPP_LOG_OUTPUT (or log_output) cannot be stdout for serve: stdout carries the MCP protocol; use stderr, syslog or a file"
+                    "log_output (WHATSAPP_LOG_OUTPUT) cannot be stdout for serve: stdout carries the MCP protocol; use stderr, syslog or a file"
                         .into(),
                 );
             }
@@ -350,14 +350,14 @@ fn open_syslog(_program: Program) -> Result<Sink, String> {
         }
     }
     Err(format!(
-        "WHATSAPP_LOG_OUTPUT (or log_output) is syslog, but no local syslog socket was found ({})",
+        "log_output (WHATSAPP_LOG_OUTPUT) is syslog, but no local syslog socket was found ({})",
         SYSLOG_SOCKETS.join(", ")
     ))
 }
 
 #[cfg(not(unix))]
 fn open_syslog(_program: Program) -> Result<Sink, String> {
-    Err("WHATSAPP_LOG_OUTPUT (or log_output) cannot be syslog on Windows; use stderr, stdout or a file".into())
+    Err("log_output (WHATSAPP_LOG_OUTPUT) cannot be syslog on Windows; use stderr, stdout or a file".into())
 }
 
 #[cfg(unix)]

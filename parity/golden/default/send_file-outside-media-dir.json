@@ -7,14 +7,14 @@
   "result": {
     "content": [
       {
-        "text": "{\n  \"success\": false,\n  \"message\": \"Media path must be an absolute path inside WHATSAPP_MEDIA_DIR\"\n}",
+        "text": "{\n  \"success\": false,\n  \"message\": \"Media path must be an absolute path inside media_dir (WHATSAPP_MEDIA_DIR)\"\n}",
         "type": "text"
       }
     ],
     "isError": false,
     "resultType": "complete",
     "structuredContent": {
-      "message": "Media path must be an absolute path inside WHATSAPP_MEDIA_DIR",
+      "message": "Media path must be an absolute path inside media_dir (WHATSAPP_MEDIA_DIR)",
       "success": false
     }
   },

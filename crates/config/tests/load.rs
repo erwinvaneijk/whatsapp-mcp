@@ -402,9 +402,7 @@ fn logging_settings() {
         .unwrap_err()
         .to_string();
     assert!(
-        error.starts_with(
-            "WHATSAPP_LOG_OUTPUT (or log_output in the configuration file) is \"logs/app.log\""
-        ),
+        error.starts_with("log_output (WHATSAPP_LOG_OUTPUT) is \"logs/app.log\""),
         "{error}"
     );
     let error = load(&[("WHATSAPP_LOG_FORMAT", "xml")])
@@ -456,7 +454,7 @@ fn full_control_and_its_old_name() {
     assert_eq!(
         config.warnings(),
         [
-            "read_only is replaced by full_control and will stop working in 2.0: remove it and set full_control (or WHATSAPP_FULL_CONTROL) to yes"
+            "read_only is replaced by full_control and will stop working in 2.0: remove it and set full_control (WHATSAPP_FULL_CONTROL) to yes"
         ]
     );
     assert_eq!(
@@ -510,10 +508,7 @@ fn store_dir_paths() {
         Some(home.path().join("wa"))
     );
     let err = load("wa/store").store_dir().unwrap_err().to_string();
-    assert!(
-        err.contains("WHATSAPP_STORE_DIR (or store_dir in the configuration file)"),
-        "{err}"
-    );
+    assert!(err.contains("store_dir (WHATSAPP_STORE_DIR)"), "{err}");
 }
 
 /// Issue #73: the bridge's address, for both programs.
@@ -550,9 +545,8 @@ fn bridge_address_forms() {
     ] {
         let message = address(value).unwrap_err().to_string();
         assert!(
-            message.starts_with(
-                "WHATSAPP_BRIDGE_ADDRESS (or bridge_address in the configuration file)"
-            ) && message.contains(why),
+            message.starts_with("bridge_address (WHATSAPP_BRIDGE_ADDRESS)")
+                && message.contains(why),
             "{value}: {message}"
         );
     }

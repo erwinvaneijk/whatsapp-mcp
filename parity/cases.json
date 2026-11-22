@@ -67,7 +67,7 @@
         "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "Hello from the parity test"}},
         "send_message-reply-mentions": {"tool": "send_message", "args": {"recipient": "120363000000000001@g.us", "message": "@31600000001 agreed", "reply_to_message_id": "3EB0D0000000000000000001", "reply_to_sender_jid": "31600000001@s.whatsapp.net", "mentions": ["31600000001"]}},
         "send_message-no-recipient": {"tool": "send_message", "args": {"recipient": "", "message": "nobody"}},
-        "send_message-refused": {"tool": "send_message", "args": {"recipient": "31699999999", "message": "not allowed"}, "bridge": {"status": 403, "json": {"success": false, "message": "This chat is not in WHATSAPP_SEND_ALLOWLIST, so the bridge will not send to it."}}},
+        "send_message-refused": {"tool": "send_message", "args": {"recipient": "31699999999", "message": "not allowed"}, "bridge": {"status": 403, "json": {"success": false, "message": "This chat is not in send_allowlist (WHATSAPP_SEND_ALLOWLIST), so the bridge will not send to it."}}},
         "send_message-bridge-failure": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "fails"}, "bridge": {"status": 500, "json": {"success": false, "message": "Error sending message: not connected"}}},
         "send_message-bridge-not-json": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "garbled"}, "bridge": {"status": 200, "body": "not json"}},
 

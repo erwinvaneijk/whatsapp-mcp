@@ -51,7 +51,7 @@ impl Bridge {
     /// POSTs `payload` to `<base>/<path>`.
     pub fn post(&self, path: &str, payload: &Value) -> Answer {
         let Some(token) = &self.token else {
-            return Answer::Failed("WHATSAPP_BRIDGE_TOKEN is not set".to_string());
+            return Answer::Failed("bridge_token (WHATSAPP_BRIDGE_TOKEN) is not set".to_string());
         };
         let url = format!("{}/{path}", self.base_url);
         let response = self

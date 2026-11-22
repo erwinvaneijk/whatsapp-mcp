@@ -1,6 +1,8 @@
 use std::fmt;
 use std::path::PathBuf;
 
+use crate::Setting;
+
 /// Why the configuration could not be used. The bridge and the MCP server
 /// both stop on any of these, with the message on stderr.
 #[derive(Debug)]
@@ -75,11 +77,17 @@ impl fmt::Display for ConfigError {
                 message,
             } => f.write_str(message),
             Self::NotUnicode(name) => write!(f, "{name} is not valid Unicode text"),
-            Self::BridgeToken => f.write_str(
-                "WHATSAPP_BRIDGE_TOKEN (or bridge_token in the configuration file) must be set to a random secret of at least 32 characters",
+            Self::BridgeToken => write!(
+                f,
+                "{} must be set to a random secret of at least 32 characters",
+                Setting::BridgeToken.label()
             ),
             Self::Allowlist { entry, reason } => {
-                write!(f, "WHATSAPP_SEND_ALLOWLIST entry {entry:?}: {reason}")
+                write!(
+                    f,
+                    "{} entry {entry:?}: {reason}",
+                    Setting::SendAllowlist.label()
+                )
             }
         }
     }
