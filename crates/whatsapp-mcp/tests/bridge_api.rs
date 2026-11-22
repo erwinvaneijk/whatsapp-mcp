@@ -137,7 +137,14 @@ fn every_bridge_tool_is_accepted_by_the_bridge() {
     let photo = media_dir.join("photo.jpg");
     let voice = media_dir.join("voice.ogg");
     std::fs::write(&photo, b"x").unwrap();
-    std::fs::write(&voice, b"x").unwrap();
+    // The first Ogg page of an Opus file, so serve sends it without
+    // converting it (and without needing ffmpeg).
+    let mut opus = b"OggS".to_vec();
+    opus.extend([0u8; 22]);
+    opus.extend([1, 19]);
+    opus.extend(b"OpusHead");
+    opus.extend([1, 1, 0x38, 0x01, 0x80, 0xbb, 0, 0, 0, 0, 0]);
+    std::fs::write(&voice, opus).unwrap();
     let json_path = |p: &std::path::Path| serde_json::to_string(p.to_str().unwrap()).unwrap();
 
     let send_file = format!(
