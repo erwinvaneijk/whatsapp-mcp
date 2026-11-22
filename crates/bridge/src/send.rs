@@ -97,9 +97,10 @@ pub enum Kind {
     Document,
 }
 
-/// The kind and MIME type of a file, from its extension. Anything that is not a known image, video or Ogg file is a
-/// document; its MIME type comes from the extension, because without one
-/// WhatsApp shows the document as `.bin`.
+/// The kind and MIME type of a file, from its extension. Anything that is
+/// not a known image, video or Ogg file is a document; its MIME type comes
+/// from the extension, because without one WhatsApp shows the document as
+/// `.bin`.
 pub fn media_kind(path: &Path) -> (Kind, String) {
     let ext = path
         .extension()
