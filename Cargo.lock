@@ -2702,8 +2702,10 @@ dependencies = [
 name = "whatsapp-mcp-bridge"
 version = "1.1.0"
 dependencies = [
+ "buffa",
  "bytes",
  "chrono",
+ "flate2",
  "http-body-util",
  "hyper",
  "hyper-util",
