@@ -4,9 +4,9 @@ What the 1.0 rewrite must keep, as of `dev-main` on 2026-11-05. Where a test or 
 
 ## 1. MCP server
 
-The exact reference is the [parity harness](../../parity/README.md):
+The exact reference is the [parity harness](../../../parity/README.md):
 
-- **Server:** [`parity/golden/default/_server.json`](../../parity/golden/default/_server.json) has the server name (`whatsapp`), the instructions, and every tool with its description, input schema, output schema and annotations.
+- **Server:** [`parity/golden/default/_server.json`](../../../parity/golden/default/_server.json) has the server name (`whatsapp`), the instructions, and every tool with its description, input schema, output schema and annotations.
 - **Results:** the other golden files have the result of each case.
 
 | Tool | Title | Kind | Hidden in read-only mode |
@@ -40,7 +40,7 @@ The parts that are easy to miss:
 
 ## 2. Configuration
 
-Shared by the bridge and the MCP server. The exact rules are in `whatsapp-bridge/config.go` and the Rust config crate (`crates/config`), and their tests (until 0.9 also in the Python server's `config.py`). The [README](../../README.md#configuration) and [`config.example.yaml`](../../config.example.yaml) describe them for users.
+Shared by the bridge and the MCP server. The exact rules are in `whatsapp-bridge/config.go` and the Rust config crate (`crates/config`), and their tests (until 0.9 also in the Python server's `config.py`). The [README](../../../README.md#configuration) and [`config.example.yaml`](../../../config.example.yaml) describe them for users.
 
 - **File:** `~/.config/whatsapp-mcp/config.yaml`, or the path in `WHATSAPP_MCP_CONFIG`. A file named that way must exist; the default file is optional.
 - **Precedence:** an environment variable that is set wins over the file. An empty one counts as unset.
@@ -62,7 +62,7 @@ Shared by the bridge and the MCP server. The exact rules are in `whatsapp-bridge
 
 Yes/no settings accept `1`, `true`, `yes` and `on`, in any case; anything else means no.
 
-**Shared cases:** [`parity/config-cases.json`](../../parity/config-cases.json) holds files, allowlists and yes/no values with the result each must give. The Go and Rust tests read it (and the Python tests did, until 0.9), so the implementations cannot drift apart.
+**Shared cases:** [`parity/config-cases.json`](../../../parity/config-cases.json) holds files, allowlists and yes/no values with the result each must give. The Go and Rust tests read it (and the Python tests did, until 0.9), so the implementations cannot drift apart.
 
 ## 3. Bridge API
 
@@ -107,9 +107,9 @@ All in `whatsapp-bridge/store/`. The folder and its files are readable by the us
 
 | File | Contents | Kept in 1.0 |
 |---|---|---|
-| `messages.db` | Chats and messages. Exact schema: [`parity/fixture/schema.sql`](../../parity/fixture/schema.sql), checked against the bridge in CI. Times are stored as text with their UTC offset. Opened in WAL mode. | Yes, used as is. |
-| `whatsapp.db` | whatsmeow's session and contact store. The MCP server reads `whatsmeow_contacts` and `whatsmeow_lid_map` from it for names ([`parity/fixture/whatsmeow.sql`](../../parity/fixture/whatsmeow.sql)), unless `messages.db` has the tables below. | No: whatsapp-rust has its own store, `session.db`. The Go bridge's file is left alone. |
-| `messages.db`: `contacts`, `lid_map` | New in 1.0, written by the Rust bridge: contact names and the LID-to-phone map, with the same columns and meaning as whatsmeow's two tables ([`crates/store/src/schema/names.sql`](../../crates/store/src/schema/names.sql)). The MCP server reads names from here when the tables exist. | New. |
+| `messages.db` | Chats and messages. Exact schema: [`parity/fixture/schema.sql`](../../../parity/fixture/schema.sql), checked against the bridge in CI. Times are stored as text with their UTC offset. Opened in WAL mode. | Yes, used as is. |
+| `whatsapp.db` | whatsmeow's session and contact store. The MCP server reads `whatsmeow_contacts` and `whatsmeow_lid_map` from it for names ([`parity/fixture/whatsmeow.sql`](../../../parity/fixture/whatsmeow.sql)), unless `messages.db` has the tables below. | No: whatsapp-rust has its own store, `session.db`. The Go bridge's file is left alone. |
+| `messages.db`: `contacts`, `lid_map` | New in 1.0, written by the Rust bridge: contact names and the LID-to-phone map, with the same columns and meaning as whatsmeow's two tables ([`crates/store/src/schema/names.sql`](../../../crates/store/src/schema/names.sql)). The MCP server reads names from here when the tables exist. | New. |
 | `<chat>/<file>` | Downloaded media. The chat folder is the chat JID with every character other than letters, digits, `@ . - _` replaced by `_`. When two messages in a chat share a file name, the file gets `_<message id>` before its extension. | Yes. |
 
 ## 5. Behaviour that improves in 1.0

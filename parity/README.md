@@ -1,6 +1,6 @@
 # Parity harness
 
-Records what the MCP server shows to an MCP client, and checks that it stays the same. The golden files were first recorded from the Python server, and the Rust server ([docs/rust-1.0](../docs/rust-1.0/plan.md)) was built to match them; since version 0.9 the Rust server is the only one, and the harness is its regression test.
+Records what the MCP server shows to an MCP client, and checks that it stays the same. The golden files were first recorded from the Python server, and the Rust server ([docs/rust-1.0](../docs/archive/rust-1.0/plan.md)) was built to match them; since version 0.9 the Rust server is the only one, and the harness is its regression test.
 
 For each **profile** in [`cases.json`](cases.json) the harness:
 
@@ -79,7 +79,7 @@ The harness starts the server with the command for `--server` (see `SERVERS` in 
 uv run --locked python run.py --only 'list_messages-*'  # one tool
 ```
 
-**History.** Until version 0.9 the harness also ran the Python server, and recorded the shared golden files from it. Eleven cases, where the Rust server gives clearer errors on purpose ([interface.md, section 5](../docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10)), had a separate `<case>.rust.json` file. With the Python server removed, those became the golden files.
+**History.** Until version 0.9 the harness also ran the Python server, and recorded the shared golden files from it. Eleven cases, where the Rust server gives clearer errors on purpose ([interface.md, section 5](../docs/archive/rust-1.0/interface.md#5-behaviour-that-improves-in-10)), had a separate `<case>.rust.json` file. With the Python server removed, those became the golden files.
 
 Time zones are set through `TZ`, so the harness runs on macOS and Linux, not on Windows.
 
@@ -91,4 +91,4 @@ Time zones are set through `TZ`, so the harness runs on macOS and Linux, not on 
 |---|---|
 | Rust config crate | [`crates/config/tests/shared_cases.rs`](../crates/config/tests/shared_cases.rs) |
 
-Add a case here for a rule the configuration file must keep. A rule only the Rust crate had from the start, such as the stricter checks in [interface.md](../docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10), is tested in the crate only.
+Add a case here for a rule the configuration file must keep. A rule only the Rust crate had from the start, such as the stricter checks in [interface.md](../docs/archive/rust-1.0/interface.md#5-behaviour-that-improves-in-10), is tested in the crate only.

@@ -7,7 +7,7 @@ claude plugin marketplace add erwinvaneijk/whatsapp-mcp
 claude plugin install whatsapp-mcp@erwinvaneijk
 ```
 
-Starts after [release 1.0](../rust-1.0/plan.md), when one `whatsapp-mcp` binary is both the bridge and the MCP server, and Go is no longer needed.
+Starts after [release 1.0](../archive/rust-1.0/plan.md), when one `whatsapp-mcp` binary is both the bridge and the MCP server, and Go is no longer needed.
 
 ## Decisions
 

@@ -1,4 +1,4 @@
-# Rust rewrite of the bridge and MCP server (docs/rust-1.0/plan.md).
+# Rust rewrite of the bridge and MCP server (docs/archive/rust-1.0/plan.md).
 # The crates live in crates/; see crates/README.md.
 [workspace]
 resolver = "3"

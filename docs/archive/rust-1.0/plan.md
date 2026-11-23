@@ -1,6 +1,6 @@
 # 1.0: rewrite in Rust
 
-Status: phase 0 done; phase 1 done, decision **go** ([checklist and results](phase1.md)); phase 2 done (workspace and CI, see [crates/README.md](../../crates/README.md)); phase 3 done (config crate; shared cases in [`parity/config-cases.json`](../../parity/config-cases.json)); phase 4 done: `serve` matches the Python server on every parity case (or improves on it, as decided), and replaces it in version 0.9; phase 5 in progress ([steps](phase5.md)). Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
+Status: phase 0 done; phase 1 done, decision **go** ([checklist and results](phase1.md)); phase 2 done (workspace and CI, see [crates/README.md](../../../crates/README.md)); phase 3 done (config crate; shared cases in [`parity/config-cases.json`](../../../parity/config-cases.json)); phase 4 done: `serve` matches the Python server on every parity case (or improves on it, as decided), and replaces it in version 0.9; phase 5 in progress ([steps](phase5.md)). Progress is tracked in the [score sheet](scoresheet.md); the interface to keep is described in [interface.md](interface.md).
 
 ## Goal
 

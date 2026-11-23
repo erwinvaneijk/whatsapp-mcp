@@ -8,7 +8,7 @@ A release has two parts: the `whatsapp-mcp` binaries, and then the Claude Code p
    - set `version` in the workspace `Cargo.toml` (and run `cargo build`, so `Cargo.lock` follows);
    - turn the CHANGELOG's "Unreleased" section into `## X.Y.Z`.
 2. Pull request to `dev-main`, and merge it when CI passes.
-3. Bring `main` up to `dev-main` (`main` is the latest release, see [Branches](../README.md#branches)).
+3. Bring `main` up to `dev-main` (`main` is the latest release, see [Branches](branches.md#how-the-branches-work)).
 4. Tag `main`: `git tag vX.Y.Z && git push origin vX.Y.Z`. The [release workflow](../.github/workflows/release.yml) builds the five binaries, checks each one's `--version` against the tag, and attaches them with `SHA256SUMS` to a **draft** release.
 5. Check the draft: download the binary for your platform, check it against `SHA256SUMS`, run it. Then publish the release.
 

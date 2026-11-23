@@ -13,30 +13,9 @@ Here's an example of what you can do when it's connected to Claude.
 > *Caution:* as with many MCP servers, the WhatsApp MCP is subject to [the lethal trifecta](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/). This means that prompt injection could lead to private data exfiltration.
 > Any message you receive is untrusted input that the model reads: someone can send you a message containing instructions (prompt injection) that try to make the agent forward your private conversations or files to them. That is why nothing is sent by default: the model can read and search, but not send. Turn sending on only if you need it; see [Full control (sending)](#full-control-sending).
 
-## This server's origin story
+## Where this comes from
 
-This server began as [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp): a Go bridge to WhatsApp, built on whatsmeow, and an MCP server in Python. People liked it, and sent fixes. But upstream has had no commits since July 2025, and those fixes stayed waiting as unmerged pull requests.
-
-This fork started by collecting them. Each upstream pull request came in on a branch of its own, and fixes of this fork's own were added next to them: over 50 changes in all. [Branches in `dev-main`](docs/branches.md) lists each one with what it does, and [Upstream issues and this fork](docs/upstream-issues.md) shows, for every open upstream issue, whether this fork fixes it.
-
-Then it was rewritten. Version 0.9 replaced the Python server with Rust; version 1.0 replaced the Go bridge too, so the whole thing is one program, `whatsapp-mcp`. A [parity harness](parity/README.md) checked that the tools give the same answers as before, and the Rust bridge ran a week of daily use before 1.0. On the way it became safer by default: nothing is sent unless you turn on [full control](#full-control-sending). The [1.0 plan](docs/rust-1.0/plan.md) tells the rest.
-
-### Branches
-
-| Branch | Purpose |
-| --- | --- |
-| `main` | The latest release. **Use this branch**, or a [release](https://github.com/erwinvaneijk/whatsapp-mcp/releases). |
-| `dev-main` | Development branch. Collects all feature and fix branches, and is merged into `main` for a release. |
-| `fix/*`, `feat/*` | One branch per change (often an upstream PR). Merged into `dev-main` with `--no-ff`, so each change stays visible and easy to revert. |
-
-Upstream pull requests change the Go and Python code, which is gone since 1.0, so a useful one is ported to Rust by hand on a branch of its own. To fetch one to read:
-
-```bash
-# one-time: track the original project
-git remote add upstream git@github.com:lharries/whatsapp-mcp.git
-
-git fetch upstream pull/<PR>/head:upstream/pr-<PR>
-```
+This server began as [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp), a Go bridge and a Python server, and is now one Rust program with the open upstream fixes merged in. [History](docs/history.md) tells how. Use the `main` branch or a [release](https://github.com/erwinvaneijk/whatsapp-mcp/releases); [Branches](docs/branches.md) explains the other branches.
 
 ## Installation
 
@@ -171,7 +150,7 @@ From 1.0 the Go bridge is replaced by `whatsapp-mcp bridge`. Your messages and c
 
 Before version 0.9, the MCP server was a Python program run with `uv`. From 0.9 it is `whatsapp-mcp serve`, with the same tools and the same configuration. In your MCP client's configuration, replace `"command"` and `"args"` with the ones in step 5, keep the `env` block if you have one, and restart the client. Then follow [Upgrading to 1.0](docs/upgrading-to-1.0.md) for the bridge.
 
-A few error messages are clearer than in the Python server; see [Behaviour that improves](docs/rust-1.0/interface.md#5-behaviour-that-improves-in-10).
+A few error messages are clearer than in the Python server; see [Behaviour that improves](docs/archive/rust-1.0/interface.md#5-behaviour-that-improves-in-10).
 
 ### Windows
 
