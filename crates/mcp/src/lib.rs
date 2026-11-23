@@ -8,6 +8,8 @@ mod args;
 mod bridge;
 mod output;
 mod read_tools;
+#[cfg(test)]
+mod read_tools_tests;
 mod send_tools;
 mod untrusted;
 
