@@ -109,7 +109,7 @@ impl Writer {
 		 ON CONFLICT(jid) DO UPDATE SET
 		   name = COALESCE(NULLIF(excluded.name, ''), chats.name),
 		   last_message_time = excluded.last_message_time",
-            params![jid, name, go_time(&last_message_time)],
+            params![jid, name, stored_time(&last_message_time)],
         )?;
         Ok(())
     }
@@ -130,7 +130,7 @@ impl Writer {
                 m.chat_jid,
                 m.sender,
                 m.content,
-                m.timestamp.as_ref().map(go_time),
+                m.timestamp.as_ref().map(stored_time),
                 m.is_from_me,
                 m.media_type,
                 m.filename,
@@ -304,7 +304,7 @@ pub fn migrate(conn: &Connection) -> Result<()> {
 /// A time as `messages.db` stores it, the form Go's SQLite driver wrote
 /// (`2006-01-02 15:04:05.999999999-07:00`): a fraction only when there is
 /// one, without trailing zeros.
-pub fn go_time(moment: &DateTime<FixedOffset>) -> String {
+pub fn stored_time(moment: &DateTime<FixedOffset>) -> String {
     let mut text = moment.format("%Y-%m-%d %H:%M:%S").to_string();
     let nanos = moment.nanosecond() % 1_000_000_000;
     if nanos != 0 {
