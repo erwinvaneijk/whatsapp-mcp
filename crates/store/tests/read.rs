@@ -162,3 +162,111 @@ fn schema_checks_follow_schema_changes() {
     whatsapp_mcp_store::migrate(writer.connection()).unwrap();
     assert!(db.fts_ready().unwrap());
 }
+
+/// A store with Maria's chat and a contact name for her.
+fn store_with_maria(dir: &std::path::Path, name: &str) {
+    let writer = Writer::open(dir).unwrap();
+    writer
+        .store_chat(
+            "31600000001@s.whatsapp.net",
+            "",
+            time("2026-11-04T22:00:52+01:00"),
+        )
+        .unwrap();
+    writer
+        .store_contact(
+            "31600000001@s.whatsapp.net",
+            &whatsapp_mcp_store::ContactNames {
+                full_name: name.into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+}
+
+fn maria(store: &Store) -> String {
+    let db = store.open().unwrap();
+    db.list_chats(None, 10, 0, false, "name").unwrap()[0]
+        .name
+        .clone()
+        .unwrap_or_default()
+}
+
+/// Issue #71: names are kept between calls, and loaded again after a
+/// write once they are older than NAMES_MAX_AGE.
+#[test]
+fn names_are_kept_and_reloaded_after_a_write() {
+    let dir = tempfile::tempdir().unwrap();
+    store_with_maria(dir.path(), "Maria Jansen");
+    let store = Store::new(dir.path());
+    assert_eq!(maria(&store), "Maria Jansen");
+    store_with_maria(dir.path(), "Maria de Vries");
+    // Still recent: the kept names are used, not loaded again.
+    assert_eq!(maria(&store), "Maria Jansen");
+    // Old enough, and the database was written: loaded again.
+    store.expire_names();
+    assert_eq!(maria(&store), "Maria de Vries");
+    // A clone shares the connections and names.
+    assert_eq!(maria(&store.clone()), "Maria de Vries");
+}
+
+/// A messages.db deleted and created again (to link again) is noticed;
+/// the old connection would keep reading the deleted file.
+#[cfg(unix)]
+#[test]
+fn a_recreated_database_is_noticed() {
+    let dir = tempfile::tempdir().unwrap();
+    store_with_maria(dir.path(), "Maria Jansen");
+    let store = Store::new(dir.path());
+    assert_eq!(maria(&store), "Maria Jansen");
+    for file in ["messages.db", "messages.db-wal", "messages.db-shm"] {
+        let _ = std::fs::remove_file(dir.path().join(file));
+    }
+    let writer = Writer::open(dir.path()).unwrap();
+    writer
+        .store_chat(
+            "31600000002@s.whatsapp.net",
+            "Tom",
+            time("2026-11-04T22:00:52+01:00"),
+        )
+        .unwrap();
+    drop(writer);
+    assert_eq!(maria(&store), "Tom");
+}
+
+#[test]
+fn a_missing_database_is_not_kept() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::new(dir.path());
+    assert!(store.open().is_err());
+    store_with_maria(dir.path(), "Maria Jansen");
+    assert_eq!(maria(&store), "Maria Jansen");
+}
+
+/// Calls at the same time each get a connection.
+#[test]
+fn connections_are_shared_out_one_per_call() {
+    let dir = tempfile::tempdir().unwrap();
+    store_with_maria(dir.path(), "Maria Jansen");
+    let store = Store::new(dir.path());
+    let first = store.open().unwrap();
+    let second = store.open().unwrap();
+    assert_eq!(
+        first.list_chats(None, 10, 0, false, "name").unwrap().len(),
+        1
+    );
+    assert_eq!(
+        second.list_chats(None, 10, 0, false, "name").unwrap().len(),
+        1
+    );
+    drop((first, second));
+    let threads: Vec<_> = (0..8)
+        .map(|_| {
+            let store = store.clone();
+            std::thread::spawn(move || maria(&store))
+        })
+        .collect();
+    for thread in threads {
+        assert_eq!(thread.join().unwrap(), "Maria Jansen");
+    }
+}
