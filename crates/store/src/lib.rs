@@ -10,6 +10,7 @@ mod names;
 mod time;
 mod write;
 
+use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -122,6 +123,18 @@ const MESSAGE_COLUMNS: &str = "messages.timestamp, messages.sender, display_name
 pub struct Db {
     conn: Connection,
     names: Arc<Names>,
+    /// The schema checks, with the `schema_version` they were made at.
+    schema: Cell<Option<(i64, Schema)>>,
+}
+
+/// What the queries need to know about the schema, which the bridge can
+/// change while `serve` runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Schema {
+    /// `messages.quoted_message_id` exists (the bridge adds it on start).
+    quoted_message_id: bool,
+    /// The FTS5 index exists and is kept up to date.
+    fts: bool,
 }
 
 impl Db {
@@ -146,17 +159,39 @@ impl Db {
                 _ => false,
             })
         })?;
-        Ok(Db { conn, names })
+        Ok(Db {
+            conn,
+            names,
+            schema: Cell::new(None),
+        })
     }
 
     pub fn names(&self) -> &Names {
         &self.names
     }
 
-    /// SQL for the quoted message ID, or NULL when the bridge has not added
-    /// the `quoted_message_id` column yet (it does so on start).
-    fn quoted_column(&self, table: &str) -> Result<String> {
-        let exists = self
+    /// The schema checks, made again only when the schema has changed
+    /// since the last time: SQLite raises `schema_version` on every change,
+    /// so one cheap pragma replaces the checks on each query (issue #72).
+    fn schema(&self) -> Result<Schema> {
+        let version: i64 = self
+            .conn
+            .query_row("PRAGMA schema_version", [], |row| row.get(0))?;
+        if let Some((seen, schema)) = self.schema.get()
+            && seen == version
+        {
+            return Ok(schema);
+        }
+        let schema = Schema {
+            quoted_message_id: self.has_quoted_message_id()?,
+            fts: self.check_fts()?,
+        };
+        self.schema.set(Some((version, schema)));
+        Ok(schema)
+    }
+
+    fn has_quoted_message_id(&self) -> Result<bool> {
+        Ok(self
             .conn
             .query_row(
                 "SELECT 1 FROM pragma_table_info('messages') WHERE name = 'quoted_message_id'",
@@ -164,18 +199,10 @@ impl Db {
                 |_| Ok(()),
             )
             .optional()?
-            .is_some();
-        Ok(if exists {
-            format!("{table}.quoted_message_id")
-        } else {
-            "NULL".to_string()
-        })
+            .is_some())
     }
 
-    /// Whether the FTS5 index exists and is kept up to date. The bridge
-    /// creates `messages_fts` and its triggers only when built with FTS5, and
-    /// drops the triggers when run without it; then the index is stale.
-    pub fn fts_ready(&self) -> Result<bool> {
+    fn check_fts(&self) -> Result<bool> {
         let trigger = self
             .conn
             .query_row(
@@ -191,6 +218,23 @@ impl Db {
             .conn
             .execute_batch("SELECT 1 FROM messages_fts LIMIT 0")
             .is_ok())
+    }
+
+    /// SQL for the quoted message ID, or NULL when the bridge has not added
+    /// the `quoted_message_id` column yet (it does so on start).
+    fn quoted_column(&self, table: &str) -> Result<String> {
+        Ok(if self.schema()?.quoted_message_id {
+            format!("{table}.quoted_message_id")
+        } else {
+            "NULL".to_string()
+        })
+    }
+
+    /// Whether the FTS5 index exists and is kept up to date. The bridge
+    /// creates `messages_fts` and its triggers only when built with FTS5, and
+    /// drops the triggers when run without it; then the index is stale.
+    pub fn fts_ready(&self) -> Result<bool> {
+        Ok(self.schema()?.fts)
     }
 
     /// Messages matching the filter, newest first.

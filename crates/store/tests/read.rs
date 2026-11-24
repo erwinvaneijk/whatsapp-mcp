@@ -142,3 +142,23 @@ fn message_search_without_fts_takes_wildcards_literally() {
     assert_eq!(search("100%"), ["M1"]);
     assert_eq!(search("a_b"), ["M3"]);
 }
+
+/// Issue #72: the schema checks are cached, but an open `Db` still sees the
+/// bridge change the schema, as `serve` keeps its connection open.
+#[test]
+fn schema_checks_follow_schema_changes() {
+    let dir = tempfile::tempdir().unwrap();
+    let writer = Writer::open(dir.path()).unwrap();
+    let db = Store::new(dir.path()).open().unwrap();
+    assert!(db.fts_ready().unwrap());
+    assert!(db.fts_ready().unwrap(), "the cached answer");
+    // A bridge without FTS5 drops the trigger: the index goes stale.
+    writer
+        .connection()
+        .execute_batch("DROP TRIGGER messages_ai")
+        .unwrap();
+    assert!(!db.fts_ready().unwrap());
+    // The next start adds it back.
+    whatsapp_mcp_store::migrate(writer.connection()).unwrap();
+    assert!(db.fts_ready().unwrap());
+}
