@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-mcp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Search, read and (with full control) send your WhatsApp messages from Claude Code, through a bridge on your own computer. Read-only by default.",
   "author": {
     "name": "Erwin van Eijk",

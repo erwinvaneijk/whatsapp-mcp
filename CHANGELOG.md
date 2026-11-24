@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Plugin 1.2.0**: the plugin downloads the 1.2.0 binaries (pinned checksums updated with `scripts/bump-plugin.sh`), and its setup skill knows `bridge_address` for when port 8080 is taken. After `claude plugin update`, start a new session and run `whatsapp-mcp service install` to restart the bridge on it.
+
 ## 1.2.0
 
 Fixes for wrong, repeated or missing results in the read tools, and a faster MCP server. The bridge's port can be changed, and without `store_dir` the store folder no longer depends on the folder a program starts in. The bridge's local API now reads requests strictly.

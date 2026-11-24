@@ -19,7 +19,7 @@ This adds the `erwinvaneijk` marketplace (this repository) and installs the plug
 
 ## What it downloads
 
-On first start, `launch.sh` downloads the `whatsapp-mcp` program for your platform from this version's [GitHub release](https://github.com/erwinvaneijk/whatsapp-mcp/releases/tag/v1.1.0): macOS (arm64, x86_64), Linux (x86_64, arm64) or Windows (x86_64, beta). It checks the file against the checksums pinned in [`scripts/SHA256SUMS`](scripts/SHA256SUMS), and refuses to run a file that doesn't match. Nothing else is fetched.
+On first start, `launch.sh` downloads the `whatsapp-mcp` program for your platform from this version's [GitHub release](https://github.com/erwinvaneijk/whatsapp-mcp/releases/tag/v1.2.0): macOS (arm64, x86_64), Linux (x86_64, arm64) or Windows (x86_64, beta). It checks the file against the checksums pinned in [`scripts/SHA256SUMS`](scripts/SHA256SUMS), and refuses to run a file that doesn't match. Nothing else is fetched.
 
 ## What it stores
 

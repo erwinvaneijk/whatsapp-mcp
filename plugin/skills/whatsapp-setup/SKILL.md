@@ -33,7 +33,7 @@ Run these and summarize what you find:
 - `"$BIN" --version`
 - Whether `~/.config/whatsapp-mcp/config.yaml` exists, its permissions, and its setting names (not the token's value). The plugin's **Configuration file** setting may name another file; if `WHATSAPP_MCP_CONFIG` is set in your environment, that is the one.
 - `"$BIN" service status` (macOS, Linux).
-- Whether something listens on `127.0.0.1:8080` (`lsof -nP -iTCP:8080 -sTCP:LISTEN` on macOS and Linux). That is a bridge already running, possibly the old Go bridge or one in a terminal.
+- Whether something listens on the bridge's port: 8080, or the port in `bridge_address` if the file sets it (`lsof -nP -iTCP:8080 -sTCP:LISTEN` on macOS and Linux). That is a bridge already running, possibly the old Go bridge or one in a terminal, or another program on that port.
 
 If an older setup is there (a `whatsapp-bridge/store` folder, the Go bridge, a bridge started by hand), follow the [upgrade guide](https://github.com/erwinvaneijk/whatsapp-mcp/blob/main/docs/upgrading-to-1.0.md) with the user instead: it keeps their message history.
 
@@ -86,7 +86,7 @@ On macOS and Linux, after asking:
 "$BIN" service status
 ```
 
-It refuses an unlinked store, a configuration file without the token, and a busy port 8080; fix what it says. Mention:
+It refuses an unlinked store, a configuration file without the token, and a busy port (8080, or `bridge_address`); fix what it says. If another program needs port 8080, set `bridge_address` in the file to a free port, such as `9090`: the bridge and the MCP server both read it. Mention:
 
 - macOS: the log is in `~/Library/Logs/whatsapp-mcp/bridge.log` (or where `log_output` says).
 - Linux: `journalctl --user -u whatsapp-mcp-bridge`; `loginctl enable-linger` keeps it running when they are not logged in.
