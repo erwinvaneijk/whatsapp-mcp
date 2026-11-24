@@ -8,7 +8,7 @@ name: macOS arm64
 
 on:
   push:
-    branches: [main, dev-main, "fix/**", "feat/**", "ci/**"]
+    branches: [main, dev-main, "fix/**", "feat/**", "ci/**", "docs/**", "test/**", "perf/**", "refactor/**"]
   pull_request:
     branches: [main, dev-main]
   workflow_dispatch:
