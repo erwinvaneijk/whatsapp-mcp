@@ -29,6 +29,11 @@ mime_guess = "2.0.5"
 workspace = true
 
 [dev-dependencies]
+# To build history sync payloads in tests, as WhatsApp sends them: a
+# protobuf (buffa, as whatsapp-rust uses) compressed with zlib. Both are
+# already in the tree through whatsapp-rust.
+buffa = "0.9.2"
+flate2 = { version = "1.1.11", default-features = false, features = ["zlib-rs"] }
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
 tempfile = "3.27.0"
 tokio = { version = "1.54.1", features = ["rt", "macros", "net", "io-util"] }

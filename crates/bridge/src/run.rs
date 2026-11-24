@@ -8,6 +8,7 @@
 //! drops events when its queue is full, and a dropped history sync chunk
 //! would be messages missing for good.
 
+use std::future::Future;
 use std::io::IsTerminal;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -157,13 +158,7 @@ pub async fn run(config: &Config, options: Options) -> Result<(), String> {
     ensure_private_dir(&store).map_err(|e| format!("Failed to create store directory: {e}"))?;
     let writer =
         Writer::open(&store).map_err(|e| format!("Failed to initialize message store: {e}"))?;
-    let shared = Arc::new(Shared {
-        writer: Mutex::new(writer),
-        log_content: settings.log_content,
-        connected: AtomicBool::new(false),
-        last_activity: Mutex::new(None),
-        history_done: AtomicBool::new(false),
-    });
+    let shared = Arc::new(Shared::new(writer, settings.log_content));
 
     // Bind before connecting: a second bridge (or an old Go bridge) on the
     // port is found before this one links or stores anything.
@@ -437,6 +432,16 @@ pub(crate) struct Shared {
 }
 
 impl Shared {
+    fn new(writer: Writer, log_content: bool) -> Shared {
+        Shared {
+            writer: Mutex::new(writer),
+            log_content,
+            connected: AtomicBool::new(false),
+            last_activity: Mutex::new(None),
+            history_done: AtomicBool::new(false),
+        }
+    }
+
     pub(crate) fn is_connected(&self) -> bool {
         self.connected.load(Ordering::Relaxed)
     }
@@ -465,12 +470,42 @@ impl Shared {
     }
 }
 
+/// What handling events needs to ask the WhatsApp client, so the handling
+/// is tested with a fake (issue #82). The live client is [`Arc<Client>`].
+trait Lookups: Send + Sync {
+    /// The LID and phone number for a contact, from the library's own map.
+    fn lid_pn(&self, jid: &Jid) -> impl Future<Output = Option<(String, String)>> + Send;
+    /// A group's subject, asked from WhatsApp.
+    fn group_subject(&self, chat_jid: &str) -> impl Future<Output = Option<String>> + Send;
+    /// This account's own phone number (the user part), when linked.
+    fn own_user(&self) -> String;
+}
+
+impl Lookups for Arc<Client> {
+    async fn lid_pn(&self, jid: &Jid) -> Option<(String, String)> {
+        match self.get_lid_pn_entry(jid).await {
+            Ok(Some(entry)) => Some((entry.lid.to_string(), entry.phone_number.to_string())),
+            _ => None,
+        }
+    }
+
+    async fn group_subject(&self, chat_jid: &str) -> Option<String> {
+        let jid: Jid = chat_jid.parse().ok()?;
+        let metadata = self.groups().fetch_metadata(&jid).await.ok()?;
+        metadata.subject.filter(|s| !s.is_empty())
+    }
+
+    fn own_user(&self) -> String {
+        self.pn().map(|pn| pn.user.to_string()).unwrap_or_default()
+    }
+}
+
 /// whatsapp-rust's JID in the bridge's own form.
 fn text_jid(jid: &Jid) -> Option<TextJid> {
     TextJid::parse(&jid.to_string()).ok()
 }
 
-async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pairing: bool) {
+async fn handle_event(shared: &Shared, client: &impl Lookups, event: &Event, pairing: bool) {
     match event {
         Event::PairingQrCode(qr) => {
             // With a pairing code the QR code is noise; the code follows.
@@ -566,7 +601,7 @@ async fn handle_event(shared: &Shared, client: &Arc<Client>, event: &Event, pair
 }
 
 /// Stores a live message, with its chat, and logs it.
-async fn store_live(shared: &Shared, client: &Arc<Client>, info: &MessageInfo, msg: &wa::Message) {
+async fn store_live(shared: &Shared, client: &impl Lookups, info: &MessageInfo, msg: &wa::Message) {
     let source = &info.source;
     let chat_jid = source.chat.to_string();
     let sender = source.sender.user.to_string();
@@ -640,15 +675,12 @@ async fn store_live(shared: &Shared, client: &Arc<Client>, info: &MessageInfo, m
 
 /// Records which LID belongs to which phone number, from the message's
 /// alternative sender ID or else the library's own map.
-async fn learn_ids(shared: &Shared, client: &Arc<Client>, sender: &Jid, alt: Option<&Jid>) {
+async fn learn_ids(shared: &Shared, client: &impl Lookups, sender: &Jid, alt: Option<&Jid>) {
     let pair = match alt
         .and_then(|alt| receive::lid_pair_text(&sender.to_non_ad_string(), &alt.to_non_ad_string()))
     {
         Some(pair) => Some(pair),
-        None => match client.get_lid_pn_entry(sender).await {
-            Ok(Some(entry)) => Some((entry.lid.to_string(), entry.phone_number.to_string())),
-            _ => None,
-        },
+        None => client.lid_pn(sender).await,
     };
     if let Some((lid, pn)) = pair {
         warn_on_error(
@@ -661,7 +693,7 @@ async fn learn_ids(shared: &Shared, client: &Arc<Client>, sender: &Jid, alt: Opt
 /// [`receive::chat_name`], asking WhatsApp for a group's subject when needed.
 async fn resolve_chat_name(
     shared: &Shared,
-    client: &Arc<Client>,
+    client: &impl Lookups,
     chat: &TextJid,
     chat_jid: &str,
     conversation: Option<&wa::Conversation>,
@@ -670,7 +702,8 @@ async fn resolve_chat_name(
     let known = receive::chat_name(&shared.writer(), chat, chat_jid, conversation, sender);
     match known {
         Ok(ChatName::Known(name)) => name,
-        Ok(ChatName::AskGroup) => group_subject(client, chat_jid)
+        Ok(ChatName::AskGroup) => client
+            .group_subject(chat_jid)
             .await
             .unwrap_or_else(|| receive::group_fallback(chat)),
         Err(e) => {
@@ -687,15 +720,9 @@ async fn resolve_chat_name(
     }
 }
 
-async fn group_subject(client: &Arc<Client>, chat_jid: &str) -> Option<String> {
-    let jid: Jid = chat_jid.parse().ok()?;
-    let metadata = client.groups().fetch_metadata(&jid).await.ok()?;
-    metadata.subject.filter(|s| !s.is_empty())
-}
-
 /// Stores the conversations of a history sync, plus push names and the LID
 /// map from the same payload.
-async fn store_history(shared: &Shared, client: &Arc<Client>, lazy: &LazyHistorySync) {
+async fn store_history(shared: &Shared, client: &impl Lookups, lazy: &LazyHistorySync) {
     let Some(sync) = lazy.get() else {
         log::warning("Received a history sync chunk that could not be decoded");
         return;
@@ -735,10 +762,7 @@ async fn store_history(shared: &Shared, client: &Arc<Client>, lazy: &LazyHistory
         }
     }
 
-    let own_user = client
-        .pn()
-        .map(|pn| pn.user.to_string())
-        .unwrap_or_default();
+    let own_user = client.own_user();
     let mut stored = 0usize;
     for conversation in &sync.conversations {
         if conversation.id.is_empty() {
@@ -950,3 +974,7 @@ mod tests {
         drop(store);
     }
 }
+
+#[cfg(test)]
+#[path = "run_events_tests.rs"]
+mod events_tests;
