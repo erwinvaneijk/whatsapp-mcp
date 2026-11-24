@@ -21,7 +21,7 @@ pub use names::{Names, NamesSource, names_source, user_part};
 pub use time::{BadMoment, Timestamp, moment_for_sql};
 pub use write::{
     ContactNames, MediaInfo, NewMessage, StoredSender, Writer, ensure_private_dir,
-    ensure_private_file, go_time, migrate,
+    ensure_private_file, migrate, stored_time,
 };
 
 pub type Error = rusqlite::Error;

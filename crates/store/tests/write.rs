@@ -6,7 +6,7 @@
 use chrono::{DateTime, FixedOffset, TimeZone};
 use rusqlite::Connection;
 use whatsapp_mcp_store::{
-    ContactNames, MediaInfo, MessageFilter, NewMessage, Store, StoredSender, Writer, go_time,
+    ContactNames, MediaInfo, MessageFilter, NewMessage, Store, StoredSender, Writer, stored_time,
 };
 
 fn time(text: &str) -> DateTime<FixedOffset> {
@@ -276,7 +276,7 @@ fn chat_names_are_kept_unless_a_new_one_is_given() {
 }
 
 #[test]
-fn times_are_written_as_go_writes_them() {
+fn times_are_written_in_the_stored_form() {
     let offset = |h: i32| FixedOffset::east_opt(h * 3600).unwrap();
     let at = |h: i32, nanos: u32| {
         offset(h)
@@ -285,11 +285,17 @@ fn times_are_written_as_go_writes_them() {
             .checked_add_signed(chrono::Duration::nanoseconds(nanos.into()))
             .unwrap()
     };
-    assert_eq!(go_time(&at(1, 0)), "2026-11-04 22:00:52+01:00");
-    assert_eq!(go_time(&at(0, 0)), "2026-11-04 22:00:52+00:00");
-    assert_eq!(go_time(&at(-5, 0)), "2026-11-04 22:00:52-05:00");
-    assert_eq!(go_time(&at(1, 120_000_000)), "2026-11-04 22:00:52.12+01:00");
-    assert_eq!(go_time(&at(1, 1)), "2026-11-04 22:00:52.000000001+01:00");
+    assert_eq!(stored_time(&at(1, 0)), "2026-11-04 22:00:52+01:00");
+    assert_eq!(stored_time(&at(0, 0)), "2026-11-04 22:00:52+00:00");
+    assert_eq!(stored_time(&at(-5, 0)), "2026-11-04 22:00:52-05:00");
+    assert_eq!(
+        stored_time(&at(1, 120_000_000)),
+        "2026-11-04 22:00:52.12+01:00"
+    );
+    assert_eq!(
+        stored_time(&at(1, 1)),
+        "2026-11-04 22:00:52.000000001+01:00"
+    );
 }
 
 #[test]
