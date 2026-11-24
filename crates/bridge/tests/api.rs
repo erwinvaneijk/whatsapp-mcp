@@ -1,4 +1,4 @@
-//! The local API, against docs/rust-1.0/interface.md section 3, row by row,
+//! The local API, against docs/archive/rust-1.0/interface.md section 3, row by row,
 //! with a fake WhatsApp, and the send allowlist: an unlisted chat is refused
 //! before anything is sent.
 

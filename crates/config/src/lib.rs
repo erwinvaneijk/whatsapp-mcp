@@ -1,6 +1,6 @@
 //! Configuration: `config.yaml` (or the file in `WHATSAPP_MCP_CONFIG`) and the
 //! `WHATSAPP_*` environment variables, by the rules in
-//! `docs/rust-1.0/interface.md`, section 2.
+//! `docs/archive/rust-1.0/interface.md`, section 2.
 //!
 //! - **File:** `~/.config/whatsapp-mcp/config.yaml`, or the path in
 //!   `WHATSAPP_MCP_CONFIG`. A file named that way must exist; the default

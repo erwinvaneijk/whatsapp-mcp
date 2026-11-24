@@ -1,6 +1,6 @@
 # Rust workspace
 
-The Rust rewrite of the bridge and the MCP server, as described in the [1.0 plan](../docs/rust-1.0/plan.md). Since version 0.9, `whatsapp-mcp serve` is the MCP server (it replaced the Python one). Since 1.0, `whatsapp-mcp bridge` is the bridge (it replaced the Go one).
+The Rust rewrite of the bridge and the MCP server, as described in the [1.0 plan](../docs/archive/rust-1.0/plan.md). Since version 0.9, `whatsapp-mcp serve` is the MCP server (it replaced the Python one). Since 1.0, `whatsapp-mcp bridge` is the bridge (it replaced the Go one).
 
 ## Crates
 

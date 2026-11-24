@@ -1,5 +1,5 @@
 //! The bridge's local API: `POST /api/send`, `/api/react` and
-//! `/api/download` on `127.0.0.1:8080` (docs/rust-1.0/interface.md,
+//! `/api/download` on `127.0.0.1:8080` (docs/archive/rust-1.0/interface.md,
 //! section 3). Its only client is `whatsapp-mcp serve`, so requests are read
 //! strictly: exact field names, no unknown fields, nothing after the JSON.
 //! WhatsApp sits behind the [`Backend`] trait, so everything here is tested

@@ -8,7 +8,7 @@ on:
   workflow_dispatch: # "Run workflow" button on the Actions tab
 
 jobs:
-  # Rust workspace (docs/rust-1.0/plan.md, phase 2). Every release platform
+  # Rust workspace (docs/archive/rust-1.0/plan.md, phase 2). Every release platform
   # builds, lints and tests here; the toolchain comes from rust-toolchain.toml.
   rust:
     name: Rust (${{ matrix.name }})

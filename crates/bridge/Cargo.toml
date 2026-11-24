@@ -9,7 +9,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
-# Pinned to the commit tested in phase 1 (docs/rust-1.0/phase1.md).
+# Pinned to the commit tested in phase 1 (docs/archive/rust-1.0/phase1.md).
 whatsapp-rust = { git = "https://github.com/oxidezap/whatsapp-rust", rev = "cd2d885891851405648c109c8db9ed78b7ca93c4" }
 bytes = "1.12.1"
 http-body-util = "0.1.5"

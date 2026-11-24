@@ -1,6 +1,6 @@
 name: Release
 
-# Builds whatsapp-mcp for every release platform (docs/rust-1.0/plan.md,
+# Builds whatsapp-mcp for every release platform (docs/archive/rust-1.0/plan.md,
 # phase 6) and, on a v* tag, attaches the binaries and SHA256SUMS to a draft
 # GitHub release, to be checked and published by hand. A pull request that
 # changes this file, or the "Run workflow" button, builds without releasing.
