@@ -6,18 +6,22 @@
 //! bridge's FTS5 index is only used when it is kept up to date (see
 //! [`Db::fts_ready`]).
 
+mod cache;
 mod names;
 mod time;
 mod write;
 
 use std::cell::Cell;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError, RwLock};
+
+use cache::{Cache, SharedNames};
 
 use rusqlite::functions::FunctionFlags;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Row, params_from_iter};
 use serde::Serialize;
 
+pub use cache::{NAMES_MAX_AGE, PooledDb};
 pub use names::{Names, NamesSource, names_source, user_part};
 pub use time::{BadMoment, Timestamp, moment_for_sql};
 pub use write::{
@@ -71,15 +75,26 @@ pub struct MessageContext {
     pub after: Vec<Message>,
 }
 
-/// The bridge's store folder.
-#[derive(Debug, Clone)]
+/// The bridge's store folder. Clones share open connections and the
+/// contact names, so `serve` keeps them between tool calls.
+#[derive(Clone)]
 pub struct Store {
     dir: PathBuf,
+    cache: Arc<Cache>,
+}
+
+impl std::fmt::Debug for Store {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Store").field("dir", &self.dir).finish()
+    }
 }
 
 impl Store {
     pub fn new(dir: impl Into<PathBuf>) -> Store {
-        Store { dir: dir.into() }
+        Store {
+            dir: dir.into(),
+            cache: Arc::default(),
+        }
     }
 
     pub fn messages_db(&self) -> PathBuf {
@@ -95,11 +110,19 @@ impl Store {
         names_source(&self.messages_db(), &self.whatsapp_db())
     }
 
-    /// Opens `messages.db` read-only, with the contact names loaded and
-    /// `display_name()` and `jid_matches()` available in SQL.
-    pub fn open(&self) -> Result<Db> {
-        let names = Arc::new(Names::load(&self.messages_db(), &self.whatsapp_db()));
-        Db::open(&self.messages_db(), names)
+    /// `messages.db`, read-only, with the contact names loaded and
+    /// `display_name()` and `jid_matches()` available in SQL. Connections
+    /// and names are kept for the next call; see [`cache`](crate::cache).
+    pub fn open(&self) -> Result<PooledDb> {
+        self.cache
+            .checkout(&self.messages_db(), &self.whatsapp_db())
+    }
+
+    /// Makes the next [`Store::open`] load the names again, as if they
+    /// were older than [`NAMES_MAX_AGE`] (tests).
+    #[doc(hidden)]
+    pub fn expire_names(&self) {
+        self.cache.expire_names();
     }
 }
 
@@ -122,7 +145,7 @@ const MESSAGE_COLUMNS: &str = "messages.timestamp, messages.sender, display_name
 /// An open `messages.db`.
 pub struct Db {
     conn: Connection,
-    names: Arc<Names>,
+    names: SharedNames,
     /// The schema checks, with the `schema_version` they were made at.
     schema: Cell<Option<(i64, Schema)>>,
 }
@@ -138,7 +161,14 @@ struct Schema {
 }
 
 impl Db {
+    /// Opens `messages.db` read-only with these names.
     pub fn open(path: &Path, names: Arc<Names>) -> Result<Db> {
+        Db::open_shared(path, Arc::new(RwLock::new(names)))
+    }
+
+    /// Opens `messages.db` read-only; the SQL functions read the names
+    /// from `names` on each call, so they can be replaced while it is open.
+    pub(crate) fn open_shared(path: &Path, names: SharedNames) -> Result<Db> {
         let conn = Connection::open_with_flags(
             path,
             OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
@@ -148,14 +178,14 @@ impl Db {
         conn.create_scalar_function("display_name", 2, flags, move |ctx| {
             let jid: Option<String> = ctx.get(0)?;
             let stored: Option<String> = ctx.get(1)?;
-            Ok(n.display_name(jid.as_deref(), stored.as_deref()))
+            Ok(read(&n).display_name(jid.as_deref(), stored.as_deref()))
         })?;
         let n = Arc::clone(&names);
         conn.create_scalar_function("jid_matches", 2, flags, move |ctx| {
             let jid: Option<String> = ctx.get(0)?;
             let phone: Option<String> = ctx.get(1)?;
             Ok(match (jid, phone) {
-                (Some(jid), Some(phone)) => n.jid_matches(&jid, &phone),
+                (Some(jid), Some(phone)) => read(&n).jid_matches(&jid, &phone),
                 _ => false,
             })
         })?;
@@ -166,8 +196,9 @@ impl Db {
         })
     }
 
-    pub fn names(&self) -> &Names {
-        &self.names
+    /// The contact names in use now.
+    pub fn names(&self) -> Arc<Names> {
+        read(&self.names)
     }
 
     /// The schema checks, made again only when the schema has changed
@@ -388,13 +419,14 @@ impl Db {
         let mut statement = self.conn.prepare(
             "SELECT DISTINCT jid, display_name(jid, name) AS resolved_name FROM chats WHERE (LOWER(display_name(jid, name)) LIKE LOWER(?) ESCAPE '\\' OR LOWER(jid) LIKE LOWER(?) ESCAPE '\\' OR jid_matches(jid, ?)) AND jid NOT LIKE '%@g.us' ORDER BY resolved_name, jid LIMIT 50",
         )?;
+        let names = self.names();
         let rows = statement.query_map(rusqlite::params![pattern, pattern, query], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
         })?;
         rows.map(|row| {
             let (jid, name) = row?;
             Ok(Contact {
-                phone_number: self.names.phone_number(&jid),
+                phone_number: names.phone_number(&jid),
                 name,
                 jid,
             })
@@ -472,7 +504,7 @@ impl Db {
             log::warn!("Database error while getting sender name: {e}");
             None
         });
-        self.names
+        self.names()
             .display_name(Some(sender), stored.as_deref())
             .filter(|name| !name.is_empty())
             .unwrap_or_else(|| sender.to_string())
@@ -514,6 +546,11 @@ fn contains_pattern(text: &str) -> String {
     }
     pattern.push('%');
     pattern
+}
+
+/// The names now in `shared`.
+fn read(shared: &SharedNames) -> Arc<Names> {
+    Arc::clone(&shared.read().unwrap_or_else(PoisonError::into_inner))
 }
 
 /// The user of a JID or a stored sender, without agent or device:

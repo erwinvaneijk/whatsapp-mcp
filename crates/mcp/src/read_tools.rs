@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 
 use whatsapp_mcp_store::{
-    Chat, Contact, Db, Message, MessageContext, MessageFilter, Store, moment_for_sql,
+    Chat, Contact, Db, Message, MessageContext, MessageFilter, PooledDb, Store, moment_for_sql,
 };
 
 use crate::args::{Args, BadArgument, check_non_negative};
@@ -35,7 +35,7 @@ pub fn call(store: &Store, name: &str, args: &Args<'_>) -> Option<Result<Output,
 /// Opens `messages.db`. When that fails, the error says where it was
 /// looking, so a missing store or a wrong `store_dir` is not mistaken for
 /// "no results" (issue #69).
-fn open(store: &Store) -> Result<Db, ToolError> {
+fn open(store: &Store) -> Result<PooledDb, ToolError> {
     store.open().map_err(|e| {
         let path = store.messages_db().display().to_string();
         let mut reason = e.to_string();
