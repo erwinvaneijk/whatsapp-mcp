@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased
+## 1.2.0
+
+Fixes for wrong, repeated or missing results in the read tools, and a faster MCP server. The bridge's port can be changed, and without `store_dir` the store folder no longer depends on the folder a program starts in. The bridge's local API now reads requests strictly.
+
+### What you need to do
+
+Replace the binary (from the release, or `cargo build --release`) and restart the bridge (`whatsapp-mcp service install`). Then check:
+
+- **The store folder**, if you have not set `store_dir` (the example configuration sets it). Without it, the default store is now `~/.local/share/whatsapp-mcp/store`, instead of `whatsapp-bridge/store` in the current folder. A store in the old place is still used while the new one is empty, with a warning in the log: set `store_dir` to its absolute path, or move it to the new folder.
+- **Scripts that call the bridge's API by hand.** Field names must now be exact, without unknown or repeated fields; see the first change below. `whatsapp-mcp serve` is unaffected.
+
+The plugin still downloads the 1.1.0 binary right after this release; a plugin update to 1.2.0 follows once these binaries are published ([Releasing](docs/releasing.md)).
+
+### Known limits
+
+- `bridge_address` accepts only addresses on this computer; the API is not meant to be reachable from the network.
+- The 1.1.0 limits still hold: Windows is beta ([#84](https://github.com/erwinvaneijk/whatsapp-mcp/issues/84)), `service` was tested live on macOS only, expired-media retry was not tried live, and the plugin evals wait for an API key in CI ([#61](https://github.com/erwinvaneijk/whatsapp-mcp/issues/61)).
+
+### All changes
 
 - **Bridge API reads requests strictly** ([#76](https://github.com/erwinvaneijk/whatsapp-mcp/issues/76)). The API (`/api/send`, `/api/react`, `/api/download`) no longer copies the Go bridge's JSON handling. A field name in another case, an unknown field, a field given twice, `null`, or text after the JSON is now refused with `400 Invalid request format: ` and the reason. Answers are plain JSON (`<`, `>` and `&` are no longer escaped), and an unknown path answers `Not found`. `whatsapp-mcp serve` is unaffected; this only matters for scripts that call the API by hand.
 - **Plugin 1.1.0**: the plugin downloads the 1.1.0 binaries (pinned checksums updated with `scripts/bump-plugin.sh`). After `claude plugin update`, start a new session and run `whatsapp-mcp service install` to restart the bridge on it.
@@ -13,6 +31,7 @@
 - **The default store folder no longer depends on the current folder** ([#74](https://github.com/erwinvaneijk/whatsapp-mcp/issues/74)). Without `store_dir` or `--store`, the store is now `~/.local/share/whatsapp-mcp/store` (`$XDG_DATA_HOME/whatsapp-mcp/store` when set; `%LOCALAPPDATA%\whatsapp-mcp\store` on Windows), instead of `whatsapp-bridge/store` in whatever folder a program starts in. A store in the old place is still used, with a warning, while the new folder is empty: set `store_dir` to it to keep using it, or move it to the new folder.
 - **Messages name settings as they appear in the configuration file** ([#75](https://github.com/erwinvaneijk/whatsapp-mcp/issues/75)). Errors and refusals named only the environment variable ("not in WHATSAPP_SEND_ALLOWLIST", "inside WHATSAPP_MEDIA_DIR"), or used several wordings. They now all give the setting's name and its environment variable, such as `media_dir (WHATSAPP_MEDIA_DIR)`.
 - **Faster read tools** ([#71](https://github.com/erwinvaneijk/whatsapp-mcp/issues/71), [#72](https://github.com/erwinvaneijk/whatsapp-mcp/issues/72)). `serve` keeps its database connections and the contact names between tool calls, instead of opening the database and loading every name for each call, and checks the schema only when it has changed. With 5,000 contacts a call went from about 3.8 ms to 0.1 ms. New names show up within 30 seconds, and a `messages.db` deleted and created again is noticed.
+- **Documentation and tests** ([#77](https://github.com/erwinvaneijk/whatsapp-mcp/issues/77) to [#82](https://github.com/erwinvaneijk/whatsapp-mcp/issues/82), [#87](https://github.com/erwinvaneijk/whatsapp-mcp/issues/87)). The README's tool list, architecture, media and linking sections are rewritten for 1.x, and its history and branch workflow moved to [docs/history.md](docs/history.md) and [docs/branches.md](docs/branches.md); the 1.0 plans are in [docs/archive](docs/archive/rust-1.0/plan.md). Code comments describe the code instead of the Python and Go originals. New Rust tests cover the read tools and the bridge's handling of WhatsApp events, and CI runs on every kind of branch.
 
 ## 1.1.0
 
