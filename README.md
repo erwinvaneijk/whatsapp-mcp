@@ -302,17 +302,27 @@ To see message content in the logs while debugging, start the bridge with `WHATS
 
 `whatsapp-mcp` is one Rust program, built from [`crates/`](crates/README.md), with two commands:
 
-1. **Bridge** (`whatsapp-mcp bridge`): connects to WhatsApp's web API with [whatsapp-rust](https://github.com/oxidezap/whatsapp-rust), handles linking with a QR or pairing code, and stores message history in SQLite. It serves a local API on `127.0.0.1:8080` (or [`bridge_address`](#configuration)) for sending and downloading. Before version 1.0 this was a Go program.
+1. **Bridge** (`whatsapp-mcp bridge`): connects to WhatsApp as a linked device, with [whatsapp-rust](https://github.com/oxidezap/whatsapp-rust). It stores every message that arrives in `messages.db`, and serves a local API on `127.0.0.1:8080` (or [`bridge_address`](#configuration)) to send and to download media. Before version 1.0 this was a Go program.
+2. **MCP server** (`whatsapp-mcp serve`): the tools your MCP client uses. It reads `messages.db` itself, and asks the bridge to send and to download. Before version 0.9 this was a Python server.
 
-2. **MCP Server** (`whatsapp-mcp serve`): implements the Model Context Protocol (MCP), which provides standardized tools for Claude to interact with WhatsApp data and send/receive messages. It reads `messages.db` directly and sends through the bridge's local API. Before version 0.9 this was a Python server.
+How a request flows:
+
+- **Reading** (searching, listing, a message's context): the client asks `serve`, which reads `messages.db` and answers. The bridge is not involved, so reading works while the bridge is stopped, with the messages stored so far.
+- **Sending and downloading**: `serve` passes the request to the bridge's API, with the bridge token. The bridge checks it (full control, the send allowlist, the media folder), talks to WhatsApp, and answers.
+- **Receiving**: the bridge stores new messages as they arrive; the next read sees them.
 
 ### Data Storage
 
-- All message history is stored in a SQLite database, `messages.db`, in the store folder
-- The database maintains tables for chats and messages
-- Messages are indexed for efficient searching and retrieval
-- The store folder holds your WhatsApp session keys (`session.db`, which give full access to your account) and your message history. The bridge restricts it to your user: the directory is set to `0700` (also when it already exists) and the databases and downloaded media to `0600`.
-- On Windows these permission bits do not apply; the folder inherits the access rules of its parent. Keep the store folder inside your user profile, or restrict the folder explicitly, e.g. `icacls <store folder> /inheritance:r /grant:r "%USERNAME%:(OI)(CI)F"`.
+Everything is in the store folder (`store_dir`; by default `~/.local/share/whatsapp-mcp/store`):
+
+| File | What it holds |
+|---|---|
+| `messages.db` | Chats, messages (with a full-text index for searching), and contact names. Media is stored as details only: type, file name and the keys to download it. |
+| `session.db` | The WhatsApp session: the keys of this linked device. Anyone with this file has access to your account. |
+| `<chat>/<file>` | Media you downloaded, in a folder per chat. |
+
+- The bridge restricts the store folder to your user: the folder is set to `0700` (also when it already exists), and the databases and downloaded media to `0600`.
+- On Windows these permission bits do not apply; the folder inherits the access rules of its parent. Keep the store folder inside your user profile (the default is), or restrict the folder explicitly, e.g. `icacls <store folder> /inheritance:r /grant:r "%USERNAME%:(OI)(CI)F"`.
 
 ## Usage
 
@@ -339,44 +349,39 @@ These send, so they are only there with [full control](#full-control-sending) on
 - **send_audio_message**: send audio from the media folder as a voice message (Opus in an `.ogg` file is sent as it is; anything else needs FFmpeg to convert it)
 - **react_to_message**: add a reaction to a message, or remove it
 
-### Media Handling Features
+### Media
 
-The MCP server supports both sending and receiving various media types:
+#### Sending
 
-#### Media Sending
+Files are only sent from the media folder (`media_dir`), and only with [full control](#full-control-sending) on.
 
-You can send various media types to your WhatsApp contacts:
+- **Photos, videos and documents**: `send_file`. A document arrives with its file name and type.
+- **Voice messages**: `send_audio_message`. WhatsApp plays a voice message only when it is Opus audio; an `.ogg` file with Opus is sent as it is. Anything else (MP3, WAV, Ogg Vorbis) is converted with [FFmpeg](https://ffmpeg.org) first, so FFmpeg must be installed for those. Without FFmpeg, send the file with `send_file`: it arrives as a file to play, not as a voice message.
 
-- **Images, Videos, Documents**: Use the `send_file` tool to share any supported media type.
-- **Voice Messages**: Use the `send_audio_message` tool to send audio files as playable WhatsApp voice messages.
-  - For optimal compatibility, audio files should be in `.ogg` Opus format.
-  - With FFmpeg installed, the system will automatically convert other audio formats (MP3, WAV, etc.) to the required format.
-  - Without FFmpeg, you can still send raw audio files using the `send_file` tool, but they won't appear as playable voice messages.
+#### Downloading
 
-#### Media Downloading
+Received media is not downloaded right away: `messages.db` only holds its details. Messages with media show their type, message ID and chat JID, such as `[image - Message ID: 3EB0… - Chat JID: 31612345678@s.whatsapp.net]`. Ask Claude to download it: `download_media` takes the message ID and chat JID, and returns the path of the file.
 
-By default, just the metadata of the media is stored in the local database. The message will indicate that media was sent. To access this media you need to use the download_media tool which takes the `message_id` and `chat_jid` (which are shown when printing messages containing the meda), this downloads the media and then returns the file path which can be then opened or passed to another tool.
-
-## Technical Details
-
-1. Claude sends requests to the MCP server
-2. The MCP server reads the SQLite database directly, and asks the bridge to send messages and download media
-3. The bridge talks to WhatsApp and keeps the SQLite database up to date
-4. Data flows back through the chain to Claude
-5. When sending messages, the request flows from Claude through the MCP server to the bridge and to WhatsApp
+- The file is saved in the store folder, in a folder for the chat. Two files with the same name in a chat each keep their own file.
+- WhatsApp keeps media on its servers for a while only. For older media the bridge asks the sender's phone to upload it again, which works while that phone still has it.
 
 ## Troubleshooting
 
-- Use an absolute path for `"command"` in the client configuration, and set `store_dir` in the configuration file (or pass an absolute `--store`): MCP clients start the server from a folder of their own choosing.
-- Make sure `whatsapp-mcp bridge` is running: the MCP server reads what it stores, and sends through it. The client starts the MCP server itself.
-- The MCP server writes its warnings and errors to stderr. Claude Desktop keeps them in its MCP log (`~/Library/Logs/Claude/mcp-server-whatsapp.log` on macOS); a missing `messages.db` is reported there when the server starts.
+- Use an absolute path for `"command"` in the client configuration: MCP clients start the server from a folder of their own choosing.
+- Make sure the bridge is running (`whatsapp-mcp service status`, or the terminal where you started `whatsapp-mcp bridge`): it stores what arrives, and sends for the MCP server.
+- `serve` and `bridge` must use the same store folder. Both log it on start (`Store: …`). If your store is not in the default place, set `store_dir` in the configuration file.
+- The MCP server writes its warnings and errors to stderr. Claude Desktop keeps them in its MCP log (`~/Library/Logs/Claude/mcp-server-whatsapp.log` on macOS); a missing `messages.db` is reported there when the server starts, and every read tool then says it cannot open the database.
 
-### Authentication Issues
+### Linking
 
-- **QR Code Not Displaying**: If the QR code doesn't appear, try restarting the authentication script. If issues persist, check if your terminal supports displaying QR codes.
-- **WhatsApp Already Logged In**: If your session is already active, the bridge will automatically reconnect without showing a QR code.
-- **Device Limit Reached**: WhatsApp limits the number of linked devices. If you reach this limit, you'll need to remove an existing device from WhatsApp on your phone (Settings > Linked Devices).
-- **No Messages Loading**: After initial authentication, it can take several minutes for your message history to load, especially if you have many chats.
-- **WhatsApp Out of Sync**: If your WhatsApp messages get out of sync with the bridge, stop the bridge, delete `session.db` and `messages.db` in the store folder, and start the bridge to link again. This also deletes your stored history; WhatsApp sends the recent part again.
+- **No QR code**: link in a terminal, with `whatsapp-mcp link`. The QR code is drawn with text blocks; if your terminal shows it garbled, make the window larger or use another terminal. Or link with a code instead: set `pair_phone` to your number with country code, and enter the 8-character code on your phone (Linked devices > Link a device > Link with phone number instead).
+- **The QR code expired** (`Timeout waiting for QR code scan`): run `whatsapp-mcp link` again.
+- **The pairing code is refused**: `pair_phone` needs the country code and no leading 0, such as `31612345678`, not `0612345678`.
+- **Already linked**: `whatsapp-mcp link` says so and stops; start the bridge with `whatsapp-mcp service install` or `whatsapp-mcp bridge`.
+- **`Not linked yet, and there is no terminal`**: the bridge runs as a service but was never linked (or was unlinked). Run `whatsapp-mcp link` in a terminal, then `whatsapp-mcp service install` again.
+- **`Device logged out`**: the phone unlinked this bridge (Linked devices on the phone). Stop the bridge, run `whatsapp-mcp link`, and start it again.
+- **Device limit reached**: WhatsApp allows a few linked devices. Remove one on your phone (Linked devices), then link again.
+- **Few or no messages after linking**: WhatsApp sends your recent history in parts, which can take several minutes; `whatsapp-mcp link` waits until it is in. Only the recent part is sent: older messages are not in the store.
+- **WhatsApp out of sync**: stop the bridge, delete `session.db` and `messages.db` in the store folder, and link again. This also deletes your stored history; WhatsApp sends the recent part again.
 
 For additional Claude Desktop integration troubleshooting, see the [MCP documentation](https://modelcontextprotocol.io/quickstart/server#claude-for-desktop-integration-issues). The documentation includes helpful tips for checking logs and resolving common issues.
