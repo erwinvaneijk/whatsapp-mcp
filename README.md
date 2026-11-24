@@ -320,20 +320,24 @@ Once connected, you can interact with your WhatsApp contacts through Claude, lev
 
 ### MCP Tools
 
-Claude can access the following tools to interact with WhatsApp:
+These tools are always there. They read, and never send anything:
 
-- **search_contacts**: Search for contacts by name or phone number
-- **list_messages**: Retrieve messages with optional filters and context
-- **list_chats**: List available chats with metadata
-- **get_chat**: Get information about a specific chat
-- **get_direct_chat_by_contact**: Find a direct chat with a specific contact
-- **get_contact_chats**: List all chats involving a specific contact
-- **get_last_interaction**: Get the most recent message with a contact
-- **get_message_context**: Retrieve context around a specific message
-- **send_message**: Send a WhatsApp message to a specified phone number or group JID
-- **send_file**: Send a file (image, video, raw audio, document) to a specified recipient
-- **send_audio_message**: Send an audio file as a WhatsApp voice message (requires the file to be an .ogg opus file or ffmpeg must be installed)
-- **download_media**: Download media from a WhatsApp message and get the local file path
+- **search_contacts**: find contacts by name or phone number
+- **list_messages**: messages, filtered by chat, sender, text or time, with the messages around each match
+- **list_chats**: chats, by last activity or by name
+- **get_chat**: one chat
+- **get_direct_chat_by_contact**: the direct chat with a phone number
+- **get_contact_chats**: the chats a contact is in
+- **get_last_interaction**: the latest message with a contact
+- **get_message_context**: the messages before and after a message
+- **download_media**: download the photo, video, audio or document of a message, and get the file's path
+
+These send, so they are only there with [full control](#full-control-sending) on:
+
+- **send_message**: send a text message to a phone number or a group, optionally as a reply or with mentions
+- **send_file**: send a photo, video, document or other file from the media folder
+- **send_audio_message**: send audio from the media folder as a voice message (Opus in an `.ogg` file is sent as it is; anything else needs FFmpeg to convert it)
+- **react_to_message**: add a reaction to a message, or remove it
 
 ### Media Handling Features
 
