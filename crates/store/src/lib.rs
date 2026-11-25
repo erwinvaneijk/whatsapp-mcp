@@ -59,6 +59,30 @@ pub struct Chat {
     pub last_is_from_me: Option<bool>,
 }
 
+/// A message with media, and the name of its file.
+#[derive(Debug, Clone)]
+pub struct MediaMessage {
+    pub message: Message,
+    /// A document's own name; for other media one the bridge made up.
+    pub filename: Option<String>,
+}
+
+/// A chat with messages after some moment, and how many. Field order is
+/// the order of the JSON output.
+#[derive(Debug, Clone, Serialize)]
+pub struct ChatActivity {
+    pub jid: String,
+    pub name: Option<String>,
+    /// Messages after the moment.
+    pub message_count: i64,
+    /// Of those, the ones not sent by me.
+    pub from_others_count: i64,
+    pub last_message_time: Option<Timestamp>,
+    pub last_message: Option<String>,
+    pub last_sender: Option<String>,
+    pub last_is_from_me: Option<bool>,
+}
+
 /// One contact. Field order is the order of the JSON output.
 #[derive(Debug, Clone, Serialize)]
 pub struct Contact {
@@ -135,6 +159,19 @@ pub struct MessageFilter {
     pub sender_phone_number: Option<String>,
     pub chat_jid: Option<String>,
     pub query: Option<String>,
+    pub limit: i64,
+    pub page: i64,
+}
+
+/// The kinds of media the bridge stores in `messages.media_type`.
+pub const MEDIA_TYPES: [&str; 4] = ["image", "video", "audio", "document"];
+
+/// Filters for [`Db::list_media`].
+#[derive(Debug, Clone, Default)]
+pub struct MediaFilter {
+    pub chat_jid: Option<String>,
+    /// One of [`MEDIA_TYPES`]; `None` for any media.
+    pub media_type: Option<String>,
     pub limit: i64,
     pub page: i64,
 }
@@ -318,6 +355,32 @@ impl Db {
         rows.collect::<Result<Vec<_>>>()?.into_iter().collect()
     }
 
+    /// Messages with media, newest first.
+    pub fn list_media(&self, filter: &MediaFilter) -> Result<Vec<MediaMessage>> {
+        let mut sql = format!(
+            "SELECT {MESSAGE_COLUMNS}, {}, messages.filename FROM messages JOIN chats ON messages.chat_jid = chats.jid WHERE COALESCE(messages.media_type, '') != ''",
+            self.quoted_column("messages")?
+        );
+        let mut params: Vec<rusqlite::types::Value> = Vec::new();
+        if let Some(chat) = &filter.chat_jid {
+            sql.push_str(" AND messages.chat_jid = ?");
+            params.push(chat.clone().into());
+        }
+        if let Some(media_type) = &filter.media_type {
+            sql.push_str(" AND messages.media_type = ?");
+            params.push(media_type.clone().into());
+        }
+        sql.push_str(" ORDER BY julianday(messages.timestamp) DESC LIMIT ? OFFSET ?");
+        params.push(filter.limit.into());
+        params.push(filter.page.saturating_mul(filter.limit).into());
+        let mut statement = self.conn.prepare(&sql)?;
+        let rows = statement.query_map(params_from_iter(params), |row| {
+            let filename: Option<String> = row.get(9)?;
+            Ok(message_from_row(row)?.map(|message| MediaMessage { message, filename }))
+        })?;
+        rows.collect::<Result<Vec<_>>>()?.into_iter().collect()
+    }
+
     /// A message and up to `before` and `after` messages around it in its
     /// chat; `None` when there is no message with this ID.
     pub fn message_context(
@@ -410,6 +473,32 @@ impl Db {
         params.push(page.saturating_mul(limit).into());
         let mut statement = self.conn.prepare(&sql.join(" "))?;
         let rows = statement.query_map(params_from_iter(params), chat_from_row)?;
+        rows.collect::<Result<Vec<_>>>()?.into_iter().collect()
+    }
+
+    /// Chats with messages after `after` (UTC text from [`moment_for_sql`]),
+    /// most recently active first, with how many.
+    pub fn recent_activity(&self, after: &str, limit: i64, page: i64) -> Result<Vec<ChatActivity>> {
+        let mut statement = self.conn.prepare(
+            "SELECT c.jid, display_name(c.jid, c.name), c.last_message_time, m.content, m.sender, m.is_from_me, a.message_count, a.from_others_count FROM (SELECT chat_jid, COUNT(*) AS message_count, SUM(CASE WHEN is_from_me THEN 0 ELSE 1 END) AS from_others_count, MAX(julianday(timestamp)) AS latest FROM messages WHERE julianday(timestamp) > julianday(?) GROUP BY chat_jid) a JOIN chats c ON c.jid = a.chat_jid LEFT JOIN messages m ON m.rowid = (SELECT rowid FROM messages WHERE chat_jid = c.jid ORDER BY julianday(timestamp) DESC LIMIT 1) ORDER BY a.latest DESC, c.jid LIMIT ? OFFSET ?",
+        )?;
+        let rows = statement.query_map(
+            rusqlite::params![after, limit, page.saturating_mul(limit)],
+            |row| {
+                let message_count: i64 = row.get(6)?;
+                let from_others_count: i64 = row.get(7)?;
+                Ok(chat_from_row(row)?.map(|chat| ChatActivity {
+                    jid: chat.jid,
+                    name: chat.name,
+                    message_count,
+                    from_others_count,
+                    last_message_time: chat.last_message_time,
+                    last_message: chat.last_message,
+                    last_sender: chat.last_sender,
+                    last_is_from_me: chat.last_is_from_me,
+                }))
+            },
+        )?;
         rows.collect::<Result<Vec<_>>>()?.into_iter().collect()
     }
 

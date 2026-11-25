@@ -1,0 +1,31 @@
+{
+  "args": {
+    "after": "2026-11-04T02:30:00"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"jid\": \"31600000001@s.whatsapp.net\",\n  \"name\": \"Maria Jansen\",\n  \"message_count\": 3,\n  \"from_others_count\": 2,\n  \"last_message_time\": \"2026-11-04T22:00:52+01:00\",\n  \"last_message\": \"<message_content>Looks great!</message_content>\",\n  \"last_sender\": \"31600000000\",\n  \"last_is_from_me\": true\n}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": [
+        {
+          "from_others_count": 2,
+          "jid": "31600000001@s.whatsapp.net",
+          "last_is_from_me": true,
+          "last_message": "<message_content>Looks great!</message_content>",
+          "last_message_time": "2026-11-04T22:00:52+01:00",
+          "last_sender": "31600000000",
+          "message_count": 3,
+          "name": "Maria Jansen"
+        }
+      ]
+    }
+  },
+  "tool": "list_recent_activity"
+}

@@ -1,0 +1,17 @@
+{
+  "args": {
+    "media_type": "pdf"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "'media_type' must be one of image, video, audio, document, got 'pdf'",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "list_media"
+}

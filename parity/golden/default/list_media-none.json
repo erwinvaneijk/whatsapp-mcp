@@ -1,0 +1,20 @@
+{
+  "args": {
+    "chat_jid": "31600000010@s.whatsapp.net"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "No media to display.",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "resultType": "complete",
+    "structuredContent": {
+      "result": "No media to display."
+    }
+  },
+  "tool": "list_media"
+}
