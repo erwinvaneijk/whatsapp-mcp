@@ -1,0 +1,17 @@
+{
+  "args": {
+    "chat_jid": "31600000001@s.whatsapp.net"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "31600000001@s.whatsapp.net is not a group: a group's JID ends in @g.us",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "get_group_info"
+}

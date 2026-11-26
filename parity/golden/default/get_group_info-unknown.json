@@ -1,0 +1,27 @@
+{
+  "args": {
+    "chat_jid": "120363000000000099@g.us"
+  },
+  "bridge_requests": [
+    {
+      "content_type": "application/json",
+      "json": {
+        "chat_jid": "120363000000000099@g.us"
+      },
+      "method": "POST",
+      "path": "/api/group",
+      "token": "ok"
+    }
+  ],
+  "result": {
+    "content": [
+      {
+        "text": "Failed to get group info: there is no such group",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "get_group_info"
+}

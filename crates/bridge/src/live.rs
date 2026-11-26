@@ -1,5 +1,5 @@
 //! The API's backend on the WhatsApp connection: sending text and files,
-//! reactions, and downloading media. The plain parts are in [`crate::send`].
+//! reactions, downloading media, and reading groups. The plain parts are in [`crate::send`].
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -9,11 +9,11 @@ use whatsapp_mcp_store::ensure_private_dir;
 use whatsapp_rust::download::{ClientDownloadError, DownloadLimits, DownloadParams, MediaType};
 use whatsapp_rust::prelude::*;
 use whatsapp_rust::{
-    MediaRetryResult, MediaReuploadRequest, MessageId, MessageRef, SendRequest as WaSendRequest,
-    UploadOptions,
+    GroupError, GroupMetadata, IqError, MediaRetryResult, MediaReuploadRequest, MessageId,
+    MessageRef, SendRequest as WaSendRequest, UploadOptions,
 };
 
-use crate::api::{Backend, Downloaded, SendRequest, allowed_media_path};
+use crate::api::{Backend, Downloaded, GroupInfo, GroupMember, SendRequest, allowed_media_path};
 use crate::jid::Jid as TextJid;
 use crate::log;
 use crate::receive;
@@ -51,6 +51,21 @@ impl Backend for Live {
 
     async fn download(&self, message_id: String, chat_jid: String) -> Result<Downloaded, String> {
         self.download_media(&message_id, &chat_jid).await
+    }
+
+    async fn group_info(&self, group: TextJid) -> Result<GroupInfo, String> {
+        self.check_connected()?;
+        let jid = library_jid(&group)?;
+        let groups = self.client.groups();
+        let mut metadata = groups.fetch_metadata(&jid).await.map_err(group_error)?;
+        // LID-addressed groups often leave out members' phone numbers.
+        groups.resolve_participant_addresses(&mut metadata).await;
+        let own: Vec<String> = [self.client.pn(), self.client.lid()]
+            .into_iter()
+            .flatten()
+            .map(|jid| jid.user.to_string())
+            .collect();
+        Ok(group_info(&group, metadata, &own))
     }
 
     fn counterpart(&self, jid: &TextJid) -> Option<TextJid> {
@@ -387,6 +402,57 @@ impl Live {
                 "the sender's phone could not provide the media: {other:?}"
             )),
         }
+    }
+}
+
+/// A group for the API. `own` has this account's phone number and LID
+/// (user parts), to mark which member is me.
+fn group_info(group: &TextJid, metadata: GroupMetadata, own: &[String]) -> GroupInfo {
+    let participants = metadata
+        .participants
+        .iter()
+        .map(|p| {
+            let ids = [Some(&p.jid), p.phone_number.as_ref(), p.lid.as_ref()];
+            GroupMember {
+                jid: p.jid.to_string(),
+                phone_number: p.phone_number.as_ref().map(ToString::to_string),
+                lid: p.lid.as_ref().map(ToString::to_string),
+                role: if p.is_super_admin() {
+                    "superadmin"
+                } else if p.is_admin() {
+                    "admin"
+                } else {
+                    "member"
+                }
+                .into(),
+                is_me: ids
+                    .into_iter()
+                    .flatten()
+                    .any(|id| own.iter().any(|user| *user == *id.user)),
+            }
+        })
+        .collect();
+    GroupInfo {
+        jid: group.to_string(),
+        subject: metadata.subject.filter(|s| !s.is_empty()),
+        description: metadata.description.filter(|d| !d.is_empty()),
+        creation_time: metadata.creation_time,
+        announce: metadata.is_announcement,
+        locked: metadata.is_locked,
+        participant_count: metadata.participant_count,
+        participants,
+    }
+}
+
+/// Why a group could not be read, in words for the model.
+fn group_error(error: GroupError) -> String {
+    match &error {
+        GroupError::Iq(IqError::ServerError { code: 403, .. }) => {
+            "this account is not in the group (any more)".into()
+        }
+        GroupError::Iq(IqError::ServerError { code: 404, .. }) => "there is no such group".into(),
+        GroupError::Iq(IqError::NotConnected) => "Not connected to WhatsApp".into(),
+        _ => error.to_string(),
     }
 }
 

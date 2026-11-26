@@ -81,6 +81,7 @@ Requests other than POST get `405`. Plain-text errors end with a newline. JSON a
 | `POST /api/send` | `recipient` (phone number or JID), `message`, optional `media_path`, `reply_to_message_id`, `reply_to_sender_jid`, `mentions` (list) | `200 {"success":true,"message":…}`; `500` with `success: false` when sending failed |
 | `POST /api/react` | `message_id`, `chat_jid`, `emoji` (empty removes the reaction) | `200 {"success":true,"message":"Reaction ❤️ sent"}` or `"Reaction removed"`; `500` with `success: false` |
 | `POST /api/download` | `message_id`, `chat_jid` | `200 {"success":true,"message":"Successfully downloaded image media","filename":…,"path":…}`; `500 {"success":false,"message":"Failed to download media: …"}` |
+| `POST /api/group` (since 1.3, [#109](https://github.com/erwinvaneijk/whatsapp-mcp/issues/109)) | `chat_jid` (a `@g.us` JID) | `200 {"success":true,"jid":…,"subject":…,"description":…,"creation_time":…,"announce":…,"locked":…,"participant_count":…,"participants":[{"jid":…,"phone_number":…,"lid":…,"role":"member"\|"admin"\|"superadmin","is_me":…}]}`, asked from WhatsApp; `500 {"success":false,"message":"Failed to get group info: …"}` |
 
 Plain-text errors with `400`:
 
@@ -90,6 +91,7 @@ Plain-text errors with `400`:
 | `/api/send` | `Recipient is required`, `Message or media path is required`, `Invalid recipient` |
 | `/api/react` | `message_id and chat_jid are required`, `Invalid chat_jid` |
 | `/api/download` | `Message ID and Chat JID are required` |
+| `/api/group` | `chat_jid is required`, `Invalid chat_jid`, `chat_jid is not a group: it must end in @g.us` |
 
 A chat outside the send allowlist gets `403 {"success":false,"message":"This chat is not in send_allowlist (WHATSAPP_SEND_ALLOWLIST), so the bridge will not send to it."}`.
 

@@ -329,7 +329,7 @@ fn download_result(answer: Answer) -> Result<String, String> {
 
 /// An error status from the bridge: its own message when it gave one, else
 /// the status and the text of the answer.
-fn bridge_error(status: u16, json: Option<&Map<String, Value>>, text: &str) -> String {
+pub(crate) fn bridge_error(status: u16, json: Option<&Map<String, Value>>, text: &str) -> String {
     match json
         .and_then(|j| j.get("message"))
         .and_then(Value::as_str)
