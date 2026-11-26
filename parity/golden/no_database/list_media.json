@@ -1,0 +1,15 @@
+{
+  "args": {},
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "Cannot open the message database: unable to open database file: <STORE>/messages.db. Check that the bridge has run and that store_dir points to its store folder.",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "list_media"
+}

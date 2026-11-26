@@ -64,6 +64,24 @@
         "get_message_context-group": {"tool": "get_message_context", "args": {"message_id": "3EB0D0000000000000000004"}},
         "get_message_context-unknown": {"tool": "get_message_context", "args": {"message_id": "NO-SUCH-ID"}},
 
+        "list_media-defaults": {"tool": "list_media", "args": {}},
+        "list_media-chat": {"tool": "list_media", "args": {"chat_jid": "31600000001@s.whatsapp.net"}},
+        "list_media-document": {"tool": "list_media", "args": {"media_type": "document"}},
+        "list_media-type-any-case": {"tool": "list_media", "args": {"media_type": " Video "}},
+        "list_media-group-audio": {"tool": "list_media", "args": {"chat_jid": "120363000000000001@g.us", "media_type": "audio"}},
+        "list_media-paging": {"tool": "list_media", "args": {"limit": 2, "page": 1}},
+        "list_media-none": {"tool": "list_media", "args": {"chat_jid": "31600000010@s.whatsapp.net"}},
+        "list_media-bad-type": {"tool": "list_media", "args": {"media_type": "pdf"}},
+        "list_media-negative-limit": {"tool": "list_media", "args": {"limit": -1}},
+
+        "list_recent_activity-date": {"tool": "list_recent_activity", "args": {"after": "2026-11-03"}},
+        "list_recent_activity-offset": {"tool": "list_recent_activity", "args": {"after": "2026-11-04T08:01:00+01:00"}},
+        "list_recent_activity-paging": {"tool": "list_recent_activity", "args": {"after": "2026-11-01", "limit": 2, "page": 1}},
+        "list_recent_activity-none": {"tool": "list_recent_activity", "args": {"after": "2026-12-01"}},
+        "list_recent_activity-no-after": {"tool": "list_recent_activity", "args": {}},
+        "list_recent_activity-bad-word": {"tool": "list_recent_activity", "args": {"after": "yesterday"}},
+        "list_recent_activity-negative-page": {"tool": "list_recent_activity", "args": {"after": "2026-11-01", "page": -1}},
+
         "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "Hello from the parity test"}},
         "send_message-reply-mentions": {"tool": "send_message", "args": {"recipient": "120363000000000001@g.us", "message": "@31600000001 agreed", "reply_to_message_id": "3EB0D0000000000000000001", "reply_to_sender_jid": "31600000001@s.whatsapp.net", "mentions": ["31600000001"]}},
         "send_message-no-recipient": {"tool": "send_message", "args": {"recipient": "", "message": "nobody"}},
@@ -130,6 +148,7 @@
         "list_messages-after-naive": {"tool": "list_messages", "args": {"after": "2026-11-04T16:00:00", "include_context": false}},
         "list_messages-after-offset": {"tool": "list_messages", "args": {"after": "2026-11-04T21:00:00+01:00", "include_context": false}},
         "list_messages-after-date": {"tool": "list_messages", "args": {"after": "2026-11-04", "include_context": false}},
+        "list_recent_activity-naive": {"tool": "list_recent_activity", "args": {"after": "2026-11-04T02:30:00"}},
         "get_last_interaction-contact": {"tool": "get_last_interaction", "args": {"jid": "31600000001@s.whatsapp.net"}}
       }
     },
@@ -173,7 +192,9 @@
         "get_direct_chat_by_contact": {"tool": "get_direct_chat_by_contact", "args": {"sender_phone_number": "31600000001"}},
         "get_contact_chats": {"tool": "get_contact_chats", "args": {"jid": "31600000001@s.whatsapp.net"}},
         "get_last_interaction": {"tool": "get_last_interaction", "args": {"jid": "31600000001@s.whatsapp.net"}},
-        "get_message_context": {"tool": "get_message_context", "args": {"message_id": "3EB0A0000000000000000001"}}
+        "get_message_context": {"tool": "get_message_context", "args": {"message_id": "3EB0A0000000000000000001"}},
+        "list_media": {"tool": "list_media", "args": {}},
+        "list_recent_activity": {"tool": "list_recent_activity", "args": {"after": "2026-11-01"}}
       }
     }
   }

@@ -4,7 +4,8 @@
 use std::collections::HashSet;
 
 use whatsapp_mcp_store::{
-    Chat, Contact, Db, Message, MessageContext, MessageFilter, PooledDb, Store, moment_for_sql,
+    Chat, ChatActivity, Contact, Db, MEDIA_TYPES, MediaFilter, MediaMessage, Message,
+    MessageContext, MessageFilter, PooledDb, Store, moment_for_sql,
 };
 
 use crate::args::{Args, BadArgument, check_non_negative};
@@ -28,6 +29,8 @@ pub fn call(store: &Store, name: &str, args: &Args<'_>) -> Option<Result<Output,
         "get_contact_chats" => get_contact_chats(store, args),
         "get_last_interaction" => get_last_interaction(store, args),
         "get_message_context" => get_message_context(store, args),
+        "list_media" => list_media(store, args),
+        "list_recent_activity" => list_recent_activity(store, args),
         _ => return None,
     })
 }
@@ -173,6 +176,45 @@ fn get_message_context(store: &Store, args: &Args<'_>) -> Result<Output, ToolErr
     Output::object(&mark_context(context))
 }
 
+fn list_media(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
+    let chat_jid = args.opt_string("chat_jid")?;
+    let media_type = args.opt_string("media_type")?;
+    let limit = args.int_or("limit", 20)?;
+    let page = args.int_or("page", 0)?;
+    check_non_negative(&[("limit", limit), ("page", page)])?;
+    let media_type = non_empty(media_type.map(|t| t.trim().to_lowercase()));
+    if let Some(given) = &media_type
+        && !MEDIA_TYPES.contains(&given.as_str())
+    {
+        return Err(ToolError(format!(
+            "'media_type' must be one of {}, got '{given}'",
+            MEDIA_TYPES.join(", ")
+        )));
+    }
+    let filter = MediaFilter {
+        chat_jid: non_empty(chat_jid),
+        media_type,
+        limit,
+        page,
+    };
+    let db = open(store)?;
+    let media = checked(db.list_media(&filter))?;
+    if media.is_empty() {
+        return Output::text("No media to display.".to_string());
+    }
+    Output::text(media.iter().map(|m| format_media(&db, m)).collect())
+}
+
+fn list_recent_activity(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
+    let after = args.string("after")?;
+    let limit = args.int_or("limit", 20)?;
+    let page = args.int_or("page", 0)?;
+    check_non_negative(&[("limit", limit), ("page", page)])?;
+    let after = moment_for_sql(&after, "after").map_err(|e| ToolError(e.to_string()))?;
+    let chats = checked(open(store)?.recent_activity(&after, limit, page))?;
+    Output::list(chats.into_iter().map(mark_activity))
+}
+
 /// Context windows, one per match, as the messages to show: windows in the
 /// same chat that share a message become one, so no message is shown twice
 /// (issue #68). Each merged window is in time order; the windows keep the
@@ -222,6 +264,14 @@ fn mark_chat(chat: Chat) -> Chat {
         name: chat.name.as_deref().map(one_line),
         last_message: chat.last_message.as_deref().map(mark_untrusted),
         ..chat
+    }
+}
+
+fn mark_activity(activity: ChatActivity) -> ChatActivity {
+    ChatActivity {
+        name: activity.name.as_deref().map(one_line),
+        last_message: activity.last_message.as_deref().map(mark_untrusted),
+        ..activity
     }
 }
 
@@ -283,6 +333,17 @@ pub fn format_message(db: &Db, message: &Message, show_chat_info: bool) -> Strin
     out
 }
 
+/// A message with media as a line of text, like [`format_message`], with
+/// its file name. The name can come from the sender, so it is marked too.
+fn format_media(db: &Db, media: &MediaMessage) -> String {
+    let mut line = format_message(db, &media.message, true);
+    if let Some(filename) = media.filename.as_deref().filter(|f| !f.is_empty()) {
+        line.truncate(line.trim_end_matches('\n').len());
+        line.push_str(&format!(" File: {}\n", mark_untrusted(filename)));
+    }
+    line
+}
+
 fn format_messages(db: &Db, messages: &[Message], show_chat_info: bool) -> String {
     if messages.is_empty() {
         return "No messages to display.".to_string();
@@ -329,6 +390,9 @@ mod tests {
             r#"{"query":"x","chat_jid":"1@s.whatsapp.net","sender_phone_number":"1","jid":"1@s.whatsapp.net","message_id":"M1"}"#,
         )
         .unwrap();
+        // Its `after` is a moment; get_message_context's is a number.
+        let mut activity_args = args.clone();
+        activity_args.insert("after".into(), "2026-11-01".into());
         for tool in [
             "search_contacts",
             "list_messages",
@@ -338,8 +402,15 @@ mod tests {
             "get_contact_chats",
             "get_last_interaction",
             "get_message_context",
+            "list_media",
+            "list_recent_activity",
         ] {
-            let result = call(&store, tool, &Args::new(Some(&args))).unwrap();
+            let args = if tool == "list_recent_activity" {
+                &activity_args
+            } else {
+                &args
+            };
+            let result = call(&store, tool, &Args::new(Some(args))).unwrap();
             let Err(ToolError(message)) = result else {
                 panic!("{tool}: not an error");
             };
