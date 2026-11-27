@@ -6,6 +6,7 @@
 
 mod args;
 mod bridge;
+mod cursor;
 mod output;
 mod read_tools;
 #[cfg(test)]

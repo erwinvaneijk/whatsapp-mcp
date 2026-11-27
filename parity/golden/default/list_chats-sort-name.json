@@ -26,11 +26,11 @@
         "type": "text"
       },
       {
-        "text": "{\n  \"jid\": \"31600000003@s.whatsapp.net\",\n  \"name\": \"Noor de Vries\",\n  \"last_message_time\": \"2026-09-30T18:00:00+02:00\",\n  \"last_message\": \"<message_content>See you at the station</message_content>\",\n  \"last_sender\": \"31600000003\",\n  \"last_is_from_me\": false\n}",
+        "text": "{\n  \"jid\": \"200000000000003@lid\",\n  \"name\": \"Noor de Vries\",\n  \"last_message_time\": \"2026-11-03T12:00:00+01:00\",\n  \"last_message\": \"<message_content>New phone, same Noor</message_content>\",\n  \"last_sender\": \"200000000000003\",\n  \"last_is_from_me\": false\n}",
         "type": "text"
       },
       {
-        "text": "{\n  \"jid\": \"200000000000003@lid\",\n  \"name\": \"Noor de Vries\",\n  \"last_message_time\": \"2026-11-03T12:00:00+01:00\",\n  \"last_message\": \"<message_content>New phone, same Noor</message_content>\",\n  \"last_sender\": \"200000000000003\",\n  \"last_is_from_me\": false\n}",
+        "text": "{\n  \"jid\": \"31600000003@s.whatsapp.net\",\n  \"name\": \"Noor de Vries\",\n  \"last_message_time\": \"2026-09-30T18:00:00+02:00\",\n  \"last_message\": \"<message_content>See you at the station</message_content>\",\n  \"last_sender\": \"31600000003\",\n  \"last_is_from_me\": false\n}",
         "type": "text"
       },
       {
@@ -87,19 +87,19 @@
           "name": "Maria Jansen"
         },
         {
-          "jid": "31600000003@s.whatsapp.net",
-          "last_is_from_me": false,
-          "last_message": "<message_content>See you at the station</message_content>",
-          "last_message_time": "2026-09-30T18:00:00+02:00",
-          "last_sender": "31600000003",
-          "name": "Noor de Vries"
-        },
-        {
           "jid": "200000000000003@lid",
           "last_is_from_me": false,
           "last_message": "<message_content>New phone, same Noor</message_content>",
           "last_message_time": "2026-11-03T12:00:00+01:00",
           "last_sender": "200000000000003",
+          "name": "Noor de Vries"
+        },
+        {
+          "jid": "31600000003@s.whatsapp.net",
+          "last_is_from_me": false,
+          "last_message": "<message_content>See you at the station</message_content>",
+          "last_message_time": "2026-09-30T18:00:00+02:00",
+          "last_sender": "31600000003",
           "name": "Noor de Vries"
         },
         {

@@ -1,0 +1,17 @@
+{
+  "args": {
+    "cursor": "not-a-cursor"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "Invalid cursor: pass the next_cursor of the previous list_messages result unchanged, with the same sort order.",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "list_messages"
+}

@@ -1,0 +1,20 @@
+{
+  "args": {
+    "chat_jid": "120363000000000001@g.us",
+    "cursor": "5b226c6973745f6d65737361676573222c226d222c323436313334372e323535353535353535372c32305d",
+    "limit": 4,
+    "page": 1
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "Give either page or cursor, not both: a cursor already says where the page starts.",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "list_messages"
+}

@@ -5,6 +5,8 @@
 //!   and an empty list as no content at all.
 //! - **Structured content:** the result wrapped as `{"result": …}`, except a
 //!   plain object type (such as a message context), which is given as is.
+//! - **Paged lists** add `next_cursor` to the structured content and one
+//!   more text block when there is a next page.
 
 use rmcp::model::{CallToolResult, ContentBlock};
 use serde::Serialize;
@@ -65,6 +67,20 @@ impl Output {
             content: vec![content_text(&value)?],
             structured: value,
         })
+    }
+
+    /// Adds where the next page starts (issue #86): `next_cursor` next to
+    /// the result, and a last text block saying how to use it.
+    pub fn with_next_cursor(mut self, cursor: Option<String>) -> Output {
+        if let Some(cursor) = cursor {
+            self.content.push(format!(
+                "More results: pass cursor \"{cursor}\" to get the next page."
+            ));
+            if let Value::Object(map) = &mut self.structured {
+                map.insert("next_cursor".into(), cursor.into());
+            }
+        }
+        self
     }
 
     pub fn into_result(self) -> CallToolResult {

@@ -14,11 +14,16 @@
       {
         "text": "{\n  \"jid\": \"31600000011@s.whatsapp.net\",\n  \"name\": \"Bakery Delta\",\n  \"message_count\": 1,\n  \"from_others_count\": 1,\n  \"last_message_time\": \"2026-11-03T09:00:00+01:00\",\n  \"last_message\": \"<message_content>Your order is ready</message_content>\",\n  \"last_sender\": \"31600000011\",\n  \"last_is_from_me\": false\n}",
         "type": "text"
+      },
+      {
+        "text": "More results: pass cursor \"5b226c6973745f726563656e745f6163746976697479222c2274222c323436313334372e383333333333333333352c22333136303030303030313140732e77686174736170702e6e6574225d\" to get the next page.",
+        "type": "text"
       }
     ],
     "isError": false,
     "resultType": "complete",
     "structuredContent": {
+      "next_cursor": "5b226c6973745f726563656e745f6163746976697479222c2274222c323436313334372e383333333333333333352c22333136303030303030313140732e77686174736170702e6e6574225d",
       "result": [
         {
           "from_others_count": 1,
