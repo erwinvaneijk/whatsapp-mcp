@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Plugin 1.3.0**: the plugin downloads the 1.3.0 binaries (pinned checksums updated with `scripts/bump-plugin.sh`), with `get_group_info` and cursor paging. After `claude plugin update`, start a new session and run `whatsapp-mcp service install` to restart the bridge on it; `get_group_info` needs the new bridge.
+
 ## 1.3.0
 
 Three new read tools and cursor paging. `get_group_info` gives a group's members and admins; it is the first read tool that asks WhatsApp, through the bridge. `list_media` and `list_recent_activity` read `messages.db`. The paged read tools take a `cursor` that does not shift when new messages arrive.

@@ -10,7 +10,7 @@
 # macOS and Linux, and Windows through the Git Bash that Claude Code uses.
 set -euo pipefail
 
-VERSION="1.2.0"
+VERSION="1.3.0"
 REPO="erwinvaneijk/whatsapp-mcp"
 # For tests: where the release files are, instead of the GitHub release.
 BASE_URL="${WHATSAPP_MCP_DOWNLOAD_URL:-https://github.com/$REPO/releases/download/v$VERSION}"
