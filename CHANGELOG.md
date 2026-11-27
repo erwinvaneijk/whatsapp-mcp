@@ -1,11 +1,26 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
 
-- **New read tools** ([#85](https://github.com/erwinvaneijk/whatsapp-mcp/issues/85)): `list_media` lists messages with media, newest first, optionally in one chat and of one kind (`image`, `video`, `audio`, `document`), with the file name and the IDs `download_media` needs. `list_recent_activity` lists the chats with messages after a given time, most recently active first, with how many messages each got and how many came from others. Both mark message text, captions and file names as data, and are there in read-only mode too. `get_group_info`, the third tool in #85, needs the bridge and follows in [#109](https://github.com/erwinvaneijk/whatsapp-mcp/issues/109).
+Three new read tools and cursor paging. `get_group_info` gives a group's members and admins; it is the first read tool that asks WhatsApp, through the bridge. `list_media` and `list_recent_activity` read `messages.db`. The paged read tools take a `cursor` that does not shift when new messages arrive.
+
+### What you need to do
+
+Replace the binary (from the release, or `cargo build --release`) and restart the bridge (`whatsapp-mcp service install`). `get_group_info` needs the new bridge: an older one answers `404` to `/api/group`. Nothing else changes for existing setups: `page` still works as before.
+
+The plugin still downloads the 1.2.0 binary right after this release; a plugin update to 1.3.0 follows once these binaries are published ([Releasing](docs/releasing.md)).
+
+### Known limits
+
+- `get_group_info` only works while the bridge is running and connected; the other read tools still work without it.
+- The 1.2.0 limits still hold: Windows is beta ([#84](https://github.com/erwinvaneijk/whatsapp-mcp/issues/84)), `service` was tested live on macOS only, expired-media retry was not tried live, and the plugin evals wait for an API key in CI ([#61](https://github.com/erwinvaneijk/whatsapp-mcp/issues/61)).
+
+### All changes
+
+- **New read tools** ([#85](https://github.com/erwinvaneijk/whatsapp-mcp/issues/85)): `list_media` lists messages with media, newest first, optionally in one chat and of one kind (`image`, `video`, `audio`, `document`), with the file name and the IDs `download_media` needs. `list_recent_activity` lists the chats with messages after a given time, most recently active first, with how many messages each got and how many came from others. Both mark message text, captions and file names as data, and are there in read-only mode too. `get_group_info`, the third tool in #85, needs the bridge; see the next change.
 - **New read tool `get_group_info`** ([#109](https://github.com/erwinvaneijk/whatsapp-mcp/issues/109)): a group's name, description and members, for "who is in the book club?" or "who are the admins?". Each member has a role (`member`, `admin`, `superadmin`), `is_me`, and a name from the contacts, found by phone number or LID. `messages.db` has no members, so the tool asks WhatsApp through the bridge's new `POST /api/group`; the bridge must be running, and is allowed to answer with `full_control` off, since nothing is sent. The description is wrapped in `<message_content>`, and the group and member names are kept on one line. Update the bridge too: an older one answers `404` to `/api/group`.
-- **Plugin 1.2.0**: the plugin downloads the 1.2.0 binaries (pinned checksums updated with `scripts/bump-plugin.sh`), and its setup skill knows `bridge_address` for when port 8080 is taken. After `claude plugin update`, start a new session and run `whatsapp-mcp service install` to restart the bridge on it.
 - **Cursor paging** ([#86](https://github.com/erwinvaneijk/whatsapp-mcp/issues/86)): `list_messages`, `list_chats`, `get_contact_chats`, `list_media` and `list_recent_activity` take a `cursor`. When there is a next page, the result has `next_cursor` (in the structured content, and as a last line of text); pass it back to get the page right after the last row shown. Unlike `page`, which counts rows from the top, it does not shift when new messages arrive between calls, so nothing is shown twice or skipped. `page` still works; giving both is an error. Rows with the same time or name now have a fixed order (by rowid for messages, by JID for chats), so two chats with the same name no longer swap places between calls.
+- **Plugin 1.2.0**: the plugin downloads the 1.2.0 binaries (pinned checksums updated with `scripts/bump-plugin.sh`), and its setup skill knows `bridge_address` for when port 8080 is taken. After `claude plugin update`, start a new session and run `whatsapp-mcp service install` to restart the bridge on it.
 
 ## 1.2.0
 
