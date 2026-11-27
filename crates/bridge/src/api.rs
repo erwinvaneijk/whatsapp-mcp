@@ -1,6 +1,6 @@
-//! The bridge's local API: `POST /api/send`, `/api/react` and
-//! `/api/download` on `127.0.0.1:8080` (docs/archive/rust-1.0/interface.md,
-//! section 3). Its only client is `whatsapp-mcp serve`, so requests are read
+//! The bridge's local API: `POST /api/send`, `/api/react`, `/api/download`
+//! and `/api/group` on `127.0.0.1:8080` (docs/archive/rust-1.0/interface.md,
+//! section 3; `/api/group` came later, issue #109). Its only client is `whatsapp-mcp serve`, so requests are read
 //! strictly: exact field names, no unknown fields, nothing after the JSON.
 //! WhatsApp sits behind the [`Backend`] trait, so everything here is tested
 //! without a connection.
@@ -18,7 +18,7 @@ use hyper::{Method, Request, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use whatsapp_mcp_config::SendAllowlist;
 
-use crate::jid::{Jid, LID_SERVER, USER_SERVER};
+use crate::jid::{GROUP_SERVER, Jid, LID_SERVER, USER_SERVER};
 use crate::log;
 
 /// The largest request body accepted.
@@ -44,6 +44,37 @@ pub struct Downloaded {
     pub path: String,
 }
 
+/// A group as WhatsApp describes it, for `/api/group`. JIDs are in text
+/// form; names are left to the MCP server, which has the contact names.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct GroupInfo {
+    pub jid: String,
+    pub subject: Option<String>,
+    pub description: Option<String>,
+    /// When the group was created, in Unix seconds.
+    pub creation_time: Option<u64>,
+    /// Only admins may send messages.
+    pub announce: bool,
+    /// Only admins may change the group's name, description and picture.
+    pub locked: bool,
+    /// WhatsApp's own count; it can be larger than `participants`.
+    pub participant_count: Option<u32>,
+    pub participants: Vec<GroupMember>,
+}
+
+/// One member of a group.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct GroupMember {
+    /// The JID the group uses for them: a phone number or a LID.
+    pub jid: String,
+    pub phone_number: Option<String>,
+    pub lid: Option<String>,
+    /// `member`, `admin` or `superadmin`.
+    pub role: String,
+    /// This account.
+    pub is_me: bool,
+}
+
 /// What the API needs from WhatsApp. The bridge implements it with
 /// whatsapp-rust; tests use a fake.
 pub trait Backend: Send + Sync + 'static {
@@ -62,6 +93,9 @@ pub trait Backend: Send + Sync + 'static {
         message_id: String,
         chat_jid: String,
     ) -> impl Future<Output = Result<Downloaded, String>> + Send;
+    /// A group's name, description and members, asked from WhatsApp; the
+    /// reason when that fails. `group` is a `g.us` JID.
+    fn group_info(&self, group: Jid) -> impl Future<Output = Result<GroupInfo, String>> + Send;
     /// The other ID of a contact: its LID for a phone-number JID, its phone
     /// number for a LID, when known.
     fn counterpart(&self, jid: &Jid) -> Option<Jid>;
@@ -107,13 +141,18 @@ impl<B: Backend> Api<B> {
             );
         }
         let path = request.uri().path().to_string();
-        if !matches!(path.as_str(), "/api/send" | "/api/react" | "/api/download") {
+        if !matches!(
+            path.as_str(),
+            "/api/send" | "/api/react" | "/api/download" | "/api/group"
+        ) {
             return text(StatusCode::NOT_FOUND, "Not found");
         }
         if request.method() != Method::POST {
             return text(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed");
         }
-        if !self.full_control && path != "/api/download" {
+        // Downloading and reading a group send nothing to anyone.
+        let only_reads = matches!(path.as_str(), "/api/download" | "/api/group");
+        if !self.full_control && !only_reads {
             log::warning("Refused to send: full_control is off");
             return json(
                 StatusCode::FORBIDDEN,
@@ -133,6 +172,7 @@ impl<B: Backend> Api<B> {
         match path.as_str() {
             "/api/send" => self.send(&body).await,
             "/api/react" => self.react(&body).await,
+            "/api/group" => self.group(&body).await,
             _ => self.download(&body).await,
         }
     }
@@ -252,6 +292,48 @@ impl<B: Backend> Api<B> {
         }
     }
 
+    /// Reads a group. Not limited by the send allowlist: nothing is sent.
+    async fn group(&self, body: &[u8]) -> Answer {
+        let GroupRequest { chat_jid } = match parse(body) {
+            Ok(request) => request,
+            Err(reason) => return invalid_request(&reason),
+        };
+        if chat_jid.is_empty() {
+            return text(StatusCode::BAD_REQUEST, "chat_jid is required");
+        }
+        let Ok(group) = Jid::parse(&chat_jid) else {
+            return text(StatusCode::BAD_REQUEST, "Invalid chat_jid");
+        };
+        if group.server != GROUP_SERVER {
+            return text(
+                StatusCode::BAD_REQUEST,
+                "chat_jid is not a group: it must end in @g.us",
+            );
+        }
+        match self.backend.group_info(group.to_non_ad()).await {
+            Ok(group) => json(
+                StatusCode::OK,
+                &GroupStatus {
+                    success: true,
+                    group,
+                },
+            ),
+            Err(reason) => {
+                log::warning(&format!(
+                    "Failed to get group info: {}",
+                    log::clean(&reason)
+                ));
+                json(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &Status {
+                        success: false,
+                        message: format!("Failed to get group info: {reason}"),
+                    },
+                )
+            }
+        }
+    }
+
     /// A 403 answer when the chat is not in the send allowlist.
     fn refuse_if_not_allowed(&self, chat: &Jid) -> Option<Answer> {
         if allows(self.allowlist.as_ref(), self.backend.as_ref(), chat) {
@@ -351,6 +433,20 @@ struct DownloadStatus {
     filename: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     path: Option<String>,
+}
+
+#[derive(Serialize)]
+struct GroupStatus {
+    success: bool,
+    #[serde(flatten)]
+    group: GroupInfo,
+}
+
+/// What `/api/group` asks for. A missing field is empty.
+#[derive(Deserialize, Default)]
+#[serde(default, deny_unknown_fields)]
+struct GroupRequest {
+    chat_jid: String,
 }
 
 /// What `/api/react` asks for. Missing fields are empty.

@@ -25,6 +25,13 @@ impl Timestamp {
         }
     }
 
+    /// A Unix time in seconds, in this computer's zone, as the bridge
+    /// stores times. `None` when it is out of range.
+    pub fn from_unix(seconds: i64) -> Option<Timestamp> {
+        let moment = Utc.timestamp_opt(seconds, 0).single()?;
+        Some(Timestamp(moment.with_timezone(&Local).fixed_offset()))
+    }
+
     /// For the text output: `2026-11-04 22:00:52 +01:00`.
     pub fn display(&self) -> String {
         let offset = self.0.offset().local_minus_utc().div_euclid(60);

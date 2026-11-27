@@ -11,6 +11,8 @@ pub mod receive;
 pub mod run;
 pub mod send;
 
-pub use api::{Api, Backend, Downloaded, SendRequest, allowed_media_path, allows};
+pub use api::{
+    Api, Backend, Downloaded, GroupInfo, GroupMember, SendRequest, allowed_media_path, allows,
+};
 pub use jid::Jid;
 pub use run::{Options, is_linked, run, run_blocking};

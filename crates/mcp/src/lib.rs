@@ -7,6 +7,7 @@
 mod args;
 mod bridge;
 mod cursor;
+mod group_tools;
 mod output;
 mod read_tools;
 #[cfg(test)]
@@ -130,6 +131,10 @@ impl ServerHandler for Server {
                 media_dir: server.media_dir.as_deref(),
             };
             let outcome = read_tools::call(&server.store, &name, &args)
+                .or_else(|| {
+                    (name == "get_group_info")
+                        .then(|| group_tools::get_group_info(&server.store, &server.bridge, &args))
+                })
                 .or_else(|| send_tools::call(&send, &name, &args));
             match outcome {
                 Some(Ok(output)) => output.into_result(),
