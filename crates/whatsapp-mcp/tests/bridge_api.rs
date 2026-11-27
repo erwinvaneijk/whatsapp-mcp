@@ -7,7 +7,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 
-use whatsapp_mcp_bridge::{Api, Backend, Downloaded, Jid, SendRequest};
+use whatsapp_mcp_bridge::{Api, Backend, Downloaded, GroupInfo, GroupMember, Jid, SendRequest};
 
 const TOKEN: &str = "tttttttttttttttttttttttttttttttt";
 
@@ -16,6 +16,7 @@ struct Fake {
     sent: Mutex<Vec<SendRequest>>,
     reactions: Mutex<Vec<(String, String, String)>>,
     downloads: Mutex<Vec<(String, String)>>,
+    groups: Mutex<Vec<String>>,
 }
 
 impl Backend for Fake {
@@ -35,6 +36,21 @@ impl Backend for Fake {
             media_type: "image".into(),
             filename: "IMG-1.jpg".into(),
             path: "/store/c/IMG-1.jpg".into(),
+        })
+    }
+
+    async fn group_info(&self, group: Jid) -> Result<GroupInfo, String> {
+        self.groups.lock().unwrap().push(group.to_string());
+        Ok(GroupInfo {
+            jid: group.to_string(),
+            subject: Some("Book club".into()),
+            participant_count: Some(1),
+            participants: vec![GroupMember {
+                jid: "31612345678@s.whatsapp.net".into(),
+                role: "admin".into(),
+                ..Default::default()
+            }],
+            ..Default::default()
         })
     }
 
@@ -177,7 +193,16 @@ fn every_bridge_tool_is_accepted_by_the_bridge() {
             r#"{"message_id":"M1","chat_jid":"31612345678@s.whatsapp.net"}"#,
         ),
     ];
-    let answers = call_tools(address, &media_dir, &calls);
+    let mut with_group = calls.to_vec();
+    with_group.push(("get_group_info", r#"{"chat_jid":"120363@g.us"}"#));
+    let mut answers = call_tools(address, &media_dir, &with_group);
+    // get_group_info answers the group, not a success flag; serve must
+    // read what the bridge sends.
+    let group = answers.pop().unwrap();
+    assert!(group.contains(r#""isError":false"#), "{group}");
+    assert!(group.contains(r#""name":"Book club""#), "{group}");
+    assert!(group.contains(r#""role":"admin""#), "{group}");
+    assert_eq!(*fake.groups.lock().unwrap(), ["120363@g.us"]);
     for ((name, _), answer) in calls.iter().zip(&answers) {
         assert!(
             answer.contains(r#"\"success\": true"#) || answer.contains(r#"\"success\":true"#),

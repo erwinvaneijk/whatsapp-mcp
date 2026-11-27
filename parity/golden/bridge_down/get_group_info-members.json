@@ -1,0 +1,17 @@
+{
+  "args": {
+    "chat_jid": "120363000000000001@g.us"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "Failed to get group info: cannot reach the WhatsApp bridge, which this tool needs: <connection refused>",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "get_group_info"
+}

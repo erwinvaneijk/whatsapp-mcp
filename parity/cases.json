@@ -81,6 +81,11 @@
         "list_recent_activity-no-after": {"tool": "list_recent_activity", "args": {}},
         "list_recent_activity-bad-word": {"tool": "list_recent_activity", "args": {"after": "yesterday"}},
         "list_recent_activity-negative-page": {"tool": "list_recent_activity", "args": {"after": "2026-11-01", "page": -1}},
+        "get_group_info-members": {"tool": "get_group_info", "args": {"chat_jid": "120363000000000001@g.us"}},
+        "get_group_info-not-a-group": {"tool": "get_group_info", "args": {"chat_jid": "31600000001@s.whatsapp.net"}},
+        "get_group_info-no-jid": {"tool": "get_group_info", "args": {}},
+        "get_group_info-unknown": {"tool": "get_group_info", "args": {"chat_jid": "120363000000000099@g.us"}, "bridge": {"status": 500, "json": {"success": false, "message": "Failed to get group info: there is no such group"}}},
+        "get_group_info-bad-request": {"tool": "get_group_info", "args": {"chat_jid": "1:x@g.us"}, "bridge": {"status": 400, "body": "Invalid chat_jid\n"}},
 
         "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "Hello from the parity test"}},
         "send_message-reply-mentions": {"tool": "send_message", "args": {"recipient": "120363000000000001@g.us", "message": "@31600000001 agreed", "reply_to_message_id": "3EB0D0000000000000000001", "reply_to_sender_jid": "31600000001@s.whatsapp.net", "mentions": ["31600000001"]}},
@@ -112,7 +117,8 @@
       "description": "full_control not set: read-only, the send tools are hidden.",
       "full_control": false,
       "cases": {
-        "list_chats-still-works": {"tool": "list_chats", "args": {"limit": 1}}
+        "list_chats-still-works": {"tool": "list_chats", "args": {"limit": 1}},
+        "get_group_info-still-works": {"tool": "get_group_info", "args": {"chat_jid": "120363000000000001@g.us"}}
       }
     },
     "full_control_config": {
@@ -165,11 +171,15 @@
     "bridge_down": {
       "description": "Nothing listens on the bridge address.",
       "bridge": "down",
-      "normalize": [{"pattern": "Request error: [^\"]*", "replace": "Request error: <connection refused>"}],
+      "normalize": [
+        {"pattern": "Request error: [^\"]*", "replace": "Request error: <connection refused>"},
+        {"pattern": "which this tool needs: [^\"]*", "replace": "which this tool needs: <connection refused>"}
+      ],
       "cases": {
         "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "lost"}},
         "react_to_message-add": {"tool": "react_to_message", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net", "emoji": "👍"}},
-        "download_media-ok": {"tool": "download_media", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net"}}
+        "download_media-ok": {"tool": "download_media", "args": {"message_id": "3EB0A0000000000000000004", "chat_jid": "31600000001@s.whatsapp.net"}},
+        "get_group_info-members": {"tool": "get_group_info", "args": {"chat_jid": "120363000000000001@g.us"}}
       }
     },
     "unconfigured": {
@@ -178,7 +188,8 @@
       "media_dir": false,
       "cases": {
         "send_message-text": {"tool": "send_message", "args": {"recipient": "31600000001", "message": "no token"}},
-        "send_file-photo": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "<MEDIA>/photo.jpg"}}
+        "send_file-photo": {"tool": "send_file", "args": {"recipient": "31600000001", "media_path": "<MEDIA>/photo.jpg"}},
+        "get_group_info-members": {"tool": "get_group_info", "args": {"chat_jid": "120363000000000001@g.us"}}
       }
     },
     "no_database": {

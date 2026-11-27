@@ -321,6 +321,7 @@ These tools are always there. They read, and never send anything:
 - **get_message_context**: the messages before and after a message
 - **list_media**: messages with a photo, video, audio or document, optionally in one chat or of one kind, with their file names
 - **list_recent_activity**: the chats with messages after a given time, and how many, for "what did I miss?"
+- **get_group_info**: a group's name, description and members, with their names and who the admins are. It asks WhatsApp, so the bridge must be running
 - **download_media**: download the photo, video, audio or document of a message, and get the file's path
 
 These send, so they are only there with [full control](#full-control-sending) on:

@@ -8,7 +8,9 @@ use std::sync::{Arc, Mutex};
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
 use hyper::{Method, Request};
-use whatsapp_mcp_bridge::{Api, Backend, Downloaded, Jid, SendRequest, allowed_media_path, allows};
+use whatsapp_mcp_bridge::{
+    Api, Backend, Downloaded, GroupInfo, GroupMember, Jid, SendRequest, allowed_media_path, allows,
+};
 use whatsapp_mcp_config::SendAllowlist;
 
 const TOKEN: &str = "tttttttttttttttttttttttttttttttt";
@@ -52,6 +54,38 @@ impl Backend for Fake {
             media_type: "image".into(),
             filename: "IMG-1.jpg".into(),
             path: "/store/c/IMG-1.jpg".into(),
+        })
+    }
+
+    async fn group_info(&self, group: Jid) -> Result<GroupInfo, String> {
+        self.calls.lock().unwrap().push(format!("group {group}"));
+        if group.user == "404" {
+            return Err("there is no such group".into());
+        }
+        Ok(GroupInfo {
+            jid: group.to_string(),
+            subject: Some("Book club".into()),
+            description: Some("Monthly <b>reads</b>".into()),
+            creation_time: Some(1_700_000_000),
+            announce: false,
+            locked: true,
+            participant_count: Some(2),
+            participants: vec![
+                GroupMember {
+                    jid: "31612345678@s.whatsapp.net".into(),
+                    phone_number: Some("31612345678@s.whatsapp.net".into()),
+                    lid: Some("99887766@lid".into()),
+                    role: "superadmin".into(),
+                    is_me: true,
+                },
+                GroupMember {
+                    jid: "11223344@lid".into(),
+                    phone_number: None,
+                    lid: Some("11223344@lid".into()),
+                    role: "member".into(),
+                    is_me: false,
+                },
+            ],
         })
     }
 
@@ -135,20 +169,26 @@ async fn post(api: &Api<Fake>, path: &str, body: &str) -> Reply {
 #[tokio::test]
 async fn token_is_required_and_checked_first() {
     let a = api(Fake::default(), "");
-    for token in [None, Some("wrong"), Some("")] {
+    for (path, token) in [
+        ("/api/send", None),
+        ("/api/send", Some("wrong")),
+        ("/api/send", Some("")),
+        ("/api/group", None),
+        ("/api/group", Some("wrong")),
+    ] {
         let r = call(
             &a,
             Method::POST,
-            "/api/send",
+            path,
             token,
             Some("application/json"),
-            "{}",
+            r#"{"chat_jid":"120363@g.us"}"#,
         )
         .await;
         assert_eq!(
             (r.status, r.body.as_str()),
             (401, "Unauthorized\n"),
-            "{token:?}"
+            "{path} {token:?}"
         );
     }
     // Before routing: an unknown path without the token is 401, not 404.
@@ -191,7 +231,7 @@ async fn unknown_paths_and_methods() {
     assert_eq!((r.status, r.body.as_str()), (404, "Not found\n"));
     let r = post(&a, "/api/send/", "{}").await;
     assert_eq!(r.status, 404);
-    for path in ["/api/send", "/api/react", "/api/download"] {
+    for path in ["/api/send", "/api/react", "/api/download", "/api/group"] {
         let r = call(
             &a,
             Method::GET,
@@ -244,6 +284,18 @@ async fn plain_text_errors() {
             r#"{"chat_jid":"c@s.whatsapp.net"}"#,
             "Message ID and Chat JID are required",
         ),
+        ("/api/group", "{}", "chat_jid is required"),
+        (
+            "/api/group",
+            r#"{"chat_jid":"1:x@s.whatsapp.net"}"#,
+            "Invalid chat_jid",
+        ),
+        (
+            "/api/group",
+            r#"{"chat_jid":"31612345678@s.whatsapp.net"}"#,
+            "chat_jid is not a group: it must end in @g.us",
+        ),
+        ("/api/group", r#"{"chat_jid":"@g.us"}"#, "Invalid chat_jid"),
     ] {
         let r = post(&a, path, body).await;
         assert_eq!(
@@ -500,7 +552,42 @@ async fn without_full_control_nothing_is_sent() {
     )
     .await;
     assert_ne!(r.status, 403);
-    assert_eq!(a.backend.calls.lock().unwrap().len(), 1);
+    let r = post(&a, "/api/group", r#"{"chat_jid":"120363@g.us"}"#).await;
+    assert_eq!(r.status, 200);
+    assert_eq!(a.backend.calls.lock().unwrap().len(), 2);
+}
+
+/// `/api/group` answers WhatsApp's view of the group, flattened next to
+/// `success`, and a failure as a 500 with the reason.
+#[tokio::test]
+async fn group_info_answers() {
+    let a = api(Fake::default(), "");
+    let r = post(&a, "/api/group", r#"{"chat_jid":"120363@g.us"}"#).await;
+    assert_eq!(r.status, 200);
+    assert_eq!(r.content_type, "application/json");
+    assert_eq!(
+        r.body,
+        concat!(
+            "{\"success\":true,\"jid\":\"120363@g.us\",\"subject\":\"Book club\",",
+            "\"description\":\"Monthly <b>reads</b>\",\"creation_time\":1700000000,",
+            "\"announce\":false,\"locked\":true,\"participant_count\":2,\"participants\":[",
+            "{\"jid\":\"31612345678@s.whatsapp.net\",\"phone_number\":\"31612345678@s.whatsapp.net\",",
+            "\"lid\":\"99887766@lid\",\"role\":\"superadmin\",\"is_me\":true},",
+            "{\"jid\":\"11223344@lid\",\"phone_number\":null,\"lid\":\"11223344@lid\",",
+            "\"role\":\"member\",\"is_me\":false}]}\n"
+        )
+    );
+    let r = post(&a, "/api/group", r#"{"chat_jid":"404@g.us"}"#).await;
+    assert_eq!(r.status, 500);
+    assert_eq!(
+        r.body,
+        "{\"success\":false,\"message\":\"Failed to get group info: there is no such group\"}\n"
+    );
+    // Not limited by the send allowlist: the group is not on it.
+    let a = api(Fake::default(), "31612345678");
+    let r = post(&a, "/api/group", r#"{"chat_jid":"120363@g.us"}"#).await;
+    assert_eq!(r.status, 200);
+    assert_eq!(*a.backend.calls.lock().unwrap(), ["group 120363@g.us"]);
 }
 
 /// A send or reaction to a chat not on the allowlist is refused with 403 and
