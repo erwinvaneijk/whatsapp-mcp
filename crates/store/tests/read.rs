@@ -71,8 +71,9 @@ fn chat_and_contact_searches_take_wildcards_literally() {
     ]);
     let db = store.open().unwrap();
     let chats = |query: &str| -> Vec<String> {
-        db.list_chats(Some(query), 20, 0, false, "name")
+        db.list_chats(Some(query), 20, 0, None, false, "name")
             .unwrap()
+            .items
             .into_iter()
             .filter_map(|c| c.name)
             .collect()
@@ -135,6 +136,7 @@ fn message_search_without_fts_takes_wildcards_literally() {
             ..Default::default()
         })
         .unwrap()
+        .items
         .into_iter()
         .map(|m| m.id)
         .collect()
@@ -186,7 +188,9 @@ fn store_with_maria(dir: &std::path::Path, name: &str) {
 
 fn maria(store: &Store) -> String {
     let db = store.open().unwrap();
-    db.list_chats(None, 10, 0, false, "name").unwrap()[0]
+    db.list_chats(None, 10, 0, None, false, "name")
+        .unwrap()
+        .items[0]
         .name
         .clone()
         .unwrap_or_default()
@@ -252,11 +256,19 @@ fn connections_are_shared_out_one_per_call() {
     let first = store.open().unwrap();
     let second = store.open().unwrap();
     assert_eq!(
-        first.list_chats(None, 10, 0, false, "name").unwrap().len(),
+        first
+            .list_chats(None, 10, 0, None, false, "name")
+            .unwrap()
+            .items
+            .len(),
         1
     );
     assert_eq!(
-        second.list_chats(None, 10, 0, false, "name").unwrap().len(),
+        second
+            .list_chats(None, 10, 0, None, false, "name")
+            .unwrap()
+            .items
+            .len(),
         1
     );
     drop((first, second));

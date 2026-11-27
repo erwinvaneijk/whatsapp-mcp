@@ -8,11 +8,16 @@
       {
         "text": "{\n  \"jid\": \"31600000001@s.whatsapp.net\",\n  \"name\": \"Maria Jansen\",\n  \"last_message_time\": \"2026-11-04T22:00:52+01:00\",\n  \"last_message\": \"<message_content>Looks great!</message_content>\",\n  \"last_sender\": \"31600000000\",\n  \"last_is_from_me\": true\n}",
         "type": "text"
+      },
+      {
+        "text": "More results: pass cursor \"5b226c6973745f63686174733a6c6173745f616374697665222c2274222c323436313334392e3337353630313835322c22333136303030303030303140732e77686174736170702e6e6574225d\" to get the next page.",
+        "type": "text"
       }
     ],
     "isError": false,
     "resultType": "complete",
     "structuredContent": {
+      "next_cursor": "5b226c6973745f63686174733a6c6173745f616374697665222c2274222c323436313334392e3337353630313835322c22333136303030303030303140732e77686174736170702e6e6574225d",
       "result": [
         {
           "jid": "31600000001@s.whatsapp.net",

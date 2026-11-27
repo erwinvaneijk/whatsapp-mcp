@@ -150,6 +150,29 @@ impl Store {
     }
 }
 
+/// A row's place in a list's order, so the next page can start right after
+/// it (issue #86). Paging by offset shifts when messages arrive between
+/// calls; paging after a key does not. Every list orders by a time or name
+/// and then by a tie-breaker, so the order is total.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Key {
+    /// Messages, newest first: `julianday(timestamp)`, then the rowid.
+    Message { time: f64, rowid: i64 },
+    /// Chats by activity, latest first: the `julianday` of the last
+    /// activity (-1 when there is none), then the JID.
+    ChatTime { time: f64, jid: String },
+    /// Chats by name: the display name (empty when there is none), then
+    /// the JID.
+    ChatName { name: String, jid: String },
+}
+
+/// One page of a list, and the key of its last row when there is more.
+#[derive(Debug, Clone)]
+pub struct Page<T> {
+    pub items: Vec<T>,
+    pub next: Option<Key>,
+}
+
 /// Filters for [`Db::list_messages`].
 #[derive(Debug, Clone, Default)]
 pub struct MessageFilter {
@@ -161,6 +184,8 @@ pub struct MessageFilter {
     pub query: Option<String>,
     pub limit: i64,
     pub page: i64,
+    /// Start after this message instead of at `page`.
+    pub cursor: Option<Key>,
 }
 
 /// The kinds of media the bridge stores in `messages.media_type`.
@@ -174,6 +199,8 @@ pub struct MediaFilter {
     pub media_type: Option<String>,
     pub limit: i64,
     pub page: i64,
+    /// Start after this message instead of at `page`.
+    pub cursor: Option<Key>,
 }
 
 /// The columns every message query selects, in this order.
@@ -306,9 +333,9 @@ impl Db {
     }
 
     /// Messages matching the filter, newest first.
-    pub fn list_messages(&self, filter: &MessageFilter) -> Result<Vec<Message>> {
+    pub fn list_messages(&self, filter: &MessageFilter) -> Result<Page<Message>> {
         let mut sql = vec![format!(
-            "SELECT {MESSAGE_COLUMNS}, {} FROM messages",
+            "SELECT {MESSAGE_COLUMNS}, {}, {MESSAGE_KEY} FROM messages",
             self.quoted_column("messages")?
         )];
         sql.push("JOIN chats ON messages.chat_jid = chats.jid".into());
@@ -342,23 +369,29 @@ impl Db {
                 params.push(contains_pattern(query).into());
             }
         }
+        let after = filter.cursor.as_ref().map(message_after).transpose()?;
+        if let Some((condition, values)) = &after {
+            wheres.push(condition);
+            params.extend(values.iter().cloned());
+        }
         if !wheres.is_empty() {
             sql.push(format!("WHERE {}", wheres.join(" AND ")));
         }
-        sql.push("ORDER BY julianday(messages.timestamp) DESC".into());
+        sql.push(format!("ORDER BY {MESSAGE_ORDER}"));
         sql.push("LIMIT ? OFFSET ?".into());
-        params.push(filter.limit.into());
-        params.push(filter.page.saturating_mul(filter.limit).into());
+        push_paging(&mut params, filter.limit, filter.page, after.is_some());
 
         let mut statement = self.conn.prepare(&sql.join(" "))?;
-        let rows = statement.query_map(params_from_iter(params), message_from_row)?;
-        rows.collect::<Result<Vec<_>>>()?.into_iter().collect()
+        let rows = statement.query_map(params_from_iter(params), |row| {
+            Ok(message_from_row(row)?.map(|m| (m, message_key(row, 9))))
+        })?;
+        page_of(rows, filter.limit)
     }
 
     /// Messages with media, newest first.
-    pub fn list_media(&self, filter: &MediaFilter) -> Result<Vec<MediaMessage>> {
+    pub fn list_media(&self, filter: &MediaFilter) -> Result<Page<MediaMessage>> {
         let mut sql = format!(
-            "SELECT {MESSAGE_COLUMNS}, {}, messages.filename FROM messages JOIN chats ON messages.chat_jid = chats.jid WHERE COALESCE(messages.media_type, '') != ''",
+            "SELECT {MESSAGE_COLUMNS}, {}, messages.filename, {MESSAGE_KEY} FROM messages JOIN chats ON messages.chat_jid = chats.jid WHERE COALESCE(messages.media_type, '') != ''",
             self.quoted_column("messages")?
         );
         let mut params: Vec<rusqlite::types::Value> = Vec::new();
@@ -370,15 +403,20 @@ impl Db {
             sql.push_str(" AND messages.media_type = ?");
             params.push(media_type.clone().into());
         }
-        sql.push_str(" ORDER BY julianday(messages.timestamp) DESC LIMIT ? OFFSET ?");
-        params.push(filter.limit.into());
-        params.push(filter.page.saturating_mul(filter.limit).into());
+        let after = filter.cursor.as_ref().map(message_after).transpose()?;
+        if let Some((condition, values)) = &after {
+            sql.push_str(&format!(" AND {condition}"));
+            params.extend(values.iter().cloned());
+        }
+        sql.push_str(&format!(" ORDER BY {MESSAGE_ORDER} LIMIT ? OFFSET ?"));
+        push_paging(&mut params, filter.limit, filter.page, after.is_some());
         let mut statement = self.conn.prepare(&sql)?;
         let rows = statement.query_map(params_from_iter(params), |row| {
             let filename: Option<String> = row.get(9)?;
-            Ok(message_from_row(row)?.map(|message| MediaMessage { message, filename }))
+            Ok(message_from_row(row)?
+                .map(|message| (MediaMessage { message, filename }, message_key(row, 10))))
         })?;
-        rows.collect::<Result<Vec<_>>>()?.into_iter().collect()
+        page_of(rows, filter.limit)
     }
 
     /// A message and up to `before` and `after` messages around it in its
@@ -433,16 +471,23 @@ impl Db {
         query: Option<&str>,
         limit: i64,
         page: i64,
+        cursor: Option<&Key>,
         include_last_message: bool,
         sort_by: &str,
-    ) -> Result<Vec<Chat>> {
+    ) -> Result<Page<Chat>> {
+        let by_time = sort_by == "last_active";
+        let sort = if by_time {
+            "COALESCE(julianday(chats.last_message_time), -1)"
+        } else {
+            "COALESCE(display_name(chats.jid, chats.name), '')"
+        };
         let last_cols = if include_last_message {
             "messages.content as last_message, messages.sender as last_sender, messages.is_from_me as last_is_from_me"
         } else {
             "NULL as last_message, NULL as last_sender, NULL as last_is_from_me"
         };
         let mut sql = vec![format!(
-            "SELECT chats.jid, display_name(chats.jid, chats.name), chats.last_message_time, {last_cols} FROM chats"
+            "SELECT chats.jid, display_name(chats.jid, chats.name), chats.last_message_time, {last_cols}, {sort} FROM chats"
         )];
         if include_last_message {
             // Join the latest message by rowid, not by timestamp equality
@@ -452,42 +497,65 @@ impl Db {
             );
         }
         let mut params: Vec<rusqlite::types::Value> = Vec::new();
+        let mut wheres: Vec<String> = Vec::new();
         if let Some(query) = query {
-            sql.push(
-                "WHERE (LOWER(display_name(chats.jid, chats.name)) LIKE LOWER(?) ESCAPE '\\' OR chats.jid LIKE ? ESCAPE '\\')"
+            wheres.push(
+                "(LOWER(display_name(chats.jid, chats.name)) LIKE LOWER(?) ESCAPE '\\' OR chats.jid LIKE ? ESCAPE '\\')"
                     .into(),
             );
             params.push(contains_pattern(query).into());
             params.push(contains_pattern(query).into());
         }
-        sql.push(format!(
-            "ORDER BY {}",
-            if sort_by == "last_active" {
-                "julianday(chats.last_message_time) DESC"
-            } else {
-                "display_name(chats.jid, chats.name)"
-            }
-        ));
+        if let Some(key) = cursor {
+            let (condition, values) = chat_after(key, sort, "chats.jid", by_time)?;
+            wheres.push(condition);
+            params.extend(values);
+        }
+        if !wheres.is_empty() {
+            sql.push(format!("WHERE {}", wheres.join(" AND ")));
+        }
+        let direction = if by_time { "DESC" } else { "ASC" };
+        sql.push(format!("ORDER BY {sort} {direction}, chats.jid"));
         sql.push("LIMIT ? OFFSET ?".into());
-        params.push(limit.into());
-        params.push(page.saturating_mul(limit).into());
+        push_paging(&mut params, limit, page, cursor.is_some());
         let mut statement = self.conn.prepare(&sql.join(" "))?;
-        let rows = statement.query_map(params_from_iter(params), chat_from_row)?;
-        rows.collect::<Result<Vec<_>>>()?.into_iter().collect()
+        let rows = statement.query_map(params_from_iter(params), |row| {
+            Ok(chat_from_row(row)?.map(|chat| {
+                let key = chat_key(row, 0, 6, by_time);
+                (chat, key)
+            }))
+        })?;
+        page_of(rows, limit)
     }
 
     /// Chats with messages after `after` (UTC text from [`moment_for_sql`]),
     /// most recently active first, with how many.
-    pub fn recent_activity(&self, after: &str, limit: i64, page: i64) -> Result<Vec<ChatActivity>> {
-        let mut statement = self.conn.prepare(
-            "SELECT c.jid, display_name(c.jid, c.name), c.last_message_time, m.content, m.sender, m.is_from_me, a.message_count, a.from_others_count FROM (SELECT chat_jid, COUNT(*) AS message_count, SUM(CASE WHEN is_from_me THEN 0 ELSE 1 END) AS from_others_count, MAX(julianday(timestamp)) AS latest FROM messages WHERE julianday(timestamp) > julianday(?) GROUP BY chat_jid) a JOIN chats c ON c.jid = a.chat_jid LEFT JOIN messages m ON m.rowid = (SELECT rowid FROM messages WHERE chat_jid = c.jid ORDER BY julianday(timestamp) DESC LIMIT 1) ORDER BY a.latest DESC, c.jid LIMIT ? OFFSET ?",
-        )?;
-        let rows = statement.query_map(
-            rusqlite::params![after, limit, page.saturating_mul(limit)],
-            |row| {
-                let message_count: i64 = row.get(6)?;
-                let from_others_count: i64 = row.get(7)?;
-                Ok(chat_from_row(row)?.map(|chat| ChatActivity {
+    pub fn recent_activity(
+        &self,
+        after: &str,
+        limit: i64,
+        page: i64,
+        cursor: Option<&Key>,
+    ) -> Result<Page<ChatActivity>> {
+        let mut params: Vec<rusqlite::types::Value> = vec![after.to_string().into()];
+        let condition = match cursor {
+            Some(key) => {
+                let (condition, values) = chat_after(key, "a.latest", "c.jid", true)?;
+                params.extend(values);
+                format!("WHERE {condition} ")
+            }
+            None => String::new(),
+        };
+        push_paging(&mut params, limit, page, cursor.is_some());
+        let mut statement = self.conn.prepare(&format!(
+            "SELECT c.jid, display_name(c.jid, c.name), c.last_message_time, m.content, m.sender, m.is_from_me, a.message_count, a.from_others_count, a.latest FROM (SELECT chat_jid, COUNT(*) AS message_count, SUM(CASE WHEN is_from_me THEN 0 ELSE 1 END) AS from_others_count, MAX(julianday(timestamp)) AS latest FROM messages WHERE julianday(timestamp) > julianday(?) GROUP BY chat_jid) a JOIN chats c ON c.jid = a.chat_jid LEFT JOIN messages m ON m.rowid = (SELECT rowid FROM messages WHERE chat_jid = c.jid ORDER BY julianday(timestamp) DESC LIMIT 1) {condition}ORDER BY a.latest DESC, c.jid LIMIT ? OFFSET ?",
+        ))?;
+        let rows = statement.query_map(params_from_iter(params), |row| {
+            let message_count: i64 = row.get(6)?;
+            let from_others_count: i64 = row.get(7)?;
+            let key = chat_key(row, 0, 8, true);
+            Ok(chat_from_row(row)?.map(|chat| {
+                let activity = ChatActivity {
                     jid: chat.jid,
                     name: chat.name,
                     message_count,
@@ -496,10 +564,11 @@ impl Db {
                     last_message: chat.last_message,
                     last_sender: chat.last_sender,
                     last_is_from_me: chat.last_is_from_me,
-                }))
-            },
-        )?;
-        rows.collect::<Result<Vec<_>>>()?.into_iter().collect()
+                };
+                (activity, key)
+            }))
+        })?;
+        page_of(rows, limit)
     }
 
     /// Contacts (not groups) whose name, JID or mapped number matches.
@@ -524,15 +593,35 @@ impl Db {
     }
 
     /// The chats with this contact: their own chat, and chats they wrote in.
-    pub fn contact_chats(&self, jid: &str, limit: i64, page: i64) -> Result<Vec<Chat>> {
-        let mut statement = self.conn.prepare(
-            "SELECT c.jid, display_name(c.jid, c.name), c.last_message_time, m.content as last_message, m.sender as last_sender, m.is_from_me as last_is_from_me FROM chats c LEFT JOIN messages m ON m.rowid = (SELECT rowid FROM messages WHERE chat_jid = c.jid ORDER BY julianday(timestamp) DESC LIMIT 1) WHERE c.jid = ? OR c.jid IN (SELECT chat_jid FROM messages WHERE sender = ?) ORDER BY julianday(c.last_message_time) DESC LIMIT ? OFFSET ?",
-        )?;
-        let rows = statement.query_map(
-            rusqlite::params![jid, jid, limit, page.saturating_mul(limit)],
-            chat_from_row,
-        )?;
-        rows.collect::<Result<Vec<_>>>()?.into_iter().collect()
+    pub fn contact_chats(
+        &self,
+        jid: &str,
+        limit: i64,
+        page: i64,
+        cursor: Option<&Key>,
+    ) -> Result<Page<Chat>> {
+        const SORT: &str = "COALESCE(julianday(c.last_message_time), -1)";
+        let mut params: Vec<rusqlite::types::Value> =
+            vec![jid.to_string().into(), jid.to_string().into()];
+        let condition = match cursor {
+            Some(key) => {
+                let (condition, values) = chat_after(key, SORT, "c.jid", true)?;
+                params.extend(values);
+                format!(" AND {condition}")
+            }
+            None => String::new(),
+        };
+        push_paging(&mut params, limit, page, cursor.is_some());
+        let mut statement = self.conn.prepare(&format!(
+            "SELECT c.jid, display_name(c.jid, c.name), c.last_message_time, m.content as last_message, m.sender as last_sender, m.is_from_me as last_is_from_me, {SORT} FROM chats c LEFT JOIN messages m ON m.rowid = (SELECT rowid FROM messages WHERE chat_jid = c.jid ORDER BY julianday(timestamp) DESC LIMIT 1) WHERE (c.jid = ? OR c.jid IN (SELECT chat_jid FROM messages WHERE sender = ?)){condition} ORDER BY {SORT} DESC, c.jid LIMIT ? OFFSET ?",
+        ))?;
+        let rows = statement.query_map(params_from_iter(params), |row| {
+            Ok(chat_from_row(row)?.map(|chat| {
+                let key = chat_key(row, 0, 6, true);
+                (chat, key)
+            }))
+        })?;
+        page_of(rows, limit)
     }
 
     /// The most recent message from or with this contact.
@@ -650,6 +739,100 @@ fn bare_user(sender: &str) -> &str {
 }
 
 /// A message row; the inner error is a timestamp that cannot be read.
+/// The order of every message list, and the columns of its [`Key`].
+const MESSAGE_ORDER: &str = "julianday(messages.timestamp) DESC, messages.rowid DESC";
+const MESSAGE_KEY: &str = "julianday(messages.timestamp), messages.rowid";
+
+/// The condition for messages after `key` in [`MESSAGE_ORDER`].
+fn message_after(key: &Key) -> Result<(&'static str, Vec<rusqlite::types::Value>)> {
+    let Key::Message { time, rowid } = key else {
+        return Err(Error::InvalidQuery);
+    };
+    Ok((
+        "(julianday(messages.timestamp) < ? OR (julianday(messages.timestamp) = ? AND messages.rowid < ?))",
+        vec![(*time).into(), (*time).into(), (*rowid).into()],
+    ))
+}
+
+/// The condition for chats after `key`, ordered by `sort` (descending for
+/// a time, ascending for a name) and then by `jid`.
+fn chat_after(
+    key: &Key,
+    sort: &str,
+    jid: &str,
+    by_time: bool,
+) -> Result<(String, Vec<rusqlite::types::Value>)> {
+    let (value, tie): (rusqlite::types::Value, &str) = match (key, by_time) {
+        (Key::ChatTime { time, jid }, true) => ((*time).into(), jid),
+        (Key::ChatName { name, jid }, false) => (name.clone().into(), jid),
+        _ => return Err(Error::InvalidQuery),
+    };
+    let beyond = if by_time { "<" } else { ">" };
+    Ok((
+        format!("({sort} {beyond} ? OR ({sort} = ? AND {jid} > ?))"),
+        vec![value.clone(), value, tie.to_string().into()],
+    ))
+}
+
+/// `LIMIT ? OFFSET ?` for a page: one row more than asked, to tell whether
+/// there is a next page. After a cursor the offset is 0.
+fn push_paging(params: &mut Vec<rusqlite::types::Value>, limit: i64, page: i64, cursor: bool) {
+    params.push(limit.saturating_add(1).into());
+    let offset = if cursor {
+        0
+    } else {
+        page.saturating_mul(limit)
+    };
+    params.push(offset.into());
+}
+
+/// The rows of a query from [`push_paging`] as a page of at most `limit`.
+fn page_of<T>(
+    rows: impl Iterator<Item = Result<Result<(T, Result<Key>)>>>,
+    limit: i64,
+) -> Result<Page<T>> {
+    let mut items = Vec::new();
+    let mut keys = Vec::new();
+    for row in rows {
+        let (item, key) = row??;
+        items.push(item);
+        keys.push(key?);
+    }
+    let limit = usize::try_from(limit).unwrap_or(0);
+    let next = if items.len() > limit {
+        items.truncate(limit);
+        keys.truncate(limit);
+        keys.pop()
+    } else {
+        None
+    };
+    Ok(Page { items, next })
+}
+
+/// The [`Key::Message`] in the columns at `at` and `at + 1`.
+fn message_key(row: &Row<'_>, at: usize) -> Result<Key> {
+    Ok(Key::Message {
+        time: row.get(at)?,
+        rowid: row.get(at + 1)?,
+    })
+}
+
+/// The chat [`Key`] from the JID at `jid` and the sort value at `sort`.
+fn chat_key(row: &Row<'_>, jid: usize, sort: usize, by_time: bool) -> Result<Key> {
+    let jid: String = row.get(jid)?;
+    Ok(if by_time {
+        Key::ChatTime {
+            time: row.get(sort)?,
+            jid,
+        }
+    } else {
+        Key::ChatName {
+            name: row.get(sort)?,
+            jid,
+        }
+    })
+}
+
 fn message_from_row(row: &Row<'_>) -> Result<Result<Message>> {
     let timestamp: String = row.get(0)?;
     let Some(timestamp) = Timestamp::parse_stored(&timestamp) else {

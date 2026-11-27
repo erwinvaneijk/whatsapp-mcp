@@ -15,6 +15,9 @@
         "list_messages-chat": {"tool": "list_messages", "args": {"chat_jid": "31600000001@s.whatsapp.net", "include_context": false}},
         "list_messages-group-page0": {"tool": "list_messages", "args": {"chat_jid": "120363000000000001@g.us", "limit": 4, "page": 0, "include_context": false}},
         "list_messages-group-page1": {"tool": "list_messages", "args": {"chat_jid": "120363000000000001@g.us", "limit": 4, "page": 1, "include_context": false}},
+        "list_messages-group-cursor": {"tool": "list_messages", "args": {"chat_jid": "120363000000000001@g.us", "limit": 4, "cursor": "5b226c6973745f6d65737361676573222c226d222c323436313334372e323535353535353535372c32305d", "include_context": false}},
+        "list_messages-page-and-cursor": {"tool": "list_messages", "args": {"chat_jid": "120363000000000001@g.us", "limit": 4, "page": 1, "cursor": "5b226c6973745f6d65737361676573222c226d222c323436313334372e323535353535353535372c32305d"}},
+        "list_messages-bad-cursor": {"tool": "list_messages", "args": {"cursor": "not-a-cursor"}},
         "list_messages-sender": {"tool": "list_messages", "args": {"sender_phone_number": "31600000001", "include_context": false}},
         "list_messages-sender-lid": {"tool": "list_messages", "args": {"sender_phone_number": "31600000002", "include_context": false}},
         "list_messages-query-word": {"tool": "list_messages", "args": {"query": "meeting", "include_context": false}},
@@ -41,6 +44,7 @@
         "list_chats-sort-name": {"tool": "list_chats", "args": {"sort_by": "name"}},
         "list_chats-no-last-message": {"tool": "list_chats", "args": {"include_last_message": false}},
         "list_chats-paging": {"tool": "list_chats", "args": {"limit": 2, "page": 1}},
+        "list_chats-cursor-other-sort": {"tool": "list_chats", "args": {"cursor": "5b226c6973745f63686174733a6c6173745f616374697665222c2274222c323436313334372e383333333333333333352c22333136303030303030313140732e77686174736170702e6e6574225d", "sort_by": "name"}},
         "list_chats-negative-page": {"tool": "list_chats", "args": {"page": -1}},
 
         "get_chat-contact": {"tool": "get_chat", "args": {"chat_jid": "31600000001@s.whatsapp.net"}},

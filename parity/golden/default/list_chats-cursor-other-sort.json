@@ -1,0 +1,18 @@
+{
+  "args": {
+    "cursor": "5b226c6973745f63686174733a6c6173745f616374697665222c2274222c323436313334372e383333333333333333352c22333136303030303030313140732e77686174736170702e6e6574225d",
+    "sort_by": "name"
+  },
+  "bridge_requests": [],
+  "result": {
+    "content": [
+      {
+        "text": "Invalid cursor: pass the next_cursor of the previous list_chats result unchanged, with the same sort order.",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "resultType": "complete"
+  },
+  "tool": "list_chats"
+}

@@ -609,3 +609,186 @@ fn a_missing_database_is_an_error_in_every_tool() {
         );
     }
 }
+
+/// Every page of `tool`, following `next_cursor` until there is none.
+fn walk(store: &Store, tool: &str, args: Value) -> Vec<Answer> {
+    let mut pages = Vec::new();
+    let mut args = args;
+    loop {
+        let answer = run(store, tool, args.clone()).unwrap_or_else(|e| panic!("{tool}: {e}"));
+        let next = answer.structured.get("next_cursor").cloned();
+        pages.push(answer);
+        match next {
+            Some(cursor) => args["cursor"] = cursor,
+            None => return pages,
+        }
+        assert!(pages.len() < 50, "{tool}: no end");
+    }
+}
+
+/// The JIDs in a list tool's structured result.
+fn jids(answer: &Answer) -> Vec<String> {
+    answer.structured["result"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["jid"].as_str().unwrap().to_string())
+        .collect()
+}
+
+/// Issue #86: with `page`, a message that arrives between two calls shifts
+/// the pages, so one is shown twice; with the cursor it is not.
+#[test]
+fn a_cursor_does_not_shift_when_messages_arrive() {
+    let (dir, store) = fixture();
+    let args = json!({"chat_jid": MARIA, "limit": 2, "include_context": false});
+    let first = run(&store, "list_messages", args.clone()).unwrap();
+    assert_eq!(ids(&first.texts[0]), ["M5", "M4"]);
+    let cursor = first.structured["next_cursor"].clone();
+    assert!(cursor.is_string());
+    // The text says how to go on, in a block of its own.
+    assert_eq!(
+        first.texts[1],
+        format!(
+            "More results: pass cursor \"{}\" to get the next page.",
+            cursor.as_str().unwrap()
+        )
+    );
+
+    let writer = Writer::open(dir.path()).unwrap();
+    writer
+        .store_message(&NewMessage {
+            id: "M6".into(),
+            chat_jid: MARIA.into(),
+            sender: "31600000001".into(),
+            content: "Running late".into(),
+            timestamp: Some(at(30).0),
+            ..Default::default()
+        })
+        .unwrap();
+    drop(writer);
+
+    let mut by_page = args.clone();
+    by_page["page"] = json!(1);
+    assert_eq!(ids(&text(&store, "list_messages", by_page)), ["M4", "M3"]);
+    let mut by_cursor = args;
+    by_cursor["cursor"] = cursor;
+    let second = run(&store, "list_messages", by_cursor.clone()).unwrap();
+    assert_eq!(ids(&second.texts[0]), ["M3", "M2"]);
+    by_cursor["cursor"] = second.structured["next_cursor"].clone();
+    let last = run(&store, "list_messages", by_cursor).unwrap();
+    assert_eq!(ids(&last.texts[0]), ["M1"]);
+    // The last page has no cursor, in the text or the structured result.
+    assert_eq!(last.texts.len(), 1);
+    assert!(last.structured.get("next_cursor").is_none());
+}
+
+/// Messages at the same moment are ordered by rowid, so paging through
+/// them shows each once.
+#[test]
+fn ties_are_paged_in_a_fixed_order() {
+    let (dir, store) = fixture();
+    let writer = Writer::open(dir.path()).unwrap();
+    for id in ["S1", "S2", "S3"] {
+        writer
+            .store_message(&NewMessage {
+                id: id.into(),
+                chat_jid: EVE.into(),
+                sender: "31600000009".into(),
+                content: "same time".into(),
+                timestamp: Some(at(40).0),
+                ..Default::default()
+            })
+            .unwrap();
+    }
+    drop(writer);
+    let pages = walk(
+        &store,
+        "list_messages",
+        json!({"chat_jid": EVE, "limit": 1, "include_context": false}),
+    );
+    let shown: Vec<&str> = pages.iter().flat_map(|p| ids(&p.texts[0])).collect();
+    assert_eq!(shown, ["S3", "S2", "S1"]);
+}
+
+/// Following the cursor with one row per page gives the same rows, in the
+/// same order, as one big page, in every paged tool.
+#[test]
+fn every_paged_tool_walks_the_whole_list() {
+    let (_dir, store) = fixture_with_media();
+    let text_ids = |answers: &[Answer]| -> Vec<String> {
+        answers
+            .iter()
+            .flat_map(|a| ids(&a.texts[0]))
+            .map(str::to_string)
+            .collect()
+    };
+    for (tool, args) in [
+        ("list_messages", json!({"include_context": false})),
+        ("list_media", json!({})),
+    ] {
+        let all = text_ids(&[run(&store, tool, args.clone()).unwrap()]);
+        let mut one = args.clone();
+        one["limit"] = json!(1);
+        assert_eq!(text_ids(&walk(&store, tool, one)), all, "{tool}");
+    }
+    for (tool, args) in [
+        ("list_chats", json!({})),
+        ("list_chats", json!({"sort_by": "name"})),
+        ("get_contact_chats", json!({"jid": "31600000001"})),
+        ("list_recent_activity", json!({"after": "2026-11-01"})),
+    ] {
+        let all = jids(&run(&store, tool, args.clone()).unwrap());
+        assert!(all.len() > 1, "{tool}: {all:?}");
+        let mut one = args.clone();
+        one["limit"] = json!(1);
+        let pages = walk(&store, tool, one);
+        let walked: Vec<String> = pages.iter().flat_map(jids).collect();
+        assert_eq!(walked, all, "{tool} {args}");
+        assert_eq!(pages.len(), all.len(), "{tool}: no empty last page");
+    }
+}
+
+#[test]
+fn bad_cursors_are_refused() {
+    let (_dir, store) = fixture();
+    let first = run(&store, "list_chats", json!({"limit": 1})).unwrap();
+    let cursor = first.structured["next_cursor"].clone();
+    let invalid = |tool: &str| {
+        format!(
+            "Invalid cursor: pass the next_cursor of the previous {tool} result unchanged, with the same sort order."
+        )
+    };
+    for (tool, args, want) in [
+        (
+            "list_chats",
+            json!({"cursor": cursor, "page": 1}),
+            "Give either page or cursor, not both: a cursor already says where the page starts."
+                .to_string(),
+        ),
+        (
+            "list_chats",
+            json!({"cursor": "nonsense"}),
+            invalid("list_chats"),
+        ),
+        // From another sort order, or another tool.
+        (
+            "list_chats",
+            json!({"cursor": cursor, "sort_by": "name"}),
+            invalid("list_chats"),
+        ),
+        (
+            "get_contact_chats",
+            json!({"jid": MARIA, "cursor": cursor}),
+            invalid("get_contact_chats"),
+        ),
+    ] {
+        assert_eq!(
+            run(&store, tool, args.clone()).err(),
+            Some(want),
+            "{tool} {args}"
+        );
+    }
+    // An empty cursor is no cursor.
+    assert!(run(&store, "list_chats", json!({"cursor": "", "page": 1})).is_ok());
+}

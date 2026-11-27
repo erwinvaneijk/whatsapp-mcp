@@ -4,11 +4,12 @@
 use std::collections::HashSet;
 
 use whatsapp_mcp_store::{
-    Chat, ChatActivity, Contact, Db, MEDIA_TYPES, MediaFilter, MediaMessage, Message,
+    Chat, ChatActivity, Contact, Db, Key, MEDIA_TYPES, MediaFilter, MediaMessage, Message,
     MessageContext, MessageFilter, PooledDb, Store, moment_for_sql,
 };
 
 use crate::args::{Args, BadArgument, check_non_negative};
+use crate::cursor;
 use crate::output::{Output, ToolError};
 use crate::untrusted::{mark_untrusted, one_line};
 
@@ -73,6 +74,7 @@ fn list_messages(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
     let query = args.opt_string("query")?;
     let limit = args.int_or("limit", 20)?;
     let page = args.int_or("page", 0)?;
+    let cursor = paging(args, page, "list_messages")?;
     let include_context = args.bool_or("include_context", true)?;
     let context_before = args.int_or("context_before", 1)?;
     let context_after = args.int_or("context_after", 1)?;
@@ -97,9 +99,12 @@ fn list_messages(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
         query: non_empty(query),
         limit,
         page,
+        cursor,
     };
     let db = open(store)?;
-    let messages = checked(db.list_messages(&filter))?;
+    let page = checked(db.list_messages(&filter))?;
+    let next = next_cursor("list_messages", page.next.as_ref());
+    let messages = page.items;
     let shown = if include_context && !messages.is_empty() {
         let mut windows = Vec::new();
         for message in &messages {
@@ -115,7 +120,7 @@ fn list_messages(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
     } else {
         messages
     };
-    Output::text(format_messages(&db, &shown, true))
+    Output::text(format_messages(&db, &shown, true)).map(|o| o.with_next_cursor(next))
 }
 
 fn list_chats(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
@@ -125,15 +130,24 @@ fn list_chats(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
     let include_last_message = args.bool_or("include_last_message", true)?;
     let sort_by = args.string_or("sort_by", "last_active")?;
     check_non_negative(&[("limit", limit), ("page", page)])?;
+    // A cursor is for one sort order; any value but last_active sorts by name.
+    let list = if sort_by == "last_active" {
+        "list_chats:last_active"
+    } else {
+        "list_chats:name"
+    };
+    let cursor = paging(args, page, list)?;
     let query = non_empty(query);
     let chats = checked(open(store)?.list_chats(
         query.as_deref(),
         limit,
         page,
+        cursor.as_ref(),
         include_last_message,
         &sort_by,
     ))?;
-    Output::list(chats.into_iter().map(mark_chat))
+    let next = next_cursor(list, chats.next.as_ref());
+    Output::list(chats.items.into_iter().map(mark_chat)).map(|o| o.with_next_cursor(next))
 }
 
 fn get_chat(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
@@ -154,8 +168,10 @@ fn get_contact_chats(store: &Store, args: &Args<'_>) -> Result<Output, ToolError
     let limit = args.int_or("limit", 20)?;
     let page = args.int_or("page", 0)?;
     check_non_negative(&[("limit", limit), ("page", page)])?;
-    let chats = checked(open(store)?.contact_chats(&jid, limit, page))?;
-    Output::list(chats.into_iter().map(mark_chat))
+    let cursor = paging(args, page, "get_contact_chats")?;
+    let chats = checked(open(store)?.contact_chats(&jid, limit, page, cursor.as_ref()))?;
+    let next = next_cursor("get_contact_chats", chats.next.as_ref());
+    Output::list(chats.items.into_iter().map(mark_chat)).map(|o| o.with_next_cursor(next))
 }
 
 fn get_last_interaction(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
@@ -182,6 +198,7 @@ fn list_media(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
     let limit = args.int_or("limit", 20)?;
     let page = args.int_or("page", 0)?;
     check_non_negative(&[("limit", limit), ("page", page)])?;
+    let cursor = paging(args, page, "list_media")?;
     let media_type = non_empty(media_type.map(|t| t.trim().to_lowercase()));
     if let Some(given) = &media_type
         && !MEDIA_TYPES.contains(&given.as_str())
@@ -196,13 +213,16 @@ fn list_media(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
         media_type,
         limit,
         page,
+        cursor,
     };
     let db = open(store)?;
     let media = checked(db.list_media(&filter))?;
-    if media.is_empty() {
-        return Output::text("No media to display.".to_string());
+    let next = next_cursor("list_media", media.next.as_ref());
+    if media.items.is_empty() {
+        return Output::text("No media to display.".to_string()).map(|o| o.with_next_cursor(next));
     }
-    Output::text(media.iter().map(|m| format_media(&db, m)).collect())
+    Output::text(media.items.iter().map(|m| format_media(&db, m)).collect())
+        .map(|o| o.with_next_cursor(next))
 }
 
 fn list_recent_activity(store: &Store, args: &Args<'_>) -> Result<Output, ToolError> {
@@ -210,9 +230,11 @@ fn list_recent_activity(store: &Store, args: &Args<'_>) -> Result<Output, ToolEr
     let limit = args.int_or("limit", 20)?;
     let page = args.int_or("page", 0)?;
     check_non_negative(&[("limit", limit), ("page", page)])?;
+    let cursor = paging(args, page, "list_recent_activity")?;
     let after = moment_for_sql(&after, "after").map_err(|e| ToolError(e.to_string()))?;
-    let chats = checked(open(store)?.recent_activity(&after, limit, page))?;
-    Output::list(chats.into_iter().map(mark_activity))
+    let chats = checked(open(store)?.recent_activity(&after, limit, page, cursor.as_ref()))?;
+    let next = next_cursor("list_recent_activity", chats.next.as_ref());
+    Output::list(chats.items.into_iter().map(mark_activity)).map(|o| o.with_next_cursor(next))
 }
 
 /// Context windows, one per match, as the messages to show: windows in the
@@ -244,6 +266,25 @@ fn merge_windows(windows: Vec<Vec<Message>>) -> Vec<Message> {
         target.sort_by_key(|m| m.timestamp.0);
     }
     merged.into_iter().flatten().collect()
+}
+
+/// The `cursor` argument, decoded for `list`. An empty cursor is none; a
+/// cursor and a page other than 0 together are refused (issue #86).
+fn paging(args: &Args<'_>, page: i64, list: &str) -> Result<Option<Key>, ToolError> {
+    let Some(cursor) = non_empty(args.opt_string("cursor")?) else {
+        return Ok(None);
+    };
+    if page != 0 {
+        return Err(ToolError(
+            "Give either page or cursor, not both: a cursor already says where the page starts."
+                .to_string(),
+        ));
+    }
+    cursor::decode(list, &cursor).map(Some)
+}
+
+fn next_cursor(list: &str, key: Option<&Key>) -> Option<String> {
+    key.map(|key| cursor::encode(list, key))
 }
 
 fn not_found(message_id: &str) -> ToolError {

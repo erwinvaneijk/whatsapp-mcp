@@ -377,7 +377,8 @@ fn written_data_reads_back_through_the_mcp_queries() {
             limit: 10,
             ..Default::default()
         })
-        .unwrap();
+        .unwrap()
+        .items;
     assert_eq!(messages.len(), 1);
     assert_eq!(
         messages[0].timestamp.display(),

@@ -6,6 +6,7 @@
 
 mod args;
 mod bridge;
+mod cursor;
 mod group_tools;
 mod output;
 mod read_tools;
